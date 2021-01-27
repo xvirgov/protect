@@ -24,6 +24,9 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import bftsmart.ConsoleLogger;
 
 /**
@@ -39,6 +42,8 @@ public class ConsoleTest {
 	private static Process replica2;
 	private static Process replica3;
 	private static String[] command = new String[5];
+
+	private static final Logger logger = LogManager.getLogger(ConsoleTest.class);
 
 	@BeforeClass
 	public static void startServers() {

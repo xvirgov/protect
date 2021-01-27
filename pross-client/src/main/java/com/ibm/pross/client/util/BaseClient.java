@@ -43,9 +43,14 @@ import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThresholdException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import net.i2p.crypto.eddsa.EdDSASecurityProvider;
 
 public class BaseClient {
+
+	private static final Logger logger = LogManager.getLogger(BaseClient.class);
 
 	static {
 		Security.addProvider(new BouncyCastleProvider());
@@ -157,9 +162,9 @@ public class BaseClient {
 
 		// Ensure there is at least a threshold agreement
 		if (maxConsistencies < threshold) {
-			System.out.println();
+			;
 			for (Object o : configurationData) {
-				System.out.println(" --- " + o);
+				logger.info(" --- " + o);
 			}
 			throw new BelowThresholdException("Insufficient consistency to permit recovery (below threshold)");
 		}

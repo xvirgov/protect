@@ -26,6 +26,8 @@ import javax.crypto.IllegalBlockSizeException;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.ibm.pross.client.util.BaseClient;
 import com.ibm.pross.client.util.PartialResultTask;
@@ -52,6 +54,8 @@ public class EciesEncryptionClient extends BaseClient {
 	private final File inputFile;
 	private final File outputFile;
 
+	private static final Logger logger = LogManager.getLogger(EciesEncryptionClient.class);
+
 	public EciesEncryptionClient(final ServerConfiguration serverConfiguration,
 			final List<X509Certificate> caCertificates, final KeyLoader serverKeys,
 			final X509Certificate clientCertificate, PrivateKey clientTlsKey, final String secretName,
@@ -68,96 +72,96 @@ public class EciesEncryptionClient extends BaseClient {
 			IOException, ResourceUnavailableException, BelowThresholdException {
 
 		// Print status
-		System.out.println("-----------------------------------------------------------");
-		System.out.println("Beginning encryption of file: " + this.inputFile);
+		logger.info("-----------------------------------------------------------");
+		logger.info("Beginning encryption of file: " + this.inputFile);
 
 		// Get public key and current epoch from the server
-		System.out.print("Accessing public key for secret: " + this.secretName + "... ");
+		logger.info("Accessing public key for secret: " + this.secretName + "... ");
 		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
-		System.out.println(" (done)");
+		logger.info(" (done)");
 		final EcPoint publicKey = shareVerificationKeysAndEpoch.getKey().get(0);
 		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
-		System.out.println("Public key for secret:    " + publicKey);
-		System.out.println("Current epoch for secret: " + currentEpoch);
-		System.out.println();
+		logger.info("Public key for secret:    " + publicKey);
+		logger.info("Current epoch for secret: " + currentEpoch);
+		;
 
 		// Reading
-		System.out.print("Reading input file: " + this.inputFile + "... ");
+		logger.info("Reading input file: " + this.inputFile + "... ");
 		final byte[] plaintextData = Files.readAllBytes(inputFile.toPath());
-		System.out.println(" (done)");
-		System.out.println("Read " + plaintextData.length + " bytes.");
-		System.out.println();
+		logger.info(" (done)");
+		logger.info("Read " + plaintextData.length + " bytes.");
+		;
 
 		// Perform ECIES encryption
-		System.out.print("Performing ECIES encryption of file content... ");
+		logger.info("Performing ECIES encryption of file content... ");
 		final byte[] ciphertext = EciesEncryption.encrypt(plaintextData, publicKey);
-		System.out.println(" (done)");
-		System.out.println("Encrypted length " + ciphertext.length + " bytes.");
-		System.out.println();
+		logger.info(" (done)");
+		logger.info("Encrypted length " + ciphertext.length + " bytes.");
+		;
 
 		// Write ciphertext to output file
-		System.out.print("Writing ciphertext to file: " + this.outputFile + "... ");
+		logger.info("Writing ciphertext to file: " + this.outputFile + "... ");
 		Files.write(this.outputFile.toPath(), ciphertext);
-		System.out.println(" (done)");
-		System.out.println("Wrote " + ciphertext.length + " bytes.");
-		System.out.println();
+		logger.info(" (done)");
+		logger.info("Wrote " + ciphertext.length + " bytes.");
+		;
 
-		System.out.println("Done.");
+		logger.info("Done.");
 	}
 
 	public void decryptFile() throws BadPaddingException, IllegalBlockSizeException, ClassNotFoundException,
 			IOException, ResourceUnavailableException, BelowThresholdException {
 
 		// Print status
-		System.out.println("-----------------------------------------------------------");
-		System.out.println("Beginning decryption of file: " + this.inputFile);
+		logger.info("-----------------------------------------------------------");
+		logger.info("Beginning decryption of file: " + this.inputFile);
 
 		// Reading ciphertext
-		System.out.print("Reading input file: " + this.inputFile + "... ");
+		logger.info("Reading input file: " + this.inputFile + "... ");
 		final byte[] ciphertextData = Files.readAllBytes(inputFile.toPath());
-		System.out.println(" (done)");
-		System.out.println("Read " + ciphertextData.length + " bytes of ciphertext.");
-		System.out.println();
+		logger.info(" (done)");
+		logger.info("Read " + ciphertextData.length + " bytes of ciphertext.");
+		;
 
 		// Extract public value from ciphertext
-		System.out.print("Extracting public value from ciphertext: " + this.inputFile + "... ");
+		logger.info("Extracting public value from ciphertext: " + this.inputFile + "... ");
 		final EcPoint publicValue = EciesEncryption.getPublicValue(ciphertextData);
-		System.out.println(" (done)");
-		System.out.println("Public Value is: " + publicValue);
-		System.out.println();
+		logger.info(" (done)");
+		logger.info("Public Value is: " + publicValue);
+		;
 
 		// Get public key and current epoch from the server
-		System.out.print("Accessing public key for secret: " + this.secretName + "... ");
+		logger.info("Accessing public key for secret: " + this.secretName + "... ");
 		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
-		System.out.println(" (done)");
+		logger.info(" (done)");
 		final EcPoint publicKey = shareVerificationKeysAndEpoch.getKey().get(0);
 		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
-		System.out.println("Public key for secret:    " + publicKey);
-		System.out.println("Current epoch for secret: " + currentEpoch);
-		System.out.println();
+		logger.info("Public key for secret:    " + publicKey);
+		logger.info("Current epoch for secret: " + currentEpoch);
+		;
 
 		// Get public key and current epoch from the server
-		System.out.print("Performing threshold exponentiation on public value using: " + this.secretName + "... ");
+		logger.info("Performing threshold exponentiation on public value using: " + this.secretName + "... ");
 		final EcPoint exponentiationResult = this.exponentiatePoint(publicValue, currentEpoch);
-		System.out.println(" (done)");
-		System.out.println("Shared secret obtained:    " + exponentiationResult);
-		System.out.println();
+		logger.info(" (done)");
+		logger.info("Shared secret obtained:    " + exponentiationResult);
+		;
 
 		// Perform ECIES decryption
-		System.out.print("Performing ECIES decryption of file content... ");
+		logger.info("Performing ECIES decryption of file content... ");
 		final byte[] plaintext = EciesEncryption.decrypt(ciphertextData, exponentiationResult);
-		System.out.println(" (done)");
-		System.out.println("Plaintext length " + plaintext.length + " bytes.");
-		System.out.println();
+		logger.info(" (done)");
+		logger.info("Plaintext length " + plaintext.length + " bytes.");
+		;
 
 		// Write plaintext to output file
-		System.out.print("Writing plaintext to file: " + this.outputFile + "... ");
+		logger.info("Writing plaintext to file: " + this.outputFile + "... ");
 		Files.write(this.outputFile.toPath(), plaintext);
-		System.out.println(" (done)");
-		System.out.println("Wrote " + plaintext.length + " bytes.");
-		System.out.println();
+		logger.info(" (done)");
+		logger.info("Wrote " + plaintext.length + " bytes.");
+		;
 
-		System.out.println("Done.");
+		logger.info("Done.");
 
 	}
 
@@ -185,7 +189,7 @@ public class EciesEncryptionClient extends BaseClient {
 		// Load server configuration (learn n and k)
 		final File configFile = new File(baseDirectory, CONFIG_FILENAME);
 		final ServerConfiguration configuration = ServerConfigurationLoader.load(configFile);
-		System.out.println(configuration);
+		logger.info(configuration);
 
 		// TODO: Get these directly from the shareholder responses
 		// final int n = configuration.getNumServers();

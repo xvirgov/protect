@@ -77,7 +77,7 @@ public class BNCurve2 {
 			xt = Fp2_1; // standard x-coord
 			yt = xt.multiply(xt).multiply(xt).add(bt).sqrt();
 
-			// System.out.println(">>>> yt = " + yt);
+			// logger.info(">>>> yt = " + yt);
 			assert (yt != null);
 		} else {
 			bt = Fp2_1.subtract(Fp2_i); // b' = 1 + i, standard non-square non-cube

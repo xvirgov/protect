@@ -67,7 +67,7 @@ public class LoggerClient {
 
 				String msg = generateString(strLen);
 				
-				System.out.print("Invocation " + i + ", message = " + msg);
+				logger.info("Invocation " + i + ", message = " + msg);
 				byte[] reply = counterProxy.invokeOrdered(msg.getBytes(StandardCharsets.UTF_8)); // magic happens here
 
 				if (reply != null) {

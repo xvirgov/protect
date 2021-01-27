@@ -460,34 +460,34 @@ public class BNPoint2 {
 	 * Q.multiply0(bn.t.subtract(_1)).normalize();//P.frobex(2); //BNPoint2 S =
 	 * R.multiply0(bn.t.subtract(_1)).normalize();//P.frobex(3);
 	 * 
-	 * //System.out.println("k  = " + k.mod(bn.n)); //System.out.println("k' = " +
+	 * //logger.info("k  = " + k.mod(bn.n)); //logger.info("k' = " +
 	 * u[0].add(u[1].multiply(bn.t.subtract(_1))).add(u[2].multiply(bn.t.subtract(_1
 	 * ).pow(2))).add(u[3].multiply(bn.t.subtract(_1).pow(3))).mod(bn.n));
-	 * //System.out.println("k*P    = " + P.multiply0(k.mod(bn.n)).normalize());
-	 * //System.out.println("k'*P   = " +
+	 * //logger.info("k*P    = " + P.multiply0(k.mod(bn.n)).normalize());
+	 * //logger.info("k'*P   = " +
 	 * P.multiply0(u[0].add(u[1].multiply(bn.t.subtract(_1))).add(u[2].multiply(bn.t
 	 * .subtract(_1).pow(2))).add(u[3].multiply(bn.t.subtract(_1).pow(3))).mod(bn.n)
-	 * ).normalize()); //System.out.println("k'*P   = " +
+	 * ).normalize()); //logger.info("k'*P   = " +
 	 * P.multiply0(u[0]).add(P.multiply0(u[1].multiply(bn.t.subtract(_1)).add(u[2].
 	 * multiply(bn.t.subtract(_1).pow(2))).add(u[3].multiply(bn.t.subtract(_1).pow(3
-	 * ))).mod(bn.n))).normalize()); //System.out.println("k'*P   = " +
+	 * ))).mod(bn.n))).normalize()); //logger.info("k'*P   = " +
 	 * P.multiply0(u[0]).add( P.multiply0(
 	 * u[1].multiply(bn.t.subtract(_1)).mod(bn.n).add(u[2].multiply(bn.t.subtract(_1
 	 * ).pow(2)).mod(bn.n)).add(u[3].multiply(bn.t.subtract(_1).pow(3)).mod(bn.n)).
-	 * mod(bn.n) ) ).normalize()); //System.out.println("k'*P   = " +
+	 * mod(bn.n) ) ).normalize()); //logger.info("k'*P   = " +
 	 * P.multiply0(u[0]).normalize()
 	 * .add(P.multiply0(u[1]).multiply0(bn.t.subtract(_1)).normalize())
 	 * .add(P.multiply0(u[2]).multiply0(bn.t.subtract(_1)).multiply0(bn.t.subtract(
 	 * _1)).normalize())
 	 * .add(P.multiply0(u[3]).multiply0(bn.t.subtract(_1)).multiply0(bn.t.subtract(
 	 * _1)).multiply0(bn.t.subtract(_1)).normalize()) .normalize());
-	 * //System.out.println("k'*P   = " + P.multiply0(u[0]).normalize()
+	 * //logger.info("k'*P   = " + P.multiply0(u[0]).normalize()
 	 * .add(P.multiply0(bn.t.subtract(_1)).multiply0(u[1]).normalize())
 	 * .add(P.multiply0(bn.t.subtract(_1)).multiply0(bn.t.subtract(_1)).multiply0(u[
 	 * 2]).normalize())
 	 * .add(P.multiply0(bn.t.subtract(_1)).multiply0(bn.t.subtract(_1)).multiply0(bn
 	 * .t.subtract(_1)).multiply0(u[3]).normalize()) .normalize());
-	 * //System.out.println("k'*P   = " +
+	 * //logger.info("k'*P   = " +
 	 * P.multiply0(u[0]).add(Q.multiply0(u[1])).add(R.multiply0(u[2])).add(S.
 	 * multiply0(u[3])).normalize()); //System.exit(0); return simultaneous(u[0], P,
 	 * u[1], Q, u[2], R, u[3], S); } //

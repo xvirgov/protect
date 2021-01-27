@@ -7,12 +7,17 @@ import java.math.BigInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 
 public class ZeroKnowledgeProverTest {
+
+	private static final Logger logger = LogManager.getLogger(ZeroKnowledgeProverTest.class);
 
 	@Test
 	public void testCreateProof() {

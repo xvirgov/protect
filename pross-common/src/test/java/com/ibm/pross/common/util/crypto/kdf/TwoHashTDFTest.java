@@ -26,7 +26,12 @@ import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.serialization.HexUtil;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class TwoHashTDFTest {
+
+	private static final Logger logger = LogManager.getLogger(TwoHashTDFTest.class);
 
 	private static final byte[] AES_256_KEY = "aes-256-key".getBytes(StandardCharsets.UTF_8);
 	private static final byte[] AES_GCM_IV = "aes-gcm-iv".getBytes(StandardCharsets.UTF_8);

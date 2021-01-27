@@ -19,6 +19,9 @@ import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.SecretReco
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.UserNotFoundException;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.server.RsaSignatureServer;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Runnable class that exhibits functionality of the protocol.
  * 
@@ -27,10 +30,12 @@ import com.ibm.pross.common.util.crypto.rsa.threshold.sign.server.RsaSignatureSe
  */
 public class Driver {
 
+	private static final Logger logger = LogManager.getLogger(Driver.class);
+
 	public static void main(String args[]) throws BadArgumentException, BelowThresholdException,
 			SecretRecoveryException, UserNotFoundException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
 
-		System.out.println("Dealing secret to the servers...");
+		logger.info("Dealing secret to the servers...");
 
 		// Create servers
 		final int serverCount = 18;
@@ -45,32 +50,32 @@ public class Driver {
 		final byte[] toBeSigned = "my message".getBytes(StandardCharsets.UTF_8);
 		byte[] testSignature = dealer.registerWithServers(keyName, toBeSigned);
 
-		System.out.println("Registration complete!");
-		System.out.println();
+		logger.info("Registration complete!");
+		;
 		
-		System.out.println("Signature     = " + Arrays.toString(testSignature));
-		System.out.println("Signature Int = " + new BigInteger(1, testSignature));
+		logger.info("Signature     = " + Arrays.toString(testSignature));
+		logger.info("Signature Int = " + new BigInteger(1, testSignature));
 		
-		System.out.println();
-		System.out.println("Recovering secret from the servers...");
+		;
+		logger.info("Recovering secret from the servers...");
 
 		// Use the client to recover the signature from the servers
 		RsaSignatureClient client = new RsaSignatureClient(servers, threshold);
 		BigInteger recoveredSignature = client.recoverSignature(keyName, toBeSigned);
-		System.out.println("Secret recovery complete!");
+		logger.info("Secret recovery complete!");
 
-		System.out.println();
-		System.out.println("signature     = " + Arrays.toString(recoveredSignature.toByteArray()));
-		System.out.println("signature int = " + recoveredSignature);
-		System.out.println();
+		;
+		logger.info("signature     = " + Arrays.toString(recoveredSignature.toByteArray()));
+		logger.info("signature int = " + recoveredSignature);
+		;
 
 		if (new BigInteger(1, testSignature).equals(recoveredSignature)) {
-			System.out.println("Signatures match!");
+			logger.info("Signatures match!");
 		} else {
 			System.err.println("Signature mismatch!");
 		}
 		
-		System.out.println("Done.");
+		logger.info("Done.");
 	}
 
 }

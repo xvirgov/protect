@@ -6,9 +6,14 @@ import java.math.BigInteger;
 
 import org.junit.Test;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.ibm.pross.common.util.RandomNumberGenerator;
 
 public class PaillierCipherTest {
+
+	private static final Logger logger = LogManager.getLogger(PaillierCipherTest.class);
 
 	@Test
 	public void testEncryptPaillierPublicKeyBigInteger() {

@@ -69,7 +69,7 @@ public class Test {
 					rec++;
 				}
 
-				// System.out.println();
+				// ;
 				System.out.println("Roundtrip " + ((System.nanoTime() - time) / 1000.0) + " us");
 			} else {
 				TOMMessage m = (TOMMessage) inQueue.take();

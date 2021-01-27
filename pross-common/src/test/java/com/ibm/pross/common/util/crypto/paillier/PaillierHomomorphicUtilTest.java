@@ -7,10 +7,15 @@ import java.math.BigInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 
 public class PaillierHomomorphicUtilTest {
 
-	@Test
+	private static final Logger logger = LogManager.getLogger(PaillierHomomorphicUtilTest.class);
+
+	@Test // TODO: implement these as a part of the thesis
 	public void testAddCiphertexts() {
 		fail("Not yet implemented");
 	}

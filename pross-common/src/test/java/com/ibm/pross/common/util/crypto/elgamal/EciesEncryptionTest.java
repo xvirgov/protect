@@ -12,6 +12,8 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /*
  * Copyright (c) IBM Corporation 2018. All Rights Reserved.
@@ -19,6 +21,8 @@ import org.junit.Test;
  * This project is licensed under the MIT License, see LICENSE.
  */
 public class EciesEncryptionTest {
+
+	private static final Logger logger = LogManager.getLogger(EciesEncryptionTest.class);
 
 	@BeforeClass
 	public static void setupBeforeClass() {

@@ -7,6 +7,9 @@ import java.math.BigInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
@@ -19,6 +22,8 @@ import com.ibm.pross.common.util.crypto.paillier.PaillierPublicKey;
 
 
 public class FeldmanEqRangeProofTest {
+
+	private static final Logger logger = LogManager.getLogger(FeldmanEqRangeProofTest.class);
 
 	public static final EcCurve curve = CommonConfiguration.CURVE;
 	public static final EcPoint g = CommonConfiguration.g;
@@ -40,7 +45,7 @@ public class FeldmanEqRangeProofTest {
 		final PaillierKeyPair keyPair = keyGenerator.generate();
 		long e1 = System.nanoTime();
 		System.out.println("Done. Took: " + ((e1 - s1) / 1_000_000.0) + " ms");
-		System.out.println();
+		;
 
 		// Get public and private keys
 		final PaillierPublicKey publicKey = keyPair.getPublicKey();
@@ -62,7 +67,7 @@ public class FeldmanEqRangeProofTest {
 		final BigInteger E = PaillierCipher.encrypt(publicKey, share, r1);
 		long e2 = System.nanoTime();
 		System.out.println("Done. Took: " + ((e2 - s2) / 1_000_000.0) + " ms");
-		System.out.println();
+		;
 
 		// Create commitment
 		System.out.println("Creating Pedersen commitment...");
@@ -71,7 +76,7 @@ public class FeldmanEqRangeProofTest {
 		final EcPoint S = curve.addPoints(curve.multiply(g, share), curve.multiply(h, r2));
 		long e3 = System.nanoTime();
 		System.out.println("Done. Took: " + ((e3 - s3) / 1_000_000.0) + " ms");
-		System.out.println();
+		;
 
 		// Generating zero knowledge proof
 		System.out.println("Generating zero knowledge proof...");
@@ -79,7 +84,7 @@ public class FeldmanEqRangeProofTest {
 		final FeldmanEqRangeProof proof = FeldmanEqRangeProofGenerator.generate(publicKey, share, r1, r2, E, S);
 		long e4 = System.nanoTime();
 		System.out.println("Done. Took: " + ((e4 - s4) / 1_000_000.0) + " ms");
-		System.out.println();
+		;
 
 		// Print proof
 		// System.out.println("Sizes: ");
@@ -97,7 +102,7 @@ public class FeldmanEqRangeProofTest {
 		System.out.println("Done. Took: " + ((e5 - s5) / 1_000_000.0) + " ms");
 		System.out.println("Proof is valid: " + valid);
 		Assert.assertTrue(valid);
-		System.out.println();
+		;
 
 		// Validate decryption
 		System.out.println("Decrypting share...");
@@ -108,7 +113,7 @@ public class FeldmanEqRangeProofTest {
 		System.out.println("Recovered plaintext: " + share.equals(decryptedShare));
 		System.out.println("Result: " + decryptedShare);
 		Assert.assertEquals(share, decryptedShare);
-		System.out.println();
+		;
 
 	}
 

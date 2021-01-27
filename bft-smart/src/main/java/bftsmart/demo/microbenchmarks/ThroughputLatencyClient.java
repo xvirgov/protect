@@ -123,7 +123,7 @@ public class ThroughputLatencyClient {
 
 			for (int i = 0; i < numberOfOps / 2; i++, req++) {
 				if (verbose)
-					System.out.print("Sending req " + req + "...");
+					logger.info("Sending req " + req + "...");
 
 				if (readOnly)
 					proxy.invokeUnordered(request);
@@ -152,7 +152,7 @@ public class ThroughputLatencyClient {
 			for (int i = 0; i < numberOfOps / 2; i++, req++) {
 				long last_send_instant = System.nanoTime();
 				if (verbose)
-					System.out.print(this.id + " // Sending req " + req + "...");
+					logger.info(this.id + " // Sending req " + req + "...");
 
 				if (readOnly)
 					proxy.invokeUnordered(request);

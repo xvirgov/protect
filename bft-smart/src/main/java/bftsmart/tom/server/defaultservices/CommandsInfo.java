@@ -91,7 +91,7 @@ public class CommandsInfo implements Serializable {
 					}
 				}
 			}
-			// System.out.print("[CommandsInfo] returnig........");
+			// logger.info("[CommandsInfo] returnig........");
 			// logger.info((this.epoch == ci.epoch) + " " + (this.leader ==
 			// ci.leader));
 			return true;

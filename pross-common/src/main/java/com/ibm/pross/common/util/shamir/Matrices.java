@@ -10,11 +10,16 @@ import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Contains methods for for matrix inversion from: https://www.sanfoundry.com/java-program-find-inverse-matrix/
  * Adapted to use BigIntegers and field arithmetic
  */
 public class Matrices {
+
+	private static final Logger logger = LogManager.getLogger(Matrices.class);
 
 	// Static fields
 	final public static EcCurve curve = CommonConfiguration.CURVE;
@@ -222,22 +227,22 @@ public class Matrices {
 	}
 
 	public static void printMatrix(final BigInteger[][] matrix) {
-		System.out.print("{  ");
+		logger.info("{  ");
 		for (int i = 0; i < matrix.length; i++) {
 			if (i == matrix.length - 1)
-				System.out.print(Arrays.toString(matrix[i]));
+				logger.info(Arrays.toString(matrix[i]));
 			else
-				System.out.println(Arrays.toString(matrix[i]));
-			System.out.print("   ");
+				logger.info(Arrays.toString(matrix[i]));
+			logger.info("   ");
 		}
-		System.out.println("}");
+		logger.info("}");
 	}
 
 	public static void main(String args[]) {
 		long start = System.nanoTime();
 		final BigInteger[][] matrix = generateSquareVandermondeMatrix(10);
 		long end = System.nanoTime();
-		System.out.println(end - start);
+		logger.info(end - start);
 
 		printMatrix(matrix);
 

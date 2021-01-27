@@ -17,7 +17,12 @@ import com.ibm.pross.common.util.crypto.paillier.PaillierKeyPair;
 import com.ibm.pross.common.util.crypto.paillier.PaillierPrivateKey;
 import com.ibm.pross.common.util.crypto.paillier.PaillierPublicKey;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class PedersenEqRangeProofTest {
+
+	private static final Logger logger = LogManager.getLogger(PedersenEqRangeProofTest.class);
 
 	public static final EcCurve curve = CommonConfiguration.CURVE;
 	public static final EcPoint g = CommonConfiguration.g;
@@ -39,7 +44,7 @@ public class PedersenEqRangeProofTest {
 		final PaillierKeyPair keyPair = keyGenerator.generate();
 		long e1 = System.nanoTime();
 		System.out.println("Done. Took: " + ((e1 - s1) / 1_000_000.0) + " ms");
-		System.out.println();
+		;
 
 		// Get public and private keys
 		final PaillierPublicKey publicKey = keyPair.getPublicKey();
@@ -63,7 +68,7 @@ public class PedersenEqRangeProofTest {
 		final BigInteger Ea = PaillierCipher.encrypt(publicKey, share1, r1);
 		long e2 = System.nanoTime();
 		System.out.println("Done. Took: " + ((e2 - s2) / 1_000_000.0) + " ms");
-		System.out.println();
+		;
 
 		// Encrypt other value
 		final BigInteger r2 = RandomNumberGenerator.generateRandomCoprimeInRange(n);
@@ -75,7 +80,7 @@ public class PedersenEqRangeProofTest {
 		final EcPoint S = curve.addPoints(curve.multiply(g, share1), curve.multiply(h, share2));
 		long e3 = System.nanoTime();
 		System.out.println("Done. Took: " + ((e3 - s3) / 1_000_000.0) + " ms");
-		System.out.println();
+		;
 
 		// Generating zero knowledge proof
 		System.out.println("Generating zero knowledge proof...");
@@ -84,12 +89,12 @@ public class PedersenEqRangeProofTest {
 				Eb, S);
 		long e4 = System.nanoTime();
 		System.out.println("Done. Took: " + ((e4 - s4) / 1_000_000.0) + " ms");
-		System.out.println();
+		;
 
 		// Print proof
 		System.out.println(proof);
 		System.out.println("ZKP size: " + proof.getSize());
-		System.out.println();
+		;
 
 		// Validate proof
 		System.out.println("Verifying zero knowledge proof...");
@@ -99,7 +104,7 @@ public class PedersenEqRangeProofTest {
 		System.out.println("Done. Took: " + ((e5 - s5) / 1_000_000.0) + " ms");
 		System.out.println("Proof is valid: " + valid);
 		Assert.assertTrue(valid);
-		System.out.println();
+		;
 
 		// Validate decryption of first share
 		System.out.println("Decrypting share...");
@@ -110,7 +115,7 @@ public class PedersenEqRangeProofTest {
 		System.out.println("Recovered plaintext1: " + share1.equals(decryptedShare1));
 		System.out.println("Result: " + decryptedShare1);
 		Assert.assertEquals(share1, decryptedShare1);
-		System.out.println();
+		;
 
 		// Validate decryption of second share
 		System.out.println("Decrypting share...");
@@ -121,7 +126,7 @@ public class PedersenEqRangeProofTest {
 		System.out.println("Recovered plaintext2: " + share2.equals(decryptedShare2));
 		System.out.println("Result: " + decryptedShare2);
 		Assert.assertEquals(share2, decryptedShare2);
-		System.out.println();
+		;
 
 	}
 

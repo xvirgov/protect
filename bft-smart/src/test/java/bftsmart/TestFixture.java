@@ -20,6 +20,9 @@ import java.io.IOException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * 
  * @author Marcel Santos
@@ -38,6 +41,8 @@ public class TestFixture {
 	private static ConsoleLogger log3;
 
 	private static String[] command = new String[5];
+
+	private static final Logger logger = LogManager.getLogger(TestFixture.class);
 
 	@BeforeClass
 	public static void startServers() {

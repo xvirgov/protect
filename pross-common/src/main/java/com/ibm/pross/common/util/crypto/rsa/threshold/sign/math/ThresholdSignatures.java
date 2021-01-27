@@ -18,6 +18,9 @@ import com.ibm.pross.common.util.serialization.Parse;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import com.ibm.pross.common.util.shamir.ShamirShare;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Implements functions of "Practical Threshold Signatures" which includes: -
  * Generating signature shares and proofs of correctness - Verifying signature
@@ -26,6 +29,8 @@ import com.ibm.pross.common.util.shamir.ShamirShare;
  * @see http://www.iacr.org/archive/eurocrypt2000/1807/18070209-new.pdf
  */
 public class ThresholdSignatures {
+
+	private static final Logger logger = LogManager.getLogger(ThresholdSignatures.class);
 
 	// Useful
 	public static final BigInteger TWO = BigInteger.valueOf(2);
@@ -172,7 +177,7 @@ public class ThresholdSignatures {
 		}
 
 		// Interpolate polynomial
-		System.out.print(" " + Arrays.toString(xCoords));
+		logger.info(" " + Arrays.toString(xCoords));
 		BigInteger w = BigInteger.ONE;
 		for (int i = 0; i < threshold; i++) {
 			final SignatureResponse signatureResponse = signatureResponses.get(i);

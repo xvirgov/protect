@@ -437,10 +437,10 @@ public class BNField12 {
 		}
 
 		/*
-		 * System.out.println("Chung-Hasan adds/subs: " + BNField2.getadd());
-		 * System.out.println("Chung-Hasan muls: " + BNField2.getmul());
-		 * System.out.println("Chung-Hasan squares: " + BNField2.getsqr());
-		 * System.out.println("Chung-Hasan mods: " + BNField2.getmod()); System.exit(0);
+		 * logger.info("Chung-Hasan adds/subs: " + BNField2.getadd());
+		 * logger.info("Chung-Hasan muls: " + BNField2.getmul());
+		 * logger.info("Chung-Hasan squares: " + BNField2.getsqr());
+		 * logger.info("Chung-Hasan mods: " + BNField2.getmod()); System.exit(0);
 		 * //
 		 */
 

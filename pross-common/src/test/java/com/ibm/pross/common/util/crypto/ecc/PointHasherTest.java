@@ -9,9 +9,15 @@ package com.ibm.pross.common.util.crypto.ecc;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.ibm.pross.common.util.crypto.kdf.HmacKeyDerivationFunction;
 
 public class PointHasherTest {
+
+	private static final Logger logger = LogManager.getLogger(PointHasherTest.class);
+
 	// Test Vector 09: (secp256r1, without client secret, key id with special
 	// characters)
 	@Test

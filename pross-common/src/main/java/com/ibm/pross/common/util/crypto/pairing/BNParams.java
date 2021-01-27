@@ -25,7 +25,12 @@ package com.ibm.pross.common.util.crypto.pairing;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class BNParams {
+
+	private static final Logger logger = LogManager.getLogger(BNParams.class);
 
 	/**
 	 * Convenient BigInteger constants
@@ -503,7 +508,7 @@ public class BNParams {
 		assert (n.isProbablePrime(PRIMALITY_CERTAINTY));
 		// zeta = 18*u^3 + 18*u^2 + 9*u + 1;
 		zeta = _9.multiply(u).multiply(u.shiftLeft(1).multiply(u.add(_1)).add(_1)).add(_1);
-		// System.out.println("zeta = " + zeta);
+		// logger.info("zeta = " + zeta);
 		zeta0 = zeta;
 		zeta1 = zeta.add(_1);
 		// rho = |36*u^3 + 18*u^2 + 6*u + 1| = |6*u*(3*u*(2*u + 1) + 1) + 1)|;
@@ -755,7 +760,7 @@ public class BNParams {
 
 		BigInteger arg = a.mod(bn.p);
 		if (arg.equals(BigInteger.ZERO)) {
-			System.out.println("argument is zero in F_p!");
+			logger.info("argument is zero in F_p!");
 			return _0;
 		}
 		return bn.legendre(arg) == 1 ? _1 : _1.negate();
@@ -772,27 +777,27 @@ public class BNParams {
 	 */
 	public static BNPoint SWEncBN(BigInteger t, BNParams bn, BNCurve E, SecureRandom rnd) {
 
-		System.out.println("-----------------");
+		logger.info("-----------------");
 
 		// Check some requirements
 		// if (!bn.p.mod(new BigInteger("36")).equals(new BigInteger("31"))) {
-		// System.out.println("Prime p does not satisfy 31 mod 36!");
+		// logger.info("Prime p does not satisfy 31 mod 36!");
 		// return null;
 		// }
 		if (!bn.p.mod(new BigInteger("12")).equals(new BigInteger("7"))) {
-			System.out.println("Prime p does not satisfy 7 mod 12!");
+			logger.info("Prime p does not satisfy 7 mod 12!");
 			return null;
 		}
 		if (!bn.p.mod(new BigInteger("4")).equals(new BigInteger("3"))) {
-			System.out.println("Prime p does not satisfy 3 mod 4!");
+			logger.info("Prime p does not satisfy 3 mod 4!");
 			return null;
 		}
 		if (!bn.p.mod(new BigInteger("3")).equals(new BigInteger("1"))) {
-			System.out.println("Prime p does not satisfy 3 mod 4!");
+			logger.info("Prime p does not satisfy 3 mod 4!");
 			return null;
 		}
 		if (!E.G.x.equals(_1.mod(bn.p))) {
-			System.out.println("The x coordinate of the generator G is not 1!");
+			logger.info("The x coordinate of the generator G is not 1!");
 			return null;
 		}
 
@@ -839,7 +844,7 @@ public class BNParams {
 			yi = xi.pow(3).add(E.b).mod(bn.p).modPow(sqrtExponent, bn.p);
 
 			if (chi_q(r3.pow(2).multiply(t), bn).equals(_1.negate())) {
-				// System.out.println("invert y signal if r3^2*t is quadratic non-residue");
+				// logger.info("invert y signal if r3^2*t is quadratic non-residue");
 				yi = yi.negate();
 			}
 		}
@@ -848,12 +853,12 @@ public class BNParams {
 		try {
 			pointMapped = new BNPoint(E, xi, yi);
 		} catch (IllegalArgumentException e) {
-			System.out.println("\ni=" + i);
-			System.out.println("xi:" + xi + "\n");
+			logger.info("\ni=" + i);
+			logger.info("xi:" + xi + "\n");
 			return null;
 		}
 
-		// System.out.println("\nThe hash of t=" + t + " is the point \n" +
+		// logger.info("\nThe hash of t=" + t + " is the point \n" +
 		// pointMapped);
 		return pointMapped;
 	}

@@ -18,7 +18,12 @@ import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatu
 import com.ibm.pross.common.util.shamir.Polynomials;
 import com.ibm.pross.common.util.shamir.ShamirShare;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class RsaSharing {
+
+	private static final Logger logger = LogManager.getLogger(RsaSharing.class);
 
 	public static final int DEFAULT_RSA_KEY_SIZE = 1024;
 	
@@ -47,20 +52,20 @@ public class RsaSharing {
 
 		final int primeLength = (keySizeBits / 2);
 		
-		System.out.print("  Generating p...");
+		logger.info("  Generating p...");
 		final BigInteger p = Primes.generateSafePrime(primeLength);
 		final BigInteger pPrime = Primes.getSophieGermainPrime(p);
-		System.out.println(" done.");
+		logger.info(" done.");
 
-		System.out.print("  Generating q...");
+		logger.info("  Generating q...");
 		final BigInteger q = Primes.generateSafePrime(primeLength);
 		final BigInteger qPrime = Primes.getSophieGermainPrime(q);
-		System.out.println(" done.");
+		logger.info(" done.");
 
-		System.out.print("  Computing moduli...");
+		logger.info("  Computing moduli...");
 		final BigInteger m = pPrime.multiply(qPrime);
 		final BigInteger n = p.multiply(q);
-		System.out.println(" done.");
+		logger.info(" done.");
 
 		// Public exponent (e must be greater than numServers)
 		final BigInteger e = BigInteger.valueOf(65537);
@@ -69,7 +74,7 @@ public class RsaSharing {
 		}
 
 		// Create standard RSA Public key pair
-		System.out.print("  Creating RSA keypair...");
+		logger.info("  Creating RSA keypair...");
 		final RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(n, e);
 		final KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 		final RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(publicKeySpec);
@@ -79,10 +84,10 @@ public class RsaSharing {
 		final BigInteger realD = Exponentiation.modInverse(e, totient);
 		final RSAPrivateKeySpec privateKeySpec = new RSAPrivateKeySpec(n, realD);
 		final RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory.generatePrivate(privateKeySpec);
-		System.out.println(" done.");
+		logger.info(" done.");
 
 		// Create secret shares of "d"
-		System.out.print("  Generating secret shares...");
+		logger.info("  Generating secret shares...");
 		final BigInteger d = Exponentiation.modInverse(e, m);
 
 		// Generate random polynomial coefficients for secret sharing of d
@@ -97,10 +102,10 @@ public class RsaSharing {
 			BigInteger xCoord = BigInteger.valueOf(i + 1);
 			shares[i] = Polynomials.evaluatePolynomial(coefficients, xCoord, m);
 		}
-		System.out.println(" done.");
+		logger.info(" done.");
 
 		// Generate public and private verification keys
-		System.out.print("  Creating public and private verification keys...");
+		logger.info("  Creating public and private verification keys...");
 
 		// Generate public verification key v as a random square modulo n
 		final BigInteger sqrtV = RandomNumberGenerator.generateRandomInteger(n);
@@ -111,7 +116,7 @@ public class RsaSharing {
 		for (int i = 0; i < shares.length; i++) {
 			verificationKeys[i] = v.modPow(shares[i].getY(), n);
 		}
-		System.out.println(" done.");
+		logger.info(" done.");
 
 		return new RsaSharing(numServers, threshold, publicKey, privateKey, shares, v, verificationKeys);
 	}

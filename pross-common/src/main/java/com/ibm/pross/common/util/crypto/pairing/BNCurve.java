@@ -76,7 +76,7 @@ public class BNCurve {
 		infinity = new BNPoint(this); // caveat: must be set *after* p but *before* G!
 		G = (bn.b == 3) ? new BNPoint(this, _1, _2) : new BNPoint(this, _1.negate(), _1); // standard curve
 		/*
-		 * System.out.println("G = " + G); System.out.println("n*G = " + G.multiply(n));
+		 * logger.info("G = " + G); logger.info("n*G = " + G.multiply(n));
 		 * //
 		 */
 		assert (G.multiply(bn.n).isZero());
@@ -90,12 +90,12 @@ public class BNCurve {
 		 * pp16G.length; i++) { BNPoint[] pp16Gh = pp16Gi; pp16Gi = pp16G[i]; pp16Gi[0]
 		 * = pp16Gh[0]; for (int j = 1; j < 16; j++) { pp16Gi[j] =
 		 * pp16Gh[j].twice(4).normalize(); } } } elapsed += System.currentTimeMillis();
-		 * System.out.println("pp16G construction = " + elapsed); //
+		 * logger.info("pp16G construction = " + elapsed); //
 		 */
 		// System.exit(0);
 		/*
-		 * System.out.println("========"); for (int i = 0; i < pp16G.length; i++) { for
-		 * (int j = 0; j < pp16G[i].length; j++) { System.out.println("pp16G[" + i +
+		 * logger.info("========"); for (int i = 0; i < pp16G.length; i++) { for
+		 * (int j = 0; j < pp16G[i].length; j++) { logger.info("pp16G[" + i +
 		 * "][" + j + "] = " + pp16G[i][j]); } } System.exit(0); //
 		 */
 		/*
@@ -104,7 +104,7 @@ public class BNCurve {
 		 * elapsed = -System.currentTimeMillis(); for (int qqq = 0; qqq < 1; qqq++) {
 		 * for (int i = 0; i < pp16G.length; i++) { for (int j = 0; j < pp16G[i].length;
 		 * j++) { pp16G[i][j] = new BNPoint(this, pp16Gserial[i][j]); } } } elapsed +=
-		 * System.currentTimeMillis(); System.out.println("pp16G deserialization = " +
+		 * System.currentTimeMillis(); logger.info("pp16G deserialization = " +
 		 * elapsed); //
 		 */
 	}

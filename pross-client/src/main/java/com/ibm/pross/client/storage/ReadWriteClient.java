@@ -30,6 +30,8 @@ import javax.crypto.IllegalBlockSizeException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.ibm.pross.client.util.BaseClient;
 import com.ibm.pross.client.util.PartialResultTask;
@@ -54,6 +56,8 @@ import net.i2p.crypto.eddsa.EdDSASecurityProvider;
  */
 @SuppressWarnings("restriction")
 public class ReadWriteClient extends BaseClient {
+
+	private static final Logger logger = LogManager.getLogger(ReadWriteClient.class);
 
 	static {
 		Security.addProvider(new BouncyCastleProvider());
@@ -116,49 +120,49 @@ public class ReadWriteClient extends BaseClient {
 		final int threshold = serverConfiguration.getReconstructionThreshold();
 
 		// Print status of key pair generation
-		System.out.println("-----------------------------------------------------------");
-		System.out.println("Generating shares of the provided secret...");
+		logger.info("-----------------------------------------------------------");
+		logger.info("Generating shares of the provided secret...");
 		final EcPoint publicKeyOfSecret = CommonConfiguration.CURVE.multiply(CommonConfiguration.g, secretToStore);
-		System.out.println("Public key of secret = " + publicKeyOfSecret);
+		logger.info("Public key of secret = " + publicKeyOfSecret);
 		final BigInteger[] coefficients = Shamir.generateCoefficients(threshold);
 		coefficients[0] = secretToStore;
 		final ShamirShare[] shares = Shamir.generateShares(coefficients, numServers);
-		System.out.println("Generation of shares complete.");
-		System.out.println();
+		logger.info("Generation of shares complete.");
+		;
 
 		// Store shares and parameters to the shareholders
-		System.out.print("Storing shares to secret: " + this.secretName + "... ");
+		logger.info("Storing shares to secret: " + this.secretName + "... ");
 		final Boolean storageSuccess = this.storeSecret(shares);
 		if (!storageSuccess) {
 			System.err.println("\nStorage failed");
 			System.exit(-1);
 		}
-		System.out.println(" (done)");
+		logger.info(" (done)");
 
 		// Initiating DKG
-		System.out.print("Initiating DKG for secret: " + this.secretName + "... ");
+		logger.info("Initiating DKG for secret: " + this.secretName + "... ");
 		final Boolean dkgSuccess = this.storeShares();
 		if (!dkgSuccess) {
-			System.out.println("DKG failed, secret is not available");
+			logger.info("DKG failed, secret is not available");
 		}
-		System.out.println(" (done)");
+		logger.info(" (done)");
 
 		// Initiating DKG
 		Thread.sleep(5000);
-		System.out.println(" (done)");
+		logger.info(" (done)");
 		
 		// Verify DKG
 		// Get public keys from the server
-		System.out.print("Accessing public key for secret: " + this.secretName + "... ");
+		logger.info("Accessing public key for secret: " + this.secretName + "... ");
 		final SimpleEntry<List<EcPoint>, Long> publicKeyAndEpoch = this.getServerVerificationKeys(secretName);
-		System.out.println(" (done)");
+		logger.info(" (done)");
 		final List<EcPoint> publicKeys = publicKeyAndEpoch.getKey();
-		System.out.println("Stored Public key for secret:    " + publicKeys.get(0));
+		logger.info("Stored Public key for secret:    " + publicKeys.get(0));
 		boolean secretsMatch = publicKeyOfSecret.equals(publicKeys.get(0));
-		System.out.println();
+		;
 
 		if (secretsMatch) {
-			System.out.println("DKG complete. Secret is now stored and available for reading.");
+			logger.info("DKG complete. Secret is now stored and available for reading.");
 		} else {
 			System.err.println("DKG complete but stored result does not match what we attempted to store.");
 			System.exit(-1);
@@ -179,27 +183,27 @@ public class ReadWriteClient extends BaseClient {
 		// Print the secret to standard out
 
 		// Print status
-		System.out.println("-----------------------------------------------------------");
+		logger.info("-----------------------------------------------------------");
 
 		// Get public keys from the server
-		System.out.print("Accessing public key for secret: " + this.secretName + "... ");
+		logger.info("Accessing public key for secret: " + this.secretName + "... ");
 		final SimpleEntry<List<EcPoint>, Long> publicKeyAndEpoch = this.getServerVerificationKeys(secretName);
-		System.out.println(" (done)");
+		logger.info(" (done)");
 		final List<EcPoint> publicKeys = publicKeyAndEpoch.getKey();
-		System.out.println("Stored Public key for secret:    " + publicKeys.get(0));
-		System.out.println();
+		logger.info("Stored Public key for secret:    " + publicKeys.get(0));
+		;
 
 		// Attempt recovery of the stored secret
-		System.out.println("Reading shares to decode secret: " + this.secretName);
+		logger.info("Reading shares to decode secret: " + this.secretName);
 		final BigInteger recoveredSecret = this.readShares(publicKeys);
 		final EcPoint publicKeyOfSecret = CommonConfiguration.CURVE.multiply(CommonConfiguration.g, recoveredSecret);
-		System.out.println("Public key of recvered secret = " + publicKeyOfSecret);
+		logger.info("Public key of recvered secret = " + publicKeyOfSecret);
 		boolean secretsMatch = publicKeyOfSecret.equals(publicKeys.get(0));
-		System.out.println("done.");
-		System.out.println();
+		logger.info("done.");
+		;
 
 		if (secretsMatch) {
-			System.out.println("Value of secret: " + recoveredSecret);
+			logger.info("Value of secret: " + recoveredSecret);
 		} else {
 			System.err.println("Failed to recover secret");
 			System.exit(-1);
@@ -249,7 +253,7 @@ public class ReadWriteClient extends BaseClient {
 		// Load server configuration (learn n and k)
 		final File configFile = new File(baseDirectory, CONFIG_FILENAME);
 		final ServerConfiguration configuration = ServerConfigurationLoader.load(configFile);
-		System.out.println(configuration);
+		logger.info(configuration);
 
 		// Load server keys
 		final File keysDirectory = new File(baseDirectory, SERVER_KEYS_DIRECTORY);

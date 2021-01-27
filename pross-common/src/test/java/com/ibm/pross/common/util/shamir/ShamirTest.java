@@ -26,7 +26,12 @@ import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class ShamirTest {
+
+	private static final Logger logger = LogManager.getLogger(ShamirTest.class);
 
 	// Static fields
 	final public static EcCurve curve = CommonConfiguration.CURVE;

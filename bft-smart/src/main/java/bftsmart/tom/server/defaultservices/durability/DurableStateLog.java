@@ -216,7 +216,7 @@ public class DurableStateLog extends StateLog {
 				return cstState;
 			} else if (id == requestF1.getLogLower()) {
 				// This replica is expected to send the lower part of the log
-				System.out.print("--- sending lower log: " + requestF1.getLogLowerSize() + " from "
+				logger.info("--- sending lower log: " + requestF1.getLogLowerSize() + " from "
 						+ logPointers.get(requestF1.getCheckpointReplica()));
 				CommandsInfo[] logLower = fr.getLogState(logPointers.get(requestF1.getCheckpointReplica()), 0,
 						requestF1.getLogLowerSize(), logPath);

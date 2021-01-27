@@ -20,9 +20,14 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import bftsmart.statemanagement.ApplicationState;
 
 public class StateSender implements Runnable {
+
+	private static final Logger logger = LogManager.getLogger(StateSender.class);
 
 	private final Socket socket;
 	private ApplicationState state;
@@ -40,9 +45,9 @@ public class StateSender implements Runnable {
 		try {
 			OutputStream os = socket.getOutputStream();
 			ObjectOutputStream oos = new ObjectOutputStream(os);
-			System.out.print("--- Sending state in different socket");
+			logger.info("--- Sending state in different socket");
 			oos.writeObject(state);
-			System.out.print("--- Sent state in different socket");
+			logger.info("--- Sent state in different socket");
 			oos.close();
 			socket.close();
 		} catch (IOException e) {

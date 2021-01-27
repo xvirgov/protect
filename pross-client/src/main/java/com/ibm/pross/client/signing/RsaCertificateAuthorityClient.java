@@ -38,6 +38,8 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.ibm.pross.client.util.BaseClient;
 import com.ibm.pross.client.util.PartialResultTask;
@@ -67,6 +69,8 @@ import sun.security.x509.X509CertInfo;
  */
 @SuppressWarnings("restriction")
 public class RsaCertificateAuthorityClient extends BaseClient {
+
+	private static final Logger logger = LogManager.getLogger(RsaCertificateAuthorityClient.class);
 
 	public static final String HASH_ALGORITHM = "SHA-512";
 	public static final String CERTIFICATE_SIGNING_ALGORITHM = "SHA512withRSA"; // Must match hash algorithm
@@ -156,32 +160,32 @@ public class RsaCertificateAuthorityClient extends BaseClient {
 		final int threshold = serverConfiguration.getReconstructionThreshold();
 
 		// Print status of key pair generation
-		System.out.println("-----------------------------------------------------------");
-		System.out.println("Beginning generation of threshold RSA key...");
+		logger.info("-----------------------------------------------------------");
+		logger.info("Beginning generation of threshold RSA key...");
 		final RsaSharing rsaSharing = RsaSharing.generateSharing(numServers, threshold);
-		System.out.println("RSA Key Generation complete.");
-		System.out.println();
+		logger.info("RSA Key Generation complete.");
+		;
 
 		// Create and persist CA certificate
-		System.out.println("Creating self-signed root CA certificate for: " + issuerDn);
+		logger.info("Creating self-signed root CA certificate for: " + issuerDn);
 		final X509Certificate caCert = CertificateGeneration.generateCaCertificate(issuerDn, rsaSharing.getKeyPair());
 		Pem.storeCertificateToFile(caCert, caFile);
-		System.out.println("Certificate written to: " + caFile.getAbsolutePath());
-		System.out.println();
+		logger.info("Certificate written to: " + caFile.getAbsolutePath());
+		;
 
 		// Store shares and parameters to the shareholders (creating a new sharing state
 		// for the server, bump epoch?)
-		System.out.print("Storing shares of RSA private key to secret: " + this.secretName + "... ");
+		logger.info("Storing shares of RSA private key to secret: " + this.secretName + "... ");
 		final Boolean success = this.storeRsaSharing(rsaSharing);
 		if (success) {
-			System.out.println("Storage complete");
+			logger.info("Storage complete");
 		} else {
-			System.out.println("Storage failed");
+			logger.info("Storage failed");
 		}
-		System.out.println(" (done)");
+		logger.info(" (done)");
 
-		System.out.println("CA Creation Completed. Ready to issue certificates.");
-		System.out.println(
+		logger.info("CA Creation Completed. Ready to issue certificates.");
+		logger.info(
 				"WARNING: Refresh and reconstruction are not active for RSA keys, do not use them for encrypting anything that must be recovered");
 	}
 
@@ -195,46 +199,46 @@ public class RsaCertificateAuthorityClient extends BaseClient {
 		// Use openSSL to verify it
 
 		// Print status
-		System.out.println("-----------------------------------------------------------");
-		System.out.println("Issing certificate using threshold RSA secret: " + this.secretName);
-		System.out.print("  Reading end-entity public key from file: " + this.publicKeyFile + "... ");
+		logger.info("-----------------------------------------------------------");
+		logger.info("Issing certificate using threshold RSA secret: " + this.secretName);
+		logger.info("  Reading end-entity public key from file: " + this.publicKeyFile + "... ");
 		final PublicKey entityPublicKey = (PublicKey) Pem.loadKeyFromFile(this.publicKeyFile);
-		System.out.println("done.");
+		logger.info("done.");
 
-		System.out.print("  Loading CA certificate from file: " + this.publicKeyFile + "... ");
+		logger.info("  Loading CA certificate from file: " + this.publicKeyFile + "... ");
 		final X509Certificate caCertificate = Pem.loadCertificateFromFile(caFile);
-		System.out.println("done.");
+		logger.info("done.");
 
-		System.out.print("  Creating a To-Be-Signed Certificate for: " + this.subjectDn + "... ");
+		logger.info("  Creating a To-Be-Signed Certificate for: " + this.subjectDn + "... ");
 		final X509CertInfo certificateInfo = CertificateGeneration.createCertificateInfo(subjectDn, null, null,
 				entityPublicKey, 365, false, caCertificate.getSubjectDN().getName(), CERTIFICATE_SIGNING_ALGORITHM);
 		final X509CertImpl certificate = new X509CertImpl(certificateInfo);
 		final byte[] toBeSigned = certificate.getTBSCertificate();
 		final BigInteger toBeSignedRaw = EMSA_PKCS1_V1_5_ENCODE(toBeSigned,
 				((RSAPublicKey) caCertificate.getPublicKey()).getModulus());
-		System.out.println("done.");
+		logger.info("done.");
 
 		// Get public key and current epoch from the server
-		System.out.print("  Performing threshold signing of certificate using: " + this.secretName + "... ");
+		logger.info("  Performing threshold signing of certificate using: " + this.secretName + "... ");
 		final BigInteger signatureResult = this.signMessage(toBeSignedRaw);
-		System.out.println("done.");
-		System.out.println("Signature result obtained: " + signatureResult);
-		System.out.println();
+		logger.info("done.");
+		logger.info("Signature result obtained: " + signatureResult);
+		;
 
-		System.out.print("  Creating certificate using signature... ");
+		logger.info("  Creating certificate using signature... ");
 		final byte[] signature = signatureResult.toByteArray();
 		final X509Certificate cert = CertificateGeneration.createCertificateFromTbsAndSignature(certificateInfo,
 				CERTIFICATE_SIGNING_ALGORITHM, signature);
 		cert.verify(caCertificate.getPublicKey());
-		System.out.println("  done. Certificate is valid!");
+		logger.info("  done. Certificate is valid!");
 
 		// Write plaintext to output file
-		System.out.print("Writing signed certificate to file: " + this.certificateOutputFile + "... ");
+		logger.info("Writing signed certificate to file: " + this.certificateOutputFile + "... ");
 		Pem.storeCertificateToFile(cert, this.certificateOutputFile);
-		System.out.println(" done.");
-		System.out.println();
+		logger.info(" done.");
+		;
 
-		System.out.println("Operation complete. Certificate now ready for use.");
+		logger.info("Operation complete. Certificate now ready for use.");
 	}
 
 	public static void main(final String args[]) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException,
@@ -289,7 +293,7 @@ public class RsaCertificateAuthorityClient extends BaseClient {
 		// Load server configuration (learn n and k)
 		final File configFile = new File(baseDirectory, CONFIG_FILENAME);
 		final ServerConfiguration configuration = ServerConfigurationLoader.load(configFile);
-		System.out.println(configuration);
+		logger.info(configuration);
 
 		// TODO: Get these directly from the shareholder responses
 		// final int n = configuration.getNumServers();

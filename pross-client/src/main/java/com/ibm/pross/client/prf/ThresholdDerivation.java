@@ -21,11 +21,16 @@ import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.shamir.Polynomials;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * The client drives OPRF computations or T-OPRF computations against the
  * shareholders
  */
 public class ThresholdDerivation implements EcPseudoRandomFunction {
+
+	private static final Logger logger = LogManager.getLogger(ThresholdDerivation.class);
 
 	// Static fields
 	final public static EcCurve curve = CommonConfiguration.CURVE;
@@ -96,19 +101,19 @@ public class ThresholdDerivation implements EcPseudoRandomFunction {
 				}
 
 			} catch (Exception e) {
-				System.out.println("Failed to get valid response from shareholder [" + shareholderIndex + "]");
+				logger.info("Failed to get valid response from shareholder [" + shareholderIndex + "]");
 
 			}
 
 		}
 
 		// Combine shares
-		System.out.print("  Recovering secret from shares...");
+		logger.info("  Recovering secret from shares...");
 
 		// Randomize which shareholders are used
 		final List<DerivationResult> ranomizedList = new ArrayList<>(new HashSet<>(results));
 		final EcPoint totalResult = Polynomials.interpolateExponents(ranomizedList, threshold, 0);
-		System.out.println(" done.");
+		logger.info(" done.");
 
 		return totalResult;
 	}

@@ -21,6 +21,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * 
  * @author Marcel Santos
@@ -31,6 +34,8 @@ public class ConsoleLogger extends Thread {
 	private InputStream in = null;
 	private PrintStream out = null;
 	private String index;
+
+	private static final Logger logger = LogManager.getLogger(ConsoleLogger.class);
 
 	public InputStream getIn() {
 		return in;
