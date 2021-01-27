@@ -24,11 +24,17 @@ import bftsmart.consensus.Epoch;
 import bftsmart.consensus.TimestampValuePair;
 import bftsmart.tom.core.TOMLayer;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+
 /**
  * Print information about the replica when it is shutdown.
  *
  */
 public class ShutdownHookThread extends Thread {
+
+	private static final Logger logger = LogManager.getLogger(ShutdownHookThread.class);
 
 	private final TOMLayer tomLayer;
 	private final MessageDigest md;
@@ -96,6 +102,6 @@ public class ShutdownHookThread extends Thread {
 
 		buffer.append("\n\n---------- ---------- ----------\n");
 
-		System.out.println(buffer);
+		logger.info(buffer);
 	}
 }

@@ -48,7 +48,7 @@ public class KeyGeneratorCli {
 
 		// Check usage
 		if (args.length < 2) {
-			System.err.println("USAGE: key-path key-name");
+			logger.error("USAGE: key-path key-name");
 			System.exit(1);
 		}
 		final File keyPath = new File(args[0]);

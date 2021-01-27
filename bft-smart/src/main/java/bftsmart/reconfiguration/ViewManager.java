@@ -24,8 +24,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.StringTokenizer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.reconfiguration.views.View;
@@ -44,6 +45,8 @@ public class ViewManager {
 	// Need only inform those that are entering the systems, as those already
 	// in the system will execute the reconfiguration request
 	private List<Integer> addIds = new LinkedList<Integer>();
+
+	private static final Logger logger = LogManager.getLogger(ViewManager.class);
 
 	public ViewManager() {
 		this("");
@@ -108,7 +111,7 @@ public class ViewManager {
 		connect();
 		ReconfigureReply r = rec.execute();
 		View v = r.getView();
-		System.out.println("New view f: " + v.getF());
+		logger.info("New view f: " + v.getF());
 
 		VMMessage msg = new VMMessage(id, r);
 
@@ -129,13 +132,13 @@ public class ViewManager {
 		try {
 			new ObjectOutputStream(bOut).writeObject(sm);
 		} catch (IOException ex) {
-			Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 		}
 
 		byte[] data = bOut.toByteArray();
 
 		for (Integer i : targets) {
-			// br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Sending
+			// br.ufsc.das.tom.util.logger.info("(ServersCommunicationLayer.send) Sending
 			// msg to replica "+i);
 			try {
 				if (i.intValue() != id) {
@@ -146,7 +149,7 @@ public class ViewManager {
 				System.err.println(ex);
 			}
 		}
-		// br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send)
+		// br.ufsc.das.tom.util.logger.info("(ServersCommunicationLayer.send)
 		// Finished sending messages to replicas");
 	}
 

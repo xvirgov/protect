@@ -282,7 +282,7 @@ public class RecoverHandler extends AuthenticatedClientRequestHandler {
 					// Attempt to link the public key in the certificate to a known entity's key
 					final Integer serverId = RecoverHandler.this.serverKeys.getEntityIndex(peerPublicKey);
 					if (serverId != remoteServerId) {
-						System.err.println("Invalid server!!!: was " + serverId + ", expected: " + remoteServerId);
+						logger.error("Invalid server!!!: was " + serverId + ", expected: " + remoteServerId);
 						throw new CertificateException("Invalid peer certificate");
 					}
 

@@ -26,7 +26,12 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class FileRecoverer {
+
+	private static final Logger logger = LogManager.getLogger(FileRecoverer.class);
 
 	private byte[] ckpHash;
 	private int ckpLastConsensusId;
@@ -57,7 +62,7 @@ public class FileRecoverer {
 	public CommandsInfo[] getLogState(int index, String logPath) {
 		RandomAccessFile log = null;
 
-		System.out.println("GETTING LOG FROM " + logPath);
+		logger.info("GETTING LOG FROM " + logPath);
 		if ((log = openLogFile(logPath)) != null) {
 
 			CommandsInfo[] logState = recoverLogState(log, index);
@@ -86,7 +91,7 @@ public class FileRecoverer {
 	public CommandsInfo[] getLogState(long pointer, int startOffset, int number, String logPath) {
 		RandomAccessFile log = null;
 
-		System.out.println("GETTING LOG FROM " + logPath);
+		logger.info("GETTING LOG FROM " + logPath);
 		if ((log = openLogFile(logPath)) != null) {
 
 			CommandsInfo[] logState = recoverLogState(log, pointer, startOffset, number);
@@ -106,7 +111,7 @@ public class FileRecoverer {
 	public byte[] getCkpState(String ckpPath) {
 		RandomAccessFile ckp = null;
 
-		System.out.println("GETTING CHECKPOINT FROM " + ckpPath);
+		logger.info("GETTING CHECKPOINT FROM " + ckpPath);
 		if ((ckp = openLogFile(ckpPath)) != null) {
 
 			byte[] ckpState = recoverCkpState(ckp);
@@ -126,7 +131,7 @@ public class FileRecoverer {
 	public void recoverCkpHash(String ckpPath) {
 		RandomAccessFile ckp = null;
 
-		System.out.println("GETTING HASH FROM CHECKPOINT" + ckpPath);
+		logger.info("GETTING HASH FROM CHECKPOINT" + ckpPath);
 		if ((ckp = openLogFile(ckpPath)) != null) {
 			byte[] ckpHash = null;
 			try {
@@ -135,7 +140,7 @@ public class FileRecoverer {
 				int hashLength = ckp.readInt();
 				ckpHash = new byte[hashLength];
 				ckp.read(ckpHash);
-				System.out.println("--- Last ckp size: " + ckpSize + " Last ckp hash: " + Arrays.toString(ckpHash));
+				logger.info("--- Last ckp size: " + ckpSize + " Last ckp hash: " + Arrays.toString(ckpHash));
 			} catch (Exception e) {
 				e.printStackTrace();
 				System.err.println("State recover was aborted due to an unexpected exception");
@@ -186,7 +191,7 @@ public class FileRecoverer {
 			}
 			if (ckp.readInt() == 0) {
 				ckpLastConsensusId = ckp.readInt();
-				System.out.println("LAST CKP read from file: " + ckpLastConsensusId);
+				logger.info("LAST CKP read from file: " + ckpLastConsensusId);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -199,7 +204,7 @@ public class FileRecoverer {
 	public void transferLog(SocketChannel sChannel, int index, String logPath) {
 		RandomAccessFile log = null;
 
-		System.out.println("GETTING STATE FROM LOG " + logPath);
+		logger.info("GETTING STATE FROM LOG " + logPath);
 		if ((log = openLogFile(logPath)) != null) {
 			transferLog(log, sChannel, index);
 		}
@@ -208,7 +213,7 @@ public class FileRecoverer {
 	private void transferLog(RandomAccessFile logFile, SocketChannel sChannel, int index) {
 		try {
 			long totalBytes = logFile.length();
-			System.out.println("---Called transferLog." + totalBytes + " " + (sChannel == null));
+			logger.info("---Called transferLog." + totalBytes + " " + (sChannel == null));
 			FileChannel fileChannel = logFile.getChannel();
 			long bytesTransfered = 0;
 			while (bytesTransfered < totalBytes) {
@@ -232,7 +237,7 @@ public class FileRecoverer {
 	public void transferCkpState(SocketChannel sChannel, String ckpPath) {
 		RandomAccessFile ckp = null;
 
-		System.out.println("GETTING CHECKPOINT FROM " + ckpPath);
+		logger.info("GETTING CHECKPOINT FROM " + ckpPath);
 		if ((ckp = openLogFile(ckpPath)) != null) {
 
 			transferCkpState(ckp, sChannel);
@@ -248,7 +253,7 @@ public class FileRecoverer {
 	private void transferCkpState(RandomAccessFile ckp, SocketChannel sChannel) {
 		try {
 			long milliInit = System.currentTimeMillis();
-			System.out.println("--- Sending checkpoint." + ckp.length() + " " + (sChannel == null));
+			logger.info("--- Sending checkpoint." + ckp.length() + " " + (sChannel == null));
 			FileChannel fileChannel = ckp.getChannel();
 			long totalBytes = ckp.length();
 			long bytesTransfered = 0;
@@ -264,7 +269,7 @@ public class FileRecoverer {
 					bytesTransfered += bytesRead;
 				}
 			}
-			System.out.println(
+			logger.info(
 					"---Took " + (System.currentTimeMillis() - milliInit) + " milliseconds to transfer the checkpoint");
 			fileChannel.close();
 		} catch (Exception e) {
@@ -300,7 +305,7 @@ public class FileRecoverer {
 			ArrayList<CommandsInfo> state = new ArrayList<CommandsInfo>();
 			int recoveredBatches = 0;
 			boolean mayRead = true;
-			System.out.println(
+			logger.info(
 					"filepointer: " + log.getFilePointer() + " loglength " + logLength + " endoffset " + endOffset);
 			while (mayRead) {
 				try {
@@ -314,22 +319,22 @@ public class FileRecoverer {
 								ObjectInputStream ois = new ObjectInputStream(bis);
 								state.add((CommandsInfo) ois.readObject());
 								if (++recoveredBatches == endOffset) {
-									System.out.println("read all " + endOffset + " log messages");
+									logger.info("read all " + endOffset + " log messages");
 									return state.toArray(new CommandsInfo[state.size()]);
 								}
 							} else {
 								mayRead = false;
-								System.out.println("STATE CLEAR");
+								logger.info("STATE CLEAR");
 								state.clear();
 							}
 						} else {
 							logLastConsensusId = log.readInt();
 							System.out.print("ELSE 1. Recovered batches: " + recoveredBatches);
-							System.out.println(", logLastConsensusId: " + logLastConsensusId);
+							logger.info(", logLastConsensusId: " + logLastConsensusId);
 							return state.toArray(new CommandsInfo[state.size()]);
 						}
 					} else {
-						System.out.println("ELSE 2 " + recoveredBatches);
+						logger.info("ELSE 2 " + recoveredBatches);
 						mayRead = false;
 					}
 				} catch (Exception e) {
@@ -393,16 +398,16 @@ public class FileRecoverer {
 									return state.toArray(new CommandsInfo[state.size()]);
 								}
 							} else {
-								System.out.println("recoverLogState (pointer,offset,number) STATE CLEAR");
+								logger.info("recoverLogState (pointer,offset,number) STATE CLEAR");
 								mayRead = false;
 								state.clear();
 							}
 						} else {
-							System.out.println("recoverLogState (pointer,offset,number) ELSE 1");
+							logger.info("recoverLogState (pointer,offset,number) ELSE 1");
 							mayRead = false;
 						}
 					} else {
-						System.out.println("recoverLogState (pointer,offset,number) ELSE 2 " + recoveredBatches);
+						logger.info("recoverLogState (pointer,offset,number) ELSE 2 " + recoveredBatches);
 						mayRead = false;
 					}
 				} catch (Exception e) {

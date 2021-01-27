@@ -36,7 +36,12 @@ import bftsmart.tom.server.defaultservices.FileRecoverer;
 import bftsmart.tom.server.defaultservices.StateLog;
 import bftsmart.tom.util.TOMUtil;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class DurableStateLog extends StateLog {
+
+	private static final Logger logger = LogManager.getLogger(DurableStateLog.class);
 
 	private int id;
 	public final static String DEFAULT_DIR = "files".concat(System.getProperty("file.separator"));
@@ -86,7 +91,7 @@ public class DurableStateLog extends StateLog {
 	 */
 	@Override
 	public void addMessageBatch(byte[][] commands, MessageContext[] msgCtx, int consensusId) {
-		// System.out.println("DurableStateLog#addMessageBatch. consensusId: " +
+		// logger.info("DurableStateLog#addMessageBatch. consensusId: " +
 		// consensusId);
 		CommandsInfo command = new CommandsInfo(commands, msgCtx);
 		if (isToLog) {
@@ -184,9 +189,9 @@ public class DurableStateLog extends StateLog {
 
 		int lastCheckpointCID = getLastCheckpointCID();
 		int lastCID = getLastCID();
-		System.out.println("LAST CKP CID = " + lastCheckpointCID);
-		System.out.println("CID = " + cid);
-		System.out.println("LAST CID = " + lastCID);
+		logger.info("LAST CKP CID = " + lastCheckpointCID);
+		logger.info("CID = " + cid);
+		logger.info("LAST CID = " + lastCID);
 
 		if (cstRequest instanceof CSTRequestF1) {
 			CSTRequestF1 requestF1 = (CSTRequestF1) cstRequest;
@@ -196,15 +201,15 @@ public class DurableStateLog extends StateLog {
 				checkpointLock.lock();
 				byte[] ckpState = fr.getCkpState(lastCkpPath);
 				checkpointLock.unlock();
-				System.out.println("--- sending checkpoint: " + ckpState.length);
+				logger.info("--- sending checkpoint: " + ckpState.length);
 				CommandsInfo[] logLower = fr.getLogState(requestF1.getLogLowerSize(), logPath);
 				CommandsInfo[] logUpper = fr.getLogState(logPointers.get(requestF1.getLogUpper()), 0,
 						requestF1.getLogUpperSize(), logPath);
 				byte[] logLowerBytes = TOMUtil.getBytes(logLower);
-				System.out.println(logLower.length + " Log lower bytes size: " + logLowerBytes.length);
+				logger.info(logLower.length + " Log lower bytes size: " + logLowerBytes.length);
 				byte[] logLowerHash = TOMUtil.computeHash(logLowerBytes);
 				byte[] logUpperBytes = TOMUtil.getBytes(logUpper);
-				System.out.println(logUpper.length + " Log upper bytes size: " + logUpperBytes.length);
+				logger.info(logUpper.length + " Log upper bytes size: " + logUpperBytes.length);
 				byte[] logUpperHash = TOMUtil.computeHash(logUpperBytes);
 				CSTState cstState = new CSTState(ckpState, null, null, logLowerHash, null, logUpperHash,
 						lastCheckpointCID, lastCID, this.id);
@@ -215,22 +220,22 @@ public class DurableStateLog extends StateLog {
 						+ logPointers.get(requestF1.getCheckpointReplica()));
 				CommandsInfo[] logLower = fr.getLogState(logPointers.get(requestF1.getCheckpointReplica()), 0,
 						requestF1.getLogLowerSize(), logPath);
-				System.out.println(" " + TOMUtil.getBytes(logLower).length + " bytes");
+				logger.info(" " + TOMUtil.getBytes(logLower).length + " bytes");
 				CSTState cstState = new CSTState(null, null, logLower, null, null, null, lastCheckpointCID, lastCID,
 						this.id);
 				return cstState;
 			} else {
 				// This replica is expected to send the upper part of the log plus the hash for
 				// its checkpoint
-				System.out.println("--- sending upper log: " + requestF1.getLogUpperSize());
+				logger.info("--- sending upper log: " + requestF1.getLogUpperSize());
 				checkpointLock.lock();
 				fr.recoverCkpHash(lastCkpPath);
 				byte[] ckpHash = fr.getCkpStateHash();
 				byte[] ckpState = fr.getCkpState(lastCkpPath);
 				checkpointLock.unlock();
 				CommandsInfo[] logUpper = fr.getLogState(requestF1.getLogUpperSize(), logPath);
-				System.out.println(" " + TOMUtil.getBytes(logUpper).length + " bytes");
-				System.out.println("--- State size: " + ckpState.length + " Current state Hash: " + ckpHash);
+				logger.info(" " + TOMUtil.getBytes(logUpper).length + " bytes");
+				logger.info("--- State size: " + ckpState.length + " Current state Hash: " + ckpHash);
 				int lastCIDInState = lastCheckpointCID + requestF1.getLogUpperSize();
 				CSTState cstState = new CSTState(null, ckpHash, null, null, logUpper, null, lastCheckpointCID,
 						lastCIDInState, this.id);
@@ -244,7 +249,7 @@ public class DurableStateLog extends StateLog {
 		// byte[] ckpState = fr.getCkpState();
 		// checkpointLock.unlock();
 		// batches = fr.getLogState(requestFGT1.getLogSize());
-		// System.out.println("--- sending checkpoint: " + ckpState.length);
+		// logger.info("--- sending checkpoint: " + ckpState.length);
 		// return new DefaultApplicationState(batches, lastCheckpointCID, cid, ckpState,
 		// null);
 		// } else { // Replica should send the checkpoint and log hashes
@@ -279,7 +284,7 @@ public class DurableStateLog extends StateLog {
 		if ((cid % checkpointPeriod) % checkpointPortion == checkpointPortion - 1) {
 			int ckpReplicaIndex = (((cid % checkpointPeriod) + 1) / checkpointPortion) - 1;
 			try {
-				System.out.println(" --- Replica " + ckpReplicaIndex + " took checkpoint. My current log pointer is "
+				logger.info(" --- Replica " + ckpReplicaIndex + " took checkpoint. My current log pointer is "
 						+ log.getFilePointer());
 				logPointers.put(ckpReplicaIndex, log.getFilePointer());
 			} catch (IOException e) {

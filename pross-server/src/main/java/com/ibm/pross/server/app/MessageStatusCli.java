@@ -42,7 +42,7 @@ public class MessageStatusCli {
 
 		// Check usage
 		if (args.length < 2) {
-			System.err.println("USAGE: message-base-path server-index");
+			logger.error("USAGE: message-base-path server-index");
 			System.exit(1);
 		}
 		final File basePath = new File(args[0]); // server/state
@@ -75,7 +75,7 @@ public class MessageStatusCli {
 				final SignedMessage certifiedMessage = AtomicFileOperations.readSignedMessage(certifiedMessageFile);
 
 				if (!bftMessage.equals(certifiedMessage)) {
-					System.err.print("Something went wrong, BFT message does not match certified message for position " + messageIndex);
+					logger.error("Something went wrong, BFT message does not match certified message for position " + messageIndex);
 				}
 				
 				logger.info(strIndex + " [CERTIFIED] " + bftMessage.toString());

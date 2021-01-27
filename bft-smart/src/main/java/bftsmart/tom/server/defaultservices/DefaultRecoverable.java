@@ -22,7 +22,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
@@ -33,7 +32,10 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
-import bftsmart.tom.util.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 
 /**
  *
@@ -54,12 +56,14 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 	private StateLog log;
 	private StateManager stateManager;
 
+	private static final Logger logger = LogManager.getLogger(DefaultRecoverable.class);
+
 	public DefaultRecoverable() {
 
 		try {
 			md = MessageDigest.getInstance("SHA-256");
 		} catch (NoSuchAlgorithmException ex) {
-			java.util.logging.Logger.getLogger(DefaultRecoverable.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 		}
 	}
 
@@ -127,7 +131,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 				stateLock.unlock();
 			}
 
-			System.out.println("(DefaultRecoverable.executeBatch) Performing checkpoint for consensus " + cid);
+			logger.info("(DefaultRecoverable.executeBatch) Performing checkpoint for consensus " + cid);
 			stateLock.lock();
 			byte[] snapshot = getSnapshot();
 			stateLock.unlock();
@@ -137,7 +141,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
 			// execute the second half if it exists
 			if (secondHalf.length > 0) {
-				// System.out.println("----THERE IS A SECOND HALF----");
+				// logger.info("----THERE IS A SECOND HALF----");
 				cid = msgCtxs[msgCtxs.length - 1].getConsensusId();
 
 				if (!noop) {
@@ -146,7 +150,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 					stateLock.unlock();
 				}
 
-				Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus "
+				logger.info("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus "
 						+ cid);
 				saveCommands(secondHalf, secondHalfMsgCtx);
 
@@ -181,14 +185,14 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
 		logLock.lock();
 
-		Logger.println("(TOMLayer.saveState) Saving state of CID " + lastCID);
+		logger.info("(TOMLayer.saveState) Saving state of CID " + lastCID);
 
 		thisLog.newCheckpoint(snapshot, computeHash(snapshot), lastCID);
 		thisLog.setLastCID(lastCID);
 		thisLog.setLastCheckpointCID(lastCID);
 
 		logLock.unlock();
-		Logger.println("(TOMLayer.saveState) Finished saving state of CID " + lastCID);
+		logger.info("(TOMLayer.saveState) Finished saving state of CID " + lastCID);
 	}
 
 	/**
@@ -202,8 +206,8 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 		// if(!config.isToLog())
 		// return;
 		if (commands.length != msgCtx.length) {
-			System.out.println("----SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
-			System.out.println("----COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
+			logger.info("----SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
+			logger.info("----COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
 		}
 		logLock.lock();
 
@@ -258,15 +262,15 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 			int lastCheckpointCID = state.getLastCheckpointCID();
 			lastCID = state.getLastCID();
 
-			System.out.println("(DefaultRecoverable.setState) I'm going to update myself from CID " + lastCheckpointCID
+			logger.info("(DefaultRecoverable.setState) I'm going to update myself from CID " + lastCheckpointCID
 					+ " to CID " + lastCID);
 
-			bftsmart.tom.util.Logger.println("(DefaultRecoverable.setState) I'm going to update myself from CID "
+			logger.info("(DefaultRecoverable.setState) I'm going to update myself from CID "
 					+ lastCheckpointCID + " to CID " + lastCID);
 
 			stateLock.lock();
 			if (state.getSerializedState() != null) {
-				System.out.println("The state is not null. Will install it");
+				logger.info("The state is not null. Will install it");
 				initLog();
 				log.update(state);
 				installSnapshot(state.getSerializedState());
@@ -275,10 +279,10 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 			for (int cid = lastCheckpointCID + 1; cid <= lastCID; cid++) {
 				try {
 
-					bftsmart.tom.util.Logger.println(
+					logger.info(
 							"(DefaultRecoverable.setState) interpreting and verifying batched requests for cid " + cid);
 					if (state.getMessageBatch(cid) == null) {
-						System.out.println("(DefaultRecoverable.setState) " + cid + " NULO!!!");
+						logger.info("(DefaultRecoverable.setState) " + cid + " NULO!!!");
 					}
 
 					CommandsInfo cmdInfo = state.getMessageBatch(cid);
@@ -293,11 +297,11 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 				} catch (Exception e) {
 					e.printStackTrace(System.err);
 					if (e instanceof ArrayIndexOutOfBoundsException) {
-						System.out.println("Last checkpoint, last consensus ID (CID): " + state.getLastCheckpointCID());
-						System.out.println("Last CID: " + state.getLastCID());
-						System.out.println("number of messages expected to be in the batch: "
+						logger.info("Last checkpoint, last consensus ID (CID): " + state.getLastCheckpointCID());
+						logger.info("Last CID: " + state.getLastCID());
+						logger.info("number of messages expected to be in the batch: "
 								+ (state.getLastCID() - state.getLastCheckpointCID() + 1));
-						System.out.println("number of messages in the batch: " + state.getMessageBatches().length);
+						logger.info("number of messages in the batch: " + state.getMessageBatches().length);
 					}
 				}
 
@@ -384,7 +388,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 			}
 			index++;
 		}
-		System.out.println("--- Checkpoint is in position " + index);
+		logger.info("--- Checkpoint is in position " + index);
 		return index;
 	}
 

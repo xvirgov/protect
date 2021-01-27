@@ -17,6 +17,9 @@ package bftsmart.consensus;
 
 import bftsmart.tom.core.messages.TOMMessage;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  *
  * This class represents a Consensus Instance.
@@ -25,6 +28,8 @@ import bftsmart.tom.core.messages.TOMMessage;
  * @author Alysson Bessani
  */
 public class Decision {
+
+	private static final Logger logger = LogManager.getLogger(Decision.class);
 
 	private final int cid; // Consensus ID in which the value was decided
 	private Epoch decisionEpoch = null; // Epoch in which the value was decided
@@ -139,7 +144,7 @@ public class Decision {
 	private void waitForPropose() {
 		while (decisionEpoch == null && decisionEpoch.deserializedPropValue == null) {
 			try {
-				System.out.println("waiting for propose for consensus" + cid);
+				logger.info("waiting for propose for consensus" + cid);
 				Thread.sleep(1);
 			} catch (InterruptedException ie) {
 			}

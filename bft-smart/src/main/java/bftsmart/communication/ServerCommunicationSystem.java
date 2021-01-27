@@ -17,7 +17,7 @@ package bftsmart.communication;
 
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
+
 
 import bftsmart.communication.client.CommunicationSystemServerSide;
 import bftsmart.communication.client.CommunicationSystemServerSideFactory;
@@ -28,7 +28,9 @@ import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
@@ -43,6 +45,8 @@ public class ServerCommunicationSystem extends Thread {
 	private ServersCommunicationLayer serversConn;
 	private CommunicationSystemServerSide clientsConn;
 	private ServerViewController controller;
+
+	private static final Logger logger = LogManager.getLogger(ServerCommunicationSystem.class);
 
 	/**
 	 * Creates a new instance of ServerCommunicationSystem
@@ -111,14 +115,14 @@ public class ServerCommunicationSystem extends Thread {
 		while (doWork) {
 			try {
 				if (count % 1000 == 0 && count > 0) {
-					Logger.println("(ServerCommunicationSystem.run) After " + count + " messages, inQueue size="
+					logger.info("(ServerCommunicationSystem.run) After " + count + " messages, inQueue size="
 							+ inQueue.size());
 				}
 
 				SystemMessage sm = inQueue.poll(MESSAGE_WAIT_TIME, TimeUnit.MILLISECONDS);
 
 				if (sm != null) {
-					Logger.println("<-------receiving---------- " + sm);
+					logger.info("<-------receiving---------- " + sm);
 					messageHandler.processData(sm);
 					count++;
 				} else {
@@ -128,9 +132,7 @@ public class ServerCommunicationSystem extends Thread {
 				e.printStackTrace(System.err);
 			}
 		}
-		java.util.logging.Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.INFO,
-				"ServerCommunicationSystem stopped.");
-
+		logger.info("ServerCommunicationSystem stopped.");
 	}
 
 	/**
@@ -146,7 +148,7 @@ public class ServerCommunicationSystem extends Thread {
 		if (sm instanceof TOMMessage) {
 			clientsConn.send(targets, (TOMMessage) sm, false);
 		} else {
-			Logger.println("--------sending----------> " + sm);
+			logger.info("--------sending----------> " + sm);
 			serversConn.send(targets, sm, true);
 		}
 	}
@@ -166,7 +168,7 @@ public class ServerCommunicationSystem extends Thread {
 
 	public void shutdown() {
 
-		System.out.println("Shutting down communication layer");
+		logger.info("Shutting down communication layer");
 
 		this.doWork = false;
 		clientsConn.shutdown();

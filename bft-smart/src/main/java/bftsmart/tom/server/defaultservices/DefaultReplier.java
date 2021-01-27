@@ -18,13 +18,14 @@ package bftsmart.tom.server.defaultservices;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.Replier;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
@@ -35,6 +36,8 @@ public class DefaultReplier implements Replier {
 	private Lock replyLock = new ReentrantLock();
 	private Condition contextSetted = replyLock.newCondition();
 	private ReplicaContext rc;
+
+	private static final Logger logger = LogManager.getLogger(DefaultReplier.class);
 
 	@Override
 	public void manageReply(TOMMessage request, MessageContext msgCtx) {
@@ -50,7 +53,7 @@ public class DefaultReplier implements Replier {
 				this.replyLock.unlock();
 
 			} catch (InterruptedException ex) {
-				Logger.getLogger(DefaultReplier.class.getName()).log(Level.SEVERE, null, ex);
+				logger.error(ex);
 			}
 		}
 

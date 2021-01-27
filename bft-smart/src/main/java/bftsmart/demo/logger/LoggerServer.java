@@ -30,6 +30,9 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Example replica that implements a BFT replicated service (a logger).
  * It maintains a consistent state which is the CRC of all messages seen.
@@ -38,6 +41,8 @@ import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
  */
 
 public final class LoggerServer extends DefaultSingleRecoverable {
+
+    private static final Logger logger = LogManager.getLogger(LoggerServer.class);
 
 	CRC32 crc32 = new CRC32();
 	private String message = "";
@@ -51,7 +56,7 @@ public final class LoggerServer extends DefaultSingleRecoverable {
 	public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
 		iterations++;
 
-		System.out.println("(" + iterations + ") Counter message value: " + this.message);
+		logger.info("(" + iterations + ") Counter message value: " + this.message);
 		return this.message.getBytes(StandardCharsets.UTF_8);
 	}
 
@@ -63,8 +68,8 @@ public final class LoggerServer extends DefaultSingleRecoverable {
 
 		String message = new String(command, StandardCharsets.UTF_8);
 
-		System.out.println("(" + iterations + ") Message was added. Current value = " + message);
-		System.out.println("      Current state: " + crc32.getValue());
+		logger.info("(" + iterations + ") Message was added. Current value = " + message);
+		logger.info("      Current state: " + crc32.getValue());
 
 		this.message = message;
 
@@ -74,7 +79,7 @@ public final class LoggerServer extends DefaultSingleRecoverable {
 
 	public static void main(String[] args) {
 		if (args.length < 1) {
-			System.out.println("Use: java CounterServer <processId>");
+			logger.info("Use: java CounterServer <processId>");
 			System.exit(-1);
 		}
 		new LoggerServer(Integer.parseInt(args[0]));
@@ -83,7 +88,7 @@ public final class LoggerServer extends DefaultSingleRecoverable {
     @Override
     public void installSnapshot(byte[] state) {
         try {
-            System.out.println("setState called");
+            logger.info("setState called");
             ByteArrayInputStream bis = new ByteArrayInputStream(state);
             ObjectInput in = new ObjectInputStream(bis);
             
@@ -107,7 +112,7 @@ public final class LoggerServer extends DefaultSingleRecoverable {
     @Override
     public byte[] getSnapshot() {
         try {
-            System.out.println("getState called");
+            logger.info("getState called");
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutput out = new ObjectOutputStream(bos);
             out.writeInt((int)crc32.getValue());

@@ -20,7 +20,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 
 import bftsmart.consensus.Decision;
 import bftsmart.reconfiguration.ServerViewController;
@@ -32,7 +31,9 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.BatchReader;
-import bftsmart.tom.util.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class implements a thread which will deliver totally ordered requests to
@@ -49,6 +50,8 @@ public final class DeliveryThread extends Thread {
 	private final ServerViewController controller;
 	private final Lock decidedLock = new ReentrantLock();
 	private final Condition notEmptyQueue = decidedLock.newCondition();
+
+	private static final Logger logger = LogManager.getLogger(DeliveryThread.class);
 
 	/**
 	 * Creates a new instance of DeliveryThread
@@ -84,7 +87,7 @@ public final class DeliveryThread extends Thread {
 	public void delivery(Decision dec) {
 		if (!containsGoodReconfig(dec)) {
 
-			Logger.println("(DeliveryThread.delivery) Decision from consensus " + dec.getConsensusId()
+			logger.info("(DeliveryThread.delivery) Decision from consensus " + dec.getConsensusId()
 					+ " does not contain good reconfiguration");
 			// set this decision as the last one from this replica
 			tomLayer.setLastExec(dec.getConsensusId());
@@ -102,7 +105,7 @@ public final class DeliveryThread extends Thread {
 
 			notEmptyQueue.signalAll();
 			decidedLock.unlock();
-			Logger.println("(DeliveryThread.delivery) Consensus " + dec.getConsensusId() + " finished. Decided size="
+			logger.info("(DeliveryThread.delivery) Consensus " + dec.getConsensusId() + " finished. Decided size="
 					+ decided.size());
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
@@ -148,7 +151,7 @@ public final class DeliveryThread extends Thread {
 		int lastCID = recoverer.setState(state);
 
 		// set this decision as the last one from this replica
-		System.out.println("Setting last CID to " + lastCID);
+		logger.info("Setting last CID to " + lastCID);
 		tomLayer.setLastExec(lastCID);
 
 		// define the last stable consensus... the stable consensus can
@@ -165,7 +168,7 @@ public final class DeliveryThread extends Thread {
 		System.out.print("Current decided size: " + decided.size());
 		decided.clear();
 
-		System.out.println("(DeliveryThread.update) All finished up to " + lastCID);
+		logger.info("(DeliveryThread.update) All finished up to " + lastCID);
 	}
 
 	/**
@@ -178,11 +181,11 @@ public final class DeliveryThread extends Thread {
 			/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
 			deliverLock();
 			while (tomLayer.isRetrievingState()) {
-				System.out.println("-- Retrieving State");
+				logger.info("-- Retrieving State");
 				canDeliver.awaitUninterruptibly();
 
 				if (tomLayer.getLastExec() == -1)
-					System.out.println("-- Ready to process operations");
+					logger.info("-- Ready to process operations");
 			}
 			try {
 				ArrayList<Decision> decisions = new ArrayList<Decision>();
@@ -270,8 +273,7 @@ public final class DeliveryThread extends Thread {
 			deliverUnlock();
 			/******************************************************************/
 		}
-		java.util.logging.Logger.getLogger(DeliveryThread.class.getName()).log(Level.INFO, "DeliveryThread stopped.");
-
+		logger.info("DeliveryThread stopped.");
 	}
 
 	private TOMMessage[] extractMessagesFromDecision(Decision dec) {
@@ -281,14 +283,14 @@ public final class DeliveryThread extends Thread {
 			// this may happen if this batch proposal was not verified
 			// TODO: this condition is possible?
 
-			Logger.println("(DeliveryThread.run) interpreting and verifying batched requests.");
+			logger.info("(DeliveryThread.run) interpreting and verifying batched requests.");
 
 			// obtain an array of requests from the decisions obtained
 			BatchReader batchReader = new BatchReader(dec.getValue(),
 					controller.getStaticConf().getUseSignatures() == 1);
 			requests = batchReader.deserialiseRequests(controller);
 		} else {
-			Logger.println("(DeliveryThread.run) using cached requests from the propose.");
+			logger.info("(DeliveryThread.run) using cached requests from the propose.");
 		}
 
 		return requests;
@@ -332,7 +334,7 @@ public final class DeliveryThread extends Thread {
 	public void shutdown() {
 		this.doWork = false;
 
-		System.out.println("Shutting down delivery thread");
+		logger.info("Shutting down delivery thread");
 
 		decidedLock.lock();
 		notEmptyQueue.signalAll();

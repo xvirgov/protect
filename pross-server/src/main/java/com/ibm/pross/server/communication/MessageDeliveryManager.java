@@ -151,7 +151,7 @@ public class MessageDeliveryManager {
 		if (!signedRelayedMessage.isSignatureValid(relayerPublicKey)) {
 			// Signature is bad, this could have come from anyone/anything
 			// TODO: Log this but don't report a confirmed problem
-			System.err.println("Bad relayer signature");
+			logger.error("Bad relayer signature");
 			return;
 		}
 
@@ -163,7 +163,7 @@ public class MessageDeliveryManager {
 			if (!signedMessage.isSignatureValid(originatorPublicKey)) {
 				// TODO: Warn about this, the relayer did not perform necessary checks before
 				// passing message on
-				System.err.println("Bad originator signature");
+				logger.error("Bad originator signature");
 				return;
 			}
 		}

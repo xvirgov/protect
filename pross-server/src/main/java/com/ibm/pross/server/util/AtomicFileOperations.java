@@ -10,9 +10,14 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
+import com.ibm.pross.server.app.CertificateAuthorityCli;
 import com.ibm.pross.server.messages.SignedMessage;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class AtomicFileOperations {
+
+	private static final Logger logger = LogManager.getLogger(AtomicFileOperations.class);
 
 	public static void atomicWriteSignedMessage(final File destinationFile, final SignedMessage signedMessage)
 			throws SyncFailedException, IOException {
@@ -52,7 +57,7 @@ public class AtomicFileOperations {
 						StandardCopyOption.ATOMIC_MOVE);
 			} catch (IOException e) {
 				// Fall back to normal rename (may not be atomic)
-				System.err.println("Atomic moves not supported on this platform. This can lead to data loss!");
+				logger.error("Atomic moves not supported on this platform. This can lead to data loss!");
 				tempFile.renameTo(destinationFile);
 			}
 		}

@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -40,6 +38,8 @@ import javax.crypto.spec.PBEKeySpec;
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
@@ -60,6 +60,8 @@ public class ServersCommunicationLayer extends Thread {
 	private ServiceReplica replica;
 	private SecretKey selfPwd;
 	private static final String PASSWORD = "commsyst";
+
+	private static final Logger logger = LogManager.getLogger(ServersCommunicationLayer.class);
 
 	public ServersCommunicationLayer(ServerViewController controller, LinkedBlockingQueue<SystemMessage> inQueue,
 			ServiceReplica replica) throws Exception {
@@ -152,7 +154,7 @@ public class ServersCommunicationLayer extends Thread {
 		try {
 			new ObjectOutputStream(bOut).writeObject(sm);
 		} catch (IOException ex) {
-			Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 		}
 
 		byte[] data = bOut.toByteArray();
@@ -163,7 +165,7 @@ public class ServersCommunicationLayer extends Thread {
 					sm.authenticated = true;
 					inQueue.put(sm);
 				} else {
-					// System.out.println("Going to send message to: "+i);
+					// logger.info("Going to send message to: "+i);
 					// ******* EDUARDO BEGIN **************//
 					// connections[i].send(data);
 					getConnection(i).send(data, useMAC);
@@ -177,7 +179,7 @@ public class ServersCommunicationLayer extends Thread {
 
 	public void shutdown() {
 
-		System.out.println("Shutting down replica sockets");
+		logger.info("Shutting down replica sockets");
 
 		doWork = false;
 
@@ -217,7 +219,7 @@ public class ServersCommunicationLayer extends Thread {
 		while (doWork) {
 			try {
 
-				// System.out.println("Waiting for server connections");
+				// logger.info("Waiting for server connections");
 
 				Socket newSocket = serverSocket.accept();
 
@@ -237,28 +239,27 @@ public class ServersCommunicationLayer extends Thread {
 			} catch (SocketTimeoutException ex) {
 				// timeout on the accept... do nothing
 			} catch (IOException ex) {
-				Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
+				logger.error(ex);
 			}
 		}
 
 		try {
 			serverSocket.close();
 		} catch (IOException ex) {
-			Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 		}
 
-		Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.INFO,
-				"ServerCommunicationLayer stopped.");
+		logger.info("ServerCommunicationLayer stopped.");
 	}
 
 	// ******* EDUARDO BEGIN **************//
 	private void establishConnection(Socket newSocket, int remoteId) throws IOException {
 		if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
 			connectionsLock.lock();
-			// System.out.println("Vai se conectar com: "+remoteId);
+			// logger.info("Vai se conectar com: "+remoteId);
 			if (this.connections.get(remoteId) == null) { // This must never happen!!!
 				// first time that this connection is being established
-				// System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
+				// logger.info("THIS DOES NOT HAPPEN....."+remoteId);
 				this.connections.put(remoteId, new ServerConnection(controller, newSocket, remoteId, inQueue, replica));
 			} else {
 				// reconnection
@@ -267,7 +268,7 @@ public class ServersCommunicationLayer extends Thread {
 			connectionsLock.unlock();
 
 		} else {
-			// System.out.println("Closing connection of: "+remoteId);
+			// logger.info("Closing connection of: "+remoteId);
 			newSocket.close();
 		}
 	}
@@ -277,7 +278,7 @@ public class ServersCommunicationLayer extends Thread {
 		try {
 			socket.setTcpNoDelay(true);
 		} catch (SocketException ex) {
-			Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 		}
 	}
 

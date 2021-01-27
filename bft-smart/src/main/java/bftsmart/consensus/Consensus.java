@@ -23,7 +23,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.ExecutionManager;
-import bftsmart.tom.util.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class stands for a consensus instance that implements the algorithm for
@@ -31,6 +33,8 @@ import bftsmart.tom.util.Logger;
  * (April 2011)
  */
 public class Consensus {
+
+	private static final Logger logger = LogManager.getLogger(Consensus.class);
 
 	private ExecutionManager manager; // Execution manager for this replica's consensus instances
 
@@ -343,7 +347,7 @@ public class Consensus {
 			decisionEpoch = epoch.getTimestamp();
 			decision.setDecisionEpoch(epoch);
 			if (deliver) {
-				Logger.println("(Consensus.decided) Delivering decision from consensus " + getId()
+				logger.info("(Consensus.decided) Delivering decision from consensus " + getId()
 						+ " to the TOMLayer/DeliveryThread");
 				manager.getTOMLayer().decided(decision);
 			}

@@ -21,7 +21,6 @@ import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 
 import bftsmart.clientsmanagement.ClientsManager;
 import bftsmart.clientsmanagement.RequestList;
@@ -43,7 +42,9 @@ import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.InternalSignedObject;
-import bftsmart.tom.util.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class implements the state machine replication protocol described in
@@ -54,6 +55,8 @@ import bftsmart.tom.util.Logger;
  * Synchronizer class
  */
 public final class TOMLayer extends Thread implements RequestReceiver {
+
+	private static final Logger logger = LogManager.getLogger(TOMLayer.class);
 
 	private boolean doWork = true;
 	// other components used by the TOMLayer (they are never changed)
@@ -241,7 +244,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	 */
 	public void setInExec(int inEx) {
 		proposeLock.lock();
-		Logger.println("(TOMLayer.setInExec) modifying inExec from " + this.inExecution + " to " + inEx);
+		logger.info("(TOMLayer.setInExec) modifying inExec from " + this.inExecution + " to " + inEx);
 		this.inExecution = inEx;
 		if (inEx == -1 && !isRetrievingState()) {
 			canPropose.signalAll();
@@ -286,18 +289,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST
 				|| msg.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST);
 		if (readOnly) {
-			Logger.println("(TOMLayer.requestReceived) Received read-only TOMMessage from client " + msg.getSender()
+			logger.info("(TOMLayer.requestReceived) Received read-only TOMMessage from client " + msg.getSender()
 					+ " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
 			dt.deliverUnordered(msg, syncher.getLCManager().getLastReg());
 		} else {
-			Logger.println("(TOMLayer.requestReceived) Received TOMMessage from client " + msg.getSender()
+			logger.info("(TOMLayer.requestReceived) Received TOMMessage from client " + msg.getSender()
 					+ " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
 			if (clientsManager.requestReceived(msg, true, communication)) {
 				haveMessages();
 			} else {
-				Logger.println("(TOMLayer.requestReceived) the received TOMMessage " + msg + " was discarded.");
+				logger.info("(TOMLayer.requestReceived) the received TOMMessage " + msg + " was discarded.");
 			}
 		}
 	}
@@ -324,7 +327,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		}
 		dec.batchSize = numberOfMessages;
 
-		Logger.println("(TOMLayer.run) creating a PROPOSE with " + numberOfMessages + " msgs");
+		logger.info("(TOMLayer.run) creating a PROPOSE with " + numberOfMessages + " msgs");
 
 		return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(), controller);
 	}
@@ -335,13 +338,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	 */
 	@Override
 	public void run() {
-		Logger.println("Running."); // TODO: can't this be outside of the loop?
+		logger.info("Running."); // TODO: can't this be outside of the loop?
 		while (doWork) {
 
 			// blocks until this replica learns to be the leader for the current epoch of
 			// the current consensus
 			leaderLock.lock();
-			Logger.println("Next leader for CID=" + (getLastExec() + 1) + ": " + execManager.getCurrentLeader());
+			logger.info("Next leader for CID=" + (getLastExec() + 1) + ": " + execManager.getCurrentLeader());
 
 			// ******* EDUARDO BEGIN **************//
 			if (execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
@@ -358,7 +361,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			proposeLock.lock();
 
 			if (getInExec() != -1) { // there is some consensus running
-				Logger.println("(TOMLayer.run) Waiting for consensus " + getInExec() + " termination.");
+				logger.info("(TOMLayer.run) Waiting for consensus " + getInExec() + " termination.");
 				canPropose.awaitUninterruptibly();
 			}
 			proposeLock.unlock();
@@ -366,7 +369,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			if (!doWork)
 				break;
 
-			Logger.println("(TOMLayer.run) I'm the leader.");
+			logger.info("(TOMLayer.run) I'm the leader.");
 
 			// blocks until there are requests to be processed/ordered
 			messagesLock.lock();
@@ -378,9 +381,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			if (!doWork)
 				break;
 
-			Logger.println("(TOMLayer.run) There are messages to be ordered.");
+			logger.info("(TOMLayer.run) There are messages to be ordered.");
 
-			Logger.println("(TOMLayer.run) I can try to propose.");
+			logger.info("(TOMLayer.run) I can try to propose.");
 
 			if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && // I'm the leader
 					(clientsManager.havePendingRequests()) && // there are messages to be ordered
@@ -395,7 +398,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				// Bypass protocol if service is not replicated
 				if (controller.getCurrentViewN() == 1) {
 
-					Logger.println("(TOMLayer.run) Only one replica, bypassing consensus.");
+					logger.info("(TOMLayer.run) Only one replica, bypassing consensus.");
 
 					byte[] value = createPropose(dec);
 
@@ -408,7 +411,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					epoch.getConsensus().getDecision().firstMessageProposed = epoch.deserializedPropValue[0];
 					dec.setDecisionEpoch(epoch);
 
-					// System.out.println("ESTOU AQUI!");
+					// logger.info("ESTOU AQUI!");
 					dt.delivery(dec);
 					continue;
 
@@ -416,7 +419,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				execManager.getProposer().startConsensus(execId, createPropose(dec));
 			}
 		}
-		java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.INFO, "TOMLayer stopped.");
+		logger.info("TOMLayer stopped.");
 	}
 
 	/**
@@ -448,7 +451,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 		try {
 
-			Logger.println("(TOMLayer.isProposedValueValid) starting");
+			logger.info("(TOMLayer.isProposedValueValid) starting");
 
 			BatchReader batchReader = new BatchReader(proposedValue,
 					this.controller.getStaticConf().getUseSignatures() == 1);
@@ -473,19 +476,19 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					// the result of its validation
 					if (!clientsManager.requestReceived(requests[i], false)) {
 						clientsManager.getClientsLock().unlock();
-						Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
-						System.out.println("failure in deserialize batch");
+						logger.info("(TOMLayer.isProposedValueValid) finished, return=false");
+						logger.info("failure in deserialize batch");
 						return null;
 					}
 				}
 			}
 
-			Logger.println("(TOMLayer.isProposedValueValid) finished, return=true");
+			logger.info("(TOMLayer.isProposedValueValid) finished, return=true");
 
 			return requests;
 
 		} catch (Exception e) {
-			Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
+			logger.info("(TOMLayer.isProposedValueValid) finished, return=false");
 			e.printStackTrace();
 			if (Thread.holdsLock(clientsManager.getClientsLock()))
 				clientsManager.getClientsLock().unlock();
@@ -497,7 +500,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	public void forwardRequestToLeader(TOMMessage request) {
 		int leaderId = execManager.getCurrentLeader();
 		if (this.controller.isCurrentViewMember(leaderId)) {
-			Logger.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
+			logger.info("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
 			communication.send(new int[] { leaderId },
 					new ForwardedMessage(this.controller.getStaticConf().getProcessId(), request));
 		}
@@ -518,7 +521,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	}
 
 	public void setNoExec() {
-		Logger.println("(TOMLayer.setNoExec) modifying inExec from " + this.inExecution + " to " + -1);
+		logger.info("(TOMLayer.setNoExec) modifying inExec from " + this.inExecution + " to " + -1);
 
 		proposeLock.lock();
 		this.inExecution = -1;

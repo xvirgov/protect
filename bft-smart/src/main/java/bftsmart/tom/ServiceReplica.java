@@ -20,8 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.consensus.messages.MessageFactory;
@@ -46,6 +44,9 @@ import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.server.defaultservices.DefaultReplier;
 import bftsmart.tom.util.ShutdownHookThread;
 import bftsmart.tom.util.TOMUtil;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class receives messages from DeliveryThread and manages the execution
@@ -73,6 +74,8 @@ public class ServiceReplica {
 	private ReplicaContext replicaCtx = null;
 	private Replier replier = null;
 	private RequestVerifier verifier = null;
+
+	private static final Logger logger = LogManager.getLogger(ServiceReplica.class);
 
 	/**
 	 * Constructor
@@ -161,19 +164,19 @@ public class ServiceReplica {
 		try {
 			cs = new ServerCommunicationSystem(this.SVController, this);
 		} catch (Exception ex) {
-			Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			throw new RuntimeException("Unable to build a communication system.");
 		}
 
 		if (this.SVController.isInCurrentView()) {
-			System.out.println("-- In current view: " + this.SVController.getCurrentView());
+			logger.info("-- In current view: " + this.SVController.getCurrentView());
 			initTOMLayer(); // initiaze the TOM layer
 		} else {
-			System.out.println("-- Not in current view: " + this.SVController.getCurrentView());
+			logger.info("-- Not in current view: " + this.SVController.getCurrentView());
 
 			// Not in the initial view, just waiting for the view where the join has been
 			// executed
-			System.out.println("-- Waiting for the TTP: " + this.SVController.getCurrentView());
+			logger.info("-- Waiting for the TTP: " + this.SVController.getCurrentView());
 			waitTTPJoinMsgLock.lock();
 			try {
 				canProceed.awaitUninterruptibly();
@@ -275,7 +278,7 @@ public class ServiceReplica {
 						tomLayer.getDeliveryThread().join();
 
 					} catch (InterruptedException ex) {
-						Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+						logger.error(ex);
 					}
 
 					tomStackCreated = false;
@@ -307,9 +310,10 @@ public class ServiceReplica {
 			noop = true;
 			for (TOMMessage request : requestsFromConsensus) {
 
-				bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Processing TOMMessage from client "
+				logger.info("(ServiceReplica.receiveMessages) Processing TOMMessage from client "
 						+ request.getSender() + " with sequence number " + request.getSequence() + " for session "
 						+ request.getSession() + " decided in consensus " + consId[consensusCount]);
+
 
 				if (request.getViewID() == SVController.getCurrentViewId()) {
 
@@ -334,8 +338,7 @@ public class ServiceReplica {
 							request.deliveryTime = System.nanoTime();
 							if (executor instanceof BatchExecutable) {
 
-								bftsmart.tom.util.Logger
-										.println("(ServiceReplica.receiveMessages) Batching request from "
+								logger.info("(ServiceReplica.receiveMessages) Batching request from "
 												+ request.getSender());
 
 								// This is used to deliver the content decided by a consensus instance directly
@@ -352,8 +355,7 @@ public class ServiceReplica {
 								toBatch.add(request);
 							} else if (executor instanceof FIFOExecutable) {
 
-								bftsmart.tom.util.Logger
-										.println("(ServiceReplica.receiveMessages) Delivering request from "
+								logger.info("(ServiceReplica.receiveMessages) Delivering request from "
 												+ request.getSender() + " via FifoExecutable");
 
 								// This is used to deliver the content decided by a consensus instance directly
@@ -376,13 +378,12 @@ public class ServiceReplica {
 								request.reply = new TOMMessage(id, request.getSession(), request.getSequence(),
 										request.getOperationId(), response, SVController.getCurrentViewId(),
 										request.getReqType());
-								bftsmart.tom.util.Logger.println(
+								logger.info(
 										"(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
 								replier.manageReply(request, msgCtx);
 							} else if (executor instanceof SingleExecutable) {
 
-								bftsmart.tom.util.Logger
-										.println("(ServiceReplica.receiveMessages) Delivering request from "
+								logger.info("(ServiceReplica.receiveMessages) Delivering request from "
 												+ request.getSender() + " via SingleExecutable");
 
 								// This is used to deliver the content decided by a consensus instance directly
@@ -405,7 +406,7 @@ public class ServiceReplica {
 								request.reply = new TOMMessage(id, request.getSession(), request.getSequence(),
 										request.getOperationId(), response, SVController.getCurrentViewId(),
 										request.getReqType());
-								bftsmart.tom.util.Logger.println(
+								logger.info(
 										"(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
 								replier.manageReply(request, msgCtx);
 							} else { // this code should never be executed
@@ -438,12 +439,11 @@ public class ServiceReplica {
 			// hence the invocation of "noop"
 			if (noop && this.recoverer != null) {
 
-				bftsmart.tom.util.Logger
-						.println("(ServiceReplica.receiveMessages) Delivering a no-op to the recoverer");
+				logger.info("(ServiceReplica.receiveMessages) Delivering a no-op to the recoverer");
 
-				System.out.println(
+				logger.info(
 						" --- A consensus instance finished, but there were no commands to deliver to the application.");
-				System.out.println(" --- Notifying recoverable about a blank consensus.");
+				logger.info(" --- Notifying recoverable about a blank consensus.");
 
 				byte[][] batch = null;
 				MessageContext[] msgCtx = null;
@@ -511,12 +511,12 @@ public class ServiceReplica {
 						request.getReqType());
 
 				if (SVController.getStaticConf().getNumRepliers() > 0) {
-					bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to "
+					logger.info("(ServiceReplica.receiveMessages) sending reply to "
 							+ request.getSender() + " with sequence number " + request.getSequence()
 							+ " and operation ID " + request.getOperationId() + " via ReplyManager");
 					repMan.send(request);
 				} else {
-					bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to "
+					logger.info("(ServiceReplica.receiveMessages) sending reply to "
 							+ request.getSender() + " with sequence number " + request.getSequence()
 							+ " and operation ID " + request.getOperationId());
 					replier.manageReply(request, msgContexts[index]);
@@ -524,7 +524,7 @@ public class ServiceReplica {
 				}
 			}
 			// DEBUG
-			bftsmart.tom.util.Logger.println("BATCHEXECUTOR END");
+			logger.info("BATCHEXECUTOR END");
 		}
 	}
 

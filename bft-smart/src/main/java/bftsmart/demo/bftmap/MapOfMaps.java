@@ -19,12 +19,17 @@ import java.io.Serializable;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  *
  * 
  * @author sweta
  */
 public class MapOfMaps implements Serializable {
+
+	private static final Logger logger = LogManager.getLogger(MapOfMaps.class);
 
 	private static final long serialVersionUID = -8898539992606449057L;
 
@@ -41,7 +46,7 @@ public class MapOfMaps implements Serializable {
 	public byte[] addData(String tableName, String key, byte[] value) {
 		Map<String, byte[]> table = tableMap.get(tableName);
 		if (table == null) {
-			System.out.println("Non-existant table: " + tableName);
+			logger.info("Non-existant table: " + tableName);
 			return null;
 		}
 		byte[] ret = table.put(key, value);
@@ -53,11 +58,11 @@ public class MapOfMaps implements Serializable {
 	}
 
 	public byte[] getEntry(String tableName, String key) {
-		System.out.println("Table name: " + tableName);
-		System.out.println("Entry key: " + key);
+		logger.info("Table name: " + tableName);
+		logger.info("Entry key: " + key);
 		Map<String, byte[]> info = tableMap.get(tableName);
 		if (info == null) {
-			System.out.println("Non-existant table: " + tableName);
+			logger.info("Non-existant table: " + tableName);
 			return null;
 		}
 		return info.get(key);

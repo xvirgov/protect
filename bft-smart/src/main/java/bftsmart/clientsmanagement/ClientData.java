@@ -20,10 +20,15 @@ import java.util.Iterator;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.Logger;
+
 import bftsmart.tom.util.TOMUtil;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class ClientData {
+
+	private static final Logger logger = LogManager.getLogger(ClientData.class);
 
 	ReentrantLock clientLock = new ReentrantLock();
 
@@ -57,7 +62,7 @@ public class ClientData {
 		if (publicKey != null) {
 			try {
 				this.publicKey = publicKey;
-				Logger.println("Signature verifier initialized for client " + clientId);
+				logger.info("Signature verifier initialized for client " + clientId);
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}

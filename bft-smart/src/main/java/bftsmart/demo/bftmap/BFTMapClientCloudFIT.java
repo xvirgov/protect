@@ -19,16 +19,18 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.TreeMap;
 import java.util.logging.FileHandler;
-import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class BFTMapClientCloudFIT {
 
-	public static Logger logger;
+	private static final Logger logger = LogManager.getLogger(BFTMapClientCloudFIT.class);
 
 	public static void main(String[] args) throws NumberFormatException {
 		if (args.length < 3) {
-			System.out.println("Usage: java KVClients <number clients> <process id base> <time for running (sec)>");
+			logger.info("Usage: java KVClients <number clients> <process id base> <time for running (sec)>");
 			System.exit(-1);
 		}
 
@@ -54,7 +56,7 @@ public class BFTMapClientCloudFIT {
 		} catch (InterruptedException e) {
 		}
 
-		System.out.println("Stop running...");
+		logger.info("Stop running...");
 
 		// stop and wait for the threads
 		for (int i = 0; i < list.length; i++) {
@@ -65,7 +67,7 @@ public class BFTMapClientCloudFIT {
 			}
 		}
 
-		System.out.println("Test ended...exit!");
+		logger.info("Test ended...exit!");
 		System.exit(0);
 	}
 
@@ -75,10 +77,8 @@ public class BFTMapClientCloudFIT {
 			FileHandler fh = new FileHandler(BFTMapClientCloudFIT.class.getName() + ".log", append);
 			fh.setFormatter(new SimpleFormatter());
 
-			logger = Logger.getLogger(BFTMapClientCloudFIT.class.getName());
-			logger.addHandler(fh);
 		} catch (IOException e) {
-			System.out.println("PROBLEMS]: " + e.getMessage());
+			logger.info("PROBLEMS]: " + e.getMessage());
 			System.exit(-1);
 		}
 	}
@@ -90,6 +90,8 @@ class KVClientInstance extends Thread {
 	private int id;
 	private boolean run;
 	private Random rand;
+
+	private static final Logger logger = LogManager.getLogger(KVClientInstance.class);
 
 	public KVClientInstance(int id) {
 		this.id = id;
@@ -106,7 +108,7 @@ class KVClientInstance extends Thread {
 		try {
 			createTable(bftMap, tableName);
 		} catch (Exception e1) {
-			System.out.println(
+			logger.info(
 					"Problems: Inserting a new value into the table(" + tableName + "): " + e1.getLocalizedMessage());
 			System.exit(1);
 		}
@@ -116,24 +118,24 @@ class KVClientInstance extends Thread {
 
 				boolean result = insertValue(bftMap, tableName);
 				if (!result) {
-					System.out.println("Problems: Inserting a new value into the table(" + tableName + ")");
+					logger.info("Problems: Inserting a new value into the table(" + tableName + ")");
 					System.exit(1);
 				}
 
 			} catch (InterruptedException e) {
-				System.out.println("Client id[" + id + "]: it was interrupted");
+				logger.info("Client id[" + id + "]: it was interrupted");
 				run = false;
 			} catch (Exception e) {
 				bftMap = new BFTMap(id);
 				try {
 					createTable(bftMap, tableName);
 				} catch (Exception e1) {
-					System.out.println("Client id[" + id + "]: problems");
+					logger.info("Client id[" + id + "]: problems");
 				}
 			}
 		}
 
-		BFTMapClientCloudFIT.logger.info("Client id[" + id + "] operations: " + inc);
+		logger.info("Client id[" + id + "] operations: " + inc);
 		return;
 	}
 

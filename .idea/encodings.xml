@@ -3,7 +3,7 @@
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/pross-client/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/pross-common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/pross-common/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/pross-server/src/main/java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/pross-server/src/main/resources" charset="UTF-8" />
   </component>
 </project>

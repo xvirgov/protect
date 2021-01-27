@@ -34,7 +34,10 @@ import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.ForwardedMessage;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.LCMessage;
-import bftsmart.tom.util.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import bftsmart.tom.util.TOMUtil;
 
 /**
@@ -47,6 +50,8 @@ public class MessageHandler {
 	private TOMLayer tomLayer;
 	// private Cipher cipher;
 	private Mac mac;
+
+	private static final Logger logger = LogManager.getLogger(MessageHandler.class);
 
 	public MessageHandler(String macAlgorithm) {
 		try {
@@ -117,13 +122,13 @@ public class MessageHandler {
 				if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC))
 					acceptor.deliver(consMsg);
 				else {
-					Logger.println("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
-					System.out.println("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
+					logger.info("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
+					logger.info("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
 				}
 			} else {
-				System.out.println(
+				logger.info(
 						"(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
-				Logger.println(
+				logger.info(
 						"(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
 			}
 
@@ -150,7 +155,7 @@ public class MessageHandler {
 						break;
 					}
 
-					System.out.println("(MessageHandler.processData) LC_MSG received: type " + type + ", regency "
+					logger.info("(MessageHandler.processData) LC_MSG received: type " + type + ", regency "
 							+ lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
 					if (lcMsg.TRIGGER_LC_LOCALLY)
 						tomLayer.requestsTimer.run_lc_protocol();
@@ -165,7 +170,7 @@ public class MessageHandler {
 					/** This is Joao's code, to handle state transfer */
 				} else if (sm instanceof SMMessage) {
 					SMMessage smsg = (SMMessage) sm;
-					// System.out.println("(MessageHandler.processData) SM_MSG received: type " +
+					// logger.info("(MessageHandler.processData) SM_MSG received: type " +
 					// smsg.getType() + ", regency " + smsg.getRegency() + ", (replica " +
 					// smsg.getSender() + ")");
 					switch (smsg.getType()) {
@@ -187,10 +192,10 @@ public class MessageHandler {
 					}
 					/******************************************************************/
 				} else {
-					System.out.println("UNKNOWN MESSAGE TYPE: " + sm);
+					logger.info("UNKNOWN MESSAGE TYPE: " + sm);
 				}
 			} else {
-				System.out.println(
+				logger.info(
 						"(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
 			}
 		}

@@ -20,10 +20,15 @@ import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.util.Storage;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Simple server that just acknowledge the reception of a request.
  */
 public class LatencyServer extends DefaultRecoverable {
+
+	private static final Logger logger = LogManager.getLogger(LatencyServer.class);
 
 	private int interval;
 	private int replySize;
@@ -120,26 +125,26 @@ public class LatencyServer extends DefaultRecoverable {
 		}
 
 		if (iterations % interval == 0) {
-			System.out.println("--- Measurements after " + iterations + " ops (" + interval + " samples) ---");
-			System.out.println("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "
+			logger.info("--- Measurements after " + iterations + " ops (" + interval + " samples) ---");
+			logger.info("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) totalLatency.getDP(false) / 1000 + ") us ");
 			totalLatency.reset();
-			System.out.println("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "
+			logger.info("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) consensusLatency.getDP(false) / 1000 + ") us ");
 			consensusLatency.reset();
-			System.out.println("Pre-consensus latency = " + preConsLatency.getAverage(false) / 1000 + " (+/- "
+			logger.info("Pre-consensus latency = " + preConsLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) preConsLatency.getDP(false) / 1000 + ") us ");
 			preConsLatency.reset();
-			System.out.println("Pos-consensus latency = " + posConsLatency.getAverage(false) / 1000 + " (+/- "
+			logger.info("Pos-consensus latency = " + posConsLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) posConsLatency.getDP(false) / 1000 + ") us ");
 			posConsLatency.reset();
-			System.out.println("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "
+			logger.info("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) proposeLatency.getDP(false) / 1000 + ") us ");
 			proposeLatency.reset();
-			System.out.println("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "
+			logger.info("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) writeLatency.getDP(false) / 1000 + ") us ");
 			writeLatency.reset();
-			System.out.println("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "
+			logger.info("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) acceptLatency.getDP(false) / 1000 + ") us ");
 			acceptLatency.reset();
 		}
@@ -149,7 +154,7 @@ public class LatencyServer extends DefaultRecoverable {
 
 	public static void main(String[] args) {
 		if (args.length < 3) {
-			System.out.println("Use: java ...LatencyServer <processId> <measurement interval> <reply size>");
+			logger.info("Use: java ...LatencyServer <processId> <measurement interval> <reply size>");
 			System.exit(-1);
 		}
 

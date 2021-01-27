@@ -48,7 +48,7 @@ public class ClientPermissionLoader {
 				final String permissions = userPermission.getValue();
 
 				// PRint username and secret
-				//System.out.print(username + "." + secretName + "\t\t = ");
+				//logger.info(username + "." + secretName + "\t\t = ");
 				
 				// Parse permissions
 				final String[] permissionArray = permissions.split(",");

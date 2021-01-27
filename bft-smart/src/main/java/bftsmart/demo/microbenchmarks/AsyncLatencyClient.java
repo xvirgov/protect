@@ -30,6 +30,9 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Storage;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  *
  * @author anogueira
@@ -37,11 +40,13 @@ import bftsmart.tom.util.Storage;
  */
 public class AsyncLatencyClient {
 
+	private static final Logger logger = LogManager.getLogger(AsyncLatencyClient.class);
+
 	static int initId;
 
 	public static void main(String[] args) throws IOException {
 		if (args.length < 7) {
-			System.out.println(
+			logger.info(
 					"Usage: java ...AsyncLatencyClient <initial client id> <number of clients> <number of operations> <request size> <interval (ms)> <read only?> <verbose?>");
 			System.exit(-1);
 		}
@@ -63,7 +68,7 @@ public class AsyncLatencyClient {
 				ex.printStackTrace();
 			}
 
-			System.out.println("Launching client " + (initId + i));
+			logger.info("Launching client " + (initId + i));
 			clients[i] = new AsyncLatencyClient.Client(initId + i, numberOfOps, requestSize, interval, readOnly,
 					verbose);
 		}
@@ -87,7 +92,7 @@ public class AsyncLatencyClient {
 
 		exec.shutdown();
 
-		System.out.println("All clients done.");
+		logger.info("All clients done.");
 
 	}
 
@@ -121,7 +126,7 @@ public class AsyncLatencyClient {
 				Storage st = new Storage(this.numberOfOps / 2);
 
 				if (this.verbose)
-					System.out.println("Executing experiment for " + this.numberOfOps + " ops");
+					logger.info("Executing experiment for " + this.numberOfOps + " ops");
 
 				for (int i = 0; i < this.numberOfOps; i++) {
 
@@ -134,7 +139,7 @@ public class AsyncLatencyClient {
 						public void reset() {
 
 							if (verbose)
-								System.out.println(
+								logger.info(
 										"[RequestContext] The proxy is re-issuing the request to the replicas");
 							replies = 0;
 						}
@@ -147,7 +152,7 @@ public class AsyncLatencyClient {
 							builder.append("[TOMMessage reply] sender id: " + reply.getSender() + " Hash content: "
 									+ Arrays.toString(reply.getContent()));
 							if (verbose)
-								System.out.println(builder.toString());
+								logger.info(builder.toString());
 
 							replies++;
 
@@ -156,7 +161,7 @@ public class AsyncLatencyClient {
 
 							if (replies >= q) {
 								if (verbose)
-									System.out.println(
+									logger.info(
 											"[RequestContext] clean request context id: " + context.getReqId());
 								serviceProxy.cleanAsynchRequest(context.getOperationId());
 							}
@@ -170,21 +175,21 @@ public class AsyncLatencyClient {
 					}
 
 					if (this.verbose)
-						System.out.println("Sending " + (i + 1) + "th op");
+						logger.info("Sending " + (i + 1) + "th op");
 				}
 
 				Thread.sleep(100);// wait 100ms to receive the last replies
 
 				if (this.id == initId) {
-					System.out.println(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = "
+					logger.info(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = "
 							+ st.getAverage(true) / 1000 + " us ");
-					System.out.println(this.id + " // Standard desviation for " + numberOfOps / 2
+					logger.info(this.id + " // Standard desviation for " + numberOfOps / 2
 							+ " executions (-10%) = " + st.getDP(true) / 1000 + " us ");
-					System.out.println(this.id + " // Average time for " + numberOfOps / 2
+					logger.info(this.id + " // Average time for " + numberOfOps / 2
 							+ " executions (all samples) = " + st.getAverage(false) / 1000 + " us ");
-					System.out.println(this.id + " // Standard desviation for " + numberOfOps / 2
+					logger.info(this.id + " // Standard desviation for " + numberOfOps / 2
 							+ " executions (all samples) = " + st.getDP(false) / 1000 + " us ");
-					System.out.println(this.id + " // Maximum time for " + numberOfOps / 2
+					logger.info(this.id + " // Maximum time for " + numberOfOps / 2
 							+ " executions (all samples) = " + st.getMax(false) / 1000 + " us ");
 				}
 

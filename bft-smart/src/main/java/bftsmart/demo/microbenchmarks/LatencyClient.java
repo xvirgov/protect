@@ -20,15 +20,20 @@ import java.io.IOException;
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.util.Storage;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Example client that updates a BFT replicated service (a counter).
  *
  */
 public class LatencyClient {
 
+	private static final Logger logger = LogManager.getLogger(LatencyClient.class);
+
 	public static void main(String[] args) throws IOException {
 		if (args.length < 5) {
-			System.out.println(
+			logger.info(
 					"Usage: java ...LatencyClient <process id> <number of operations> <request size> <interval> <read only?>");
 			System.exit(-1);
 		}
@@ -45,7 +50,7 @@ public class LatencyClient {
 
 			byte[] request = new byte[requestSize], reply;
 
-			System.out.println("Warm up...");
+			logger.info("Warm up...");
 
 			for (int i = 0; i < numberOfOps / 2; i++) {
 				if (readOnly)
@@ -56,7 +61,7 @@ public class LatencyClient {
 
 			Storage st = new Storage(numberOfOps / 2);
 
-			System.out.println("Executing experiment for " + numberOfOps / 2 + " ops");
+			logger.info("Executing experiment for " + numberOfOps / 2 + " ops");
 
 			for (int i = 0; i < numberOfOps / 2; i++) {
 				long last_send_instant = System.nanoTime();
@@ -72,15 +77,15 @@ public class LatencyClient {
 				}
 			}
 
-			System.out.println("Average time for " + numberOfOps / 2 + " executions (-10%) = "
+			logger.info("Average time for " + numberOfOps / 2 + " executions (-10%) = "
 					+ st.getAverage(true) / 1000 + " us ");
-			System.out.println("Standard desviation for " + numberOfOps / 2 + " executions (-10%) = "
+			logger.info("Standard desviation for " + numberOfOps / 2 + " executions (-10%) = "
 					+ st.getDP(true) / 1000 + " us ");
-			System.out.println("Average time for " + numberOfOps / 2 + " executions (all samples) = "
+			logger.info("Average time for " + numberOfOps / 2 + " executions (all samples) = "
 					+ st.getAverage(false) / 1000 + " us ");
-			System.out.println("Standard desviation for " + numberOfOps / 2 + " executions (all samples) = "
+			logger.info("Standard desviation for " + numberOfOps / 2 + " executions (all samples) = "
 					+ st.getDP(false) / 1000 + " us ");
-			System.out.println("Maximum time for " + numberOfOps / 2 + " executions (all samples) = "
+			logger.info("Maximum time for " + numberOfOps / 2 + " executions (all samples) = "
 					+ st.getMax(false) / 1000 + " us ");
 
 		} catch (Exception e) {

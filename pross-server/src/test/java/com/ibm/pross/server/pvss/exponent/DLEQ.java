@@ -96,7 +96,7 @@ public class DLEQ {
 		final EcPoint G1sH1c = curve.addPoints(G1s, H1c);
 		if (!G1sH1c.equals(a1))
 		{
-			System.err.println("Proof failed!");
+			logger.error("Proof failed!");
 			return;
 		}
 		
@@ -106,7 +106,7 @@ public class DLEQ {
 		final EcPoint G2sH2c = curve.addPoints(G2s, H2c);
 		if (!G2sH2c.equals(a2))
 		{
-			System.err.println("Proof failed!");
+			logger.error("Proof failed!");
 			return;
 		}
 		

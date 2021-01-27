@@ -124,7 +124,7 @@ public class EciesEncryptionClient {
 		logger.info("Beginning encryption of file: " + this.inputFile);
 
 		// Get public key and current epoch from the server
-		System.out.print("Accessing public key for secret: " + this.secretName + "... ");
+		logger.info("Accessing public key for secret: " + this.secretName + "... ");
 		final SimpleEntry<EcPoint, Long> publicKeyAndEpoch = this.getServerPublicKey(secretName);
 		logger.info(" (done)");
 		final EcPoint publicKey = publicKeyAndEpoch.getKey();
@@ -133,19 +133,19 @@ public class EciesEncryptionClient {
 		logger.info("Current epoch for secret: " + currentEpoch);
 
 		// Reading
-		System.out.print("Reading input file: " + this.inputFile + "... ");
+		logger.info("Reading input file: " + this.inputFile + "... ");
 		final byte[] plaintextData = Files.readAllBytes(inputFile.toPath());
 		logger.info(" (done)");
 		logger.info("Read " + plaintextData.length + " bytes.");
 
 		// Perform ECIES encryption
-		System.out.print("Performing ECIES encryption of file content... ");
+		logger.info("Performing ECIES encryption of file content... ");
 		final byte[] ciphertext = EciesEncryption.encrypt(plaintextData, publicKey);
 		logger.info(" (done)");
 		logger.info("Encrypted length " + ciphertext.length + " bytes.");
 
 		// Write ciphertext to output file
-		System.out.print("Writing ciphertext to file: " + this.outputFile + "... ");
+		logger.info("Writing ciphertext to file: " + this.outputFile + "... ");
 		Files.write(this.outputFile.toPath(), ciphertext);
 		logger.info(" (done)");
 		logger.info("Wrote " + ciphertext.length + " bytes.");
@@ -161,19 +161,19 @@ public class EciesEncryptionClient {
 		logger.info("Beginning decryption of file: " + this.inputFile);
 
 		// Reading ciphertext
-		System.out.print("Reading input file: " + this.inputFile + "... ");
+		logger.info("Reading input file: " + this.inputFile + "... ");
 		final byte[] ciphertextData = Files.readAllBytes(inputFile.toPath());
 		logger.info(" (done)");
 		logger.info("Read " + ciphertextData.length + " bytes of ciphertext.");
 
 		// Extract public value from ciphertext
-		System.out.print("Extracting public value from ciphertext: " + this.inputFile + "... ");
+		logger.info("Extracting public value from ciphertext: " + this.inputFile + "... ");
 		final EcPoint publicValue = EciesEncryption.getPublicValue(ciphertextData);
 		logger.info(" (done)");
 		logger.info("Public Value is: " + publicValue);
 
 		// Get public key and current epoch from the server
-		System.out.print("Accessing public key for secret: " + this.secretName + "... ");
+		logger.info("Accessing public key for secret: " + this.secretName + "... ");
 		final SimpleEntry<EcPoint, Long> publicKeyAndEpoch = this.getServerPublicKey(secretName);
 		logger.info(" (done)");
 		final EcPoint publicKey = publicKeyAndEpoch.getKey();
@@ -182,19 +182,19 @@ public class EciesEncryptionClient {
 		logger.info("Current epoch for secret: " + currentEpoch);
 
 		// Get public key and current epoch from the server
-		System.out.print("Performing threshold exponentiation on public value using: " + this.secretName + "... ");
+		logger.info("Performing threshold exponentiation on public value using: " + this.secretName + "... ");
 		final EcPoint exponentiationResult = this.exponentiatePoint(publicValue, currentEpoch);
 		logger.info(" (done)");
 		logger.info("Shared secret obtained:    " + exponentiationResult);
 
 		// Perform ECIES decryption
-		System.out.print("Performing ECIES decryption of file content... ");
+		logger.info("Performing ECIES decryption of file content... ");
 		final byte[] plaintext = EciesEncryption.decrypt(ciphertextData, exponentiationResult);
 		logger.info(" (done)");
 		logger.info("Plaintext length " + plaintext.length + " bytes.");
 
 		// Write plaintext to output file
-		System.out.print("Writing plaintext to file: " + this.outputFile + "... ");
+		logger.info("Writing plaintext to file: " + this.outputFile + "... ");
 		Files.write(this.outputFile.toPath(), plaintext);
 		logger.info(" (done)");
 		logger.info("Wrote " + plaintext.length + " bytes.");
@@ -209,7 +209,7 @@ public class EciesEncryptionClient {
 
 		// Parse arguments
 		if (args.length < 6) {
-			System.err.println("USAGE: config-dir username secretname [ENCRYPT/DECRYPT] input-file output-file");
+			logger.error("USAGE: config-dir username secretname [ENCRYPT/DECRYPT] input-file output-file");
 			System.exit(-1);
 		}
 		final File baseDirectory = new File(args[0]);
@@ -220,7 +220,7 @@ public class EciesEncryptionClient {
 		final File outputFile = new File(args[5]);
 
 		if (!inputFile.exists()) {
-			System.err.println("Input file does not exist: " + inputFile.getAbsolutePath());
+			logger.error("Input file does not exist: " + inputFile.getAbsolutePath());
 			System.exit(-1);
 		}
 
@@ -556,7 +556,7 @@ public class EciesEncryptionClient {
 					// Attempt to link the public key in the certificate to a known entity's key
 					final Integer serverId = EciesEncryptionClient.this.serverKeys.getEntityIndex(peerPublicKey);
 					if (serverId != remoteServerId) {
-						System.err.println("Invalid server!!!: was " + serverId + ", expected: " + remoteServerId);
+						logger.error("Invalid server!!!: was " + serverId + ", expected: " + remoteServerId);
 						throw new CertificateException("Invalid peer certificate");
 					}
 
@@ -577,7 +577,7 @@ public class EciesEncryptionClient {
 						latch.countDown();
 					}
 				}
-				System.err.println(e.getMessage());
+				logger.error(e.getMessage());
 			}
 		}
 

@@ -25,7 +25,12 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
+
+	private static final Logger logger = LogManager.getLogger(NettyTOMMessageEncoder.class);
 
 	private boolean isClient;
 	private Map sessionTable;
@@ -55,14 +60,14 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
 			// signature was already produced before
 			signatureData = sm.serializedMessageSignature;
 			if (signatureData.length != signatureLength)
-				System.out.println("WARNING: message signature has size " + signatureData.length + " and should have "
+				logger.info("WARNING: message signature has size " + signatureData.length + " and should have "
 						+ signatureLength);
 		}
 
 		if (useMAC) {
 			macData = produceMAC(sm.destination, msgData, sm.getSender());
 			if (macData == null) {
-				System.out.println("uses MAC and the MAC returned is null. Won't write to channel");
+				logger.info("uses MAC and the MAC returned is null. Won't write to channel");
 				return;
 			}
 		}
@@ -70,7 +75,7 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
 		int dataLength = 1 + msgData.length + (macData == null ? 0 : macData.length)
 				+ (signatureData == null ? 0 : signatureData.length);
 
-		// Logger.println("Sending message with "+dataLength+" bytes.");
+		// logger.info("Sending message with "+dataLength+" bytes.");
 		/* msg size */
 		buffer.writeInt(dataLength);
 		/* control byte indicating if the message is signed or not */
@@ -90,7 +95,7 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
 	byte[] produceMAC(int id, byte[] data, int me) {
 		NettyClientServerSession session = (NettyClientServerSession) sessionTable.get(id);
 		if (session == null) {
-			System.out.println("NettyTOMMessageEncoder.produceMAC(). session for client " + id + " is null");
+			logger.info("NettyTOMMessageEncoder.produceMAC(). session for client " + id + " is null");
 			return null;
 		}
 		Mac macSend = session.getMacSend();

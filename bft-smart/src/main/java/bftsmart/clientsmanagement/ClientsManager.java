@@ -20,14 +20,14 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
-import bftsmart.tom.util.Logger;
 
 /**
  *
@@ -41,6 +41,8 @@ public class ClientsManager {
 	private RequestVerifier verifier;
 
 	private ReentrantLock clientsLock = new ReentrantLock();
+
+	private static final Logger logger = LogManager.getLogger(ClientsManager.class);
 
 	public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
 		this.controller = controller;
@@ -62,7 +64,7 @@ public class ClientsManager {
 		ClientData clientData = clientsData.get(clientId);
 
 		if (clientData == null) {
-			Logger.println("(ClientsManager.getClientData) Creating new client data, client id=" + clientId);
+			logger.info("(ClientsManager.getClientData) Creating new client data, client id=" + clientId);
 
 			// ******* EDUARDO BEGIN **************//
 			clientData = new ClientData(clientId,
@@ -234,15 +236,15 @@ public class ClientsManager {
 		int clientId = request.getSender();
 		boolean accounted = false;
 
-		// Logger.println("(ClientsManager.requestReceived) getting info about client
+		// logger.info("(ClientsManager.requestReceived) getting info about client
 		// "+clientId);
 		ClientData clientData = getClientData(clientId);
 
-		// Logger.println("(ClientsManager.requestReceived) wait for lock for client
+		// logger.info("(ClientsManager.requestReceived) wait for lock for client
 		// "+clientData.getClientId());
 		clientData.clientLock.lock();
 		/******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-		// Logger.println("(ClientsManager.requestReceived) lock for client
+		// logger.info("(ClientsManager.requestReceived) lock for client
 		// "+clientData.getClientId()+" acquired");
 
 		/* ################################################ */
@@ -304,7 +306,7 @@ public class ClientsManager {
 				if (reply != null && cs != null) {
 
 					if (reply.recvFromClient && fromClient) {
-						System.out.println("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: "
+						logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: "
 								+ reply.getSequence() + ", session: " + reply.getSession() + "]");
 						cs.send(new int[] { request.getSender() }, reply);
 
@@ -336,11 +338,11 @@ public class ClientsManager {
 	 */
 	public void requestsOrdered(TOMMessage[] requests) {
 		clientsLock.lock();
-		Logger.println("(ClientsManager.requestOrdered) Updating client manager");
+		logger.info("(ClientsManager.requestOrdered) Updating client manager");
 		for (TOMMessage request : requests) {
 			requestOrdered(request);
 		}
-		Logger.println("(ClientsManager.requestOrdered) Finished updating client manager");
+		logger.info("(ClientsManager.requestOrdered) Finished updating client manager");
 		clientsLock.unlock();
 	}
 
@@ -362,8 +364,7 @@ public class ClientsManager {
 		clientData.clientLock.lock();
 		/******* BEGIN CLIENTDATA CRITICAL SECTION ******/
 		if (!clientData.removeOrderedRequest(request)) {
-			Logger.println(
-					"(ClientsManager.requestOrdered) Request " + request + " does not exist in pending requests");
+			logger.info("(ClientsManager.requestOrdered) Request " + request + " does not exist in pending requests");
 		}
 		clientData.setLastMessageExecuted(request.getSequence());
 
@@ -379,7 +380,6 @@ public class ClientsManager {
 		clientsLock.lock();
 		clientsData.clear();
 		clientsLock.unlock();
-		java.util.logging.Logger.getLogger(ClientsManager.class.getName()).log(Level.INFO, "ClientsManager cleared.");
-
+		logger.info("ClientsManager cleared.");
 	}
 }

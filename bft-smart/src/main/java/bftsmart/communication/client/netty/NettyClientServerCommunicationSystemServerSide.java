@@ -28,17 +28,14 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.logging.Level;
 
 import javax.crypto.Mac;
-
-import org.slf4j.LoggerFactory;
 
 import bftsmart.communication.client.CommunicationSystemServerSide;
 import bftsmart.communication.client.RequestReceiver;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.Logger;
+
 import bftsmart.tom.util.TOMUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -52,6 +49,9 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
@@ -72,7 +72,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	// recall why I added it
 	// private ReentrantLock sendLock = new ReentrantLock();
 	private NettyServerPipelineFactory serverPipelineFactory;
-	private org.slf4j.Logger logger = LoggerFactory.getLogger(NettyClientServerCommunicationSystemServerSide.class);
+
+	private static final Logger logger = LogManager.getLogger(NettyClientServerCommunicationSystemServerSide.class);
+
 
 	public NettyClientServerCommunicationSystemServerSide(ServerViewController controller) {
 		try {
@@ -112,17 +114,17 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 							controller.getStaticConf().getPort(controller.getStaticConf().getProcessId())))
 					.sync();
 
-			System.out.println("-- ID = " + controller.getStaticConf().getProcessId());
-			System.out.println("-- N = " + controller.getCurrentViewN());
-			System.out.println("-- F = " + controller.getCurrentViewF());
-			System.out.println(
+			logger.info("-- ID = " + controller.getStaticConf().getProcessId());
+			logger.info("-- N = " + controller.getCurrentViewN());
+			logger.info("-- F = " + controller.getCurrentViewF());
+			logger.info(
 					"-- Port = " + controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()));
-			System.out.println("-- requestTimeout = " + controller.getStaticConf().getRequestTimeout());
-			System.out.println("-- maxBatch = " + controller.getStaticConf().getMaxBatchSize());
+			logger.info("-- requestTimeout = " + controller.getStaticConf().getRequestTimeout());
+			logger.info("-- maxBatch = " + controller.getStaticConf().getMaxBatchSize());
 			if (controller.getStaticConf().getUseMACs() == 1)
-				System.out.println("-- Using MACs");
+				logger.info("-- Using MACs");
 			if (controller.getStaticConf().getUseSignatures() == 1)
-				System.out.println("-- Using Signatures");
+				logger.info("-- Using Signatures");
 			// ******* EDUARDO END **************//
 
 			mainChannel = f.channel();
@@ -144,7 +146,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	@Override
 	public void shutdown() {
 
-		System.out.println("Shutting down Netty system");
+		logger.info("Shutting down Netty system");
 
 		this.closed = true;
 
@@ -159,8 +161,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 		}
 
-		java.util.logging.Logger.getLogger(NettyClientServerCommunicationSystemServerSide.class.getName())
-				.log(Level.INFO, "NettyClientServerCommunicationSystemServerSide is halting.");
+		logger.info("NettyClientServerCommunicationSystemServerSide is halting.");
 
 	}
 
@@ -173,9 +174,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		}
 
 		if (cause instanceof ClosedChannelException)
-			System.out.println("Connection with client closed.");
+			logger.info("Connection with client closed.");
 		else if (cause instanceof ConnectException) {
-			System.out.println("Impossible to connect to client.");
+			logger.info("Impossible to connect to client.");
 		} else {
 			cause.printStackTrace(System.err);
 		}
@@ -191,7 +192,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 		// delivers message to TOMLayer
 		if (requestReceiver == null)
-			System.out.println("RECEIVER NULO!!!!!!!!!!!!");
+			logger.info("RECEIVER NULO!!!!!!!!!!!!");
 		else
 			requestReceiver.requestReceived(sm);
 	}
@@ -203,8 +204,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			closeChannelAndEventLoop(ctx.channel());
 			return;
 		}
-		//Logger.println("Session Created, active clients=" + sessionTable.size());
-		//System.out.println("Session Created, active clients=" + sessionTable.size());
+		//logger.info("Session Created, active clients=" + sessionTable.size());
+		//logger.info("Session Created, active clients=" + sessionTable.size());
 	}
 
 	@Override
@@ -224,9 +225,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				NettyClientServerSession value = (NettyClientServerSession) m.getValue();
 				if (ctx.channel().equals(value.getChannel())) {
 					int key = (Integer) m.getKey();
-					System.out.println("#Removing client channel with ID= " + key);
+					logger.info("#Removing client channel with ID= " + key);
 					sessionTable.remove(key);
-					System.out.println("#active clients=" + sessionTable.size());
+					logger.info("#active clients=" + sessionTable.size());
 					break;
 				}
 			}
@@ -234,7 +235,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		} finally {
 			rl.writeLock().unlock();
 		}
-		Logger.println("Session Closed, active clients=" + sessionTable.size());
+		logger.info("Session Closed, active clients=" + sessionTable.size());
 	}
 
 	@Override
@@ -257,12 +258,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			data = baos.toByteArray();
 			sm.serializedMessage = data;
 		} catch (IOException ex) {
-			Logger.println("Error enconding message.");
+			logger.info("Error enconding message.");
 		} finally {
 			try {
 				dos.close();
 			} catch (IOException ex) {
-				System.out.println("Exception closing DataOutputStream: " + ex.getMessage());
+				logger.info("Exception closing DataOutputStream: " + ex.getMessage());
 			}
 		}
 
@@ -298,7 +299,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 						public void run() {
 
-							System.out.println("Received request from " + id
+							logger.info("Received request from " + id
 									+ " before establishing Netty connection. Re-trying until connection is established");
 
 							NettyClientServerSession ncss = null;
@@ -309,9 +310,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 								try {
 									Thread.sleep(1000);
 								} catch (InterruptedException ex) {
-									java.util.logging.Logger
-											.getLogger(NettyClientServerCommunicationSystemServerSide.class.getName())
-											.log(Level.SEVERE, null, ex);
+									logger.error(ex);
 								}
 
 								ncss = (NettyClientServerSession) sessionTable.get(id);
@@ -326,7 +325,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 							}
 
-							System.out.println("Connection with " + id + " established!");
+							logger.info("Connection with " + id + " established!");
 
 						}
 
@@ -335,7 +334,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					t.start();
 					///////////////////////////////////////////
 				} else {
-					System.out.println("!!!!!!!!NettyClientServerSession NULL !!!!!! sequence: " + sm.getSequence()
+					logger.info("!!!!!!!!NettyClientServerSession NULL !!!!!! sequence: " + sm.getSequence()
 							+ ", ID; " + targets[i]);
 				}
 			} finally {

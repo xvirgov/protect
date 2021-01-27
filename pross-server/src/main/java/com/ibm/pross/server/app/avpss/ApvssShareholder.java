@@ -190,7 +190,7 @@ public class ApvssShareholder {
 
 		// TODO: Remove this debugging text
 		// long messageCount = this.channel.getMessageCount();
-		// System.err.println(messageCount + ";" + messageId);
+		// logger.error(messageCount + ";" + messageId);
 
 		// Deliver only if this message is relevant for the given epoch and secret
 		final String channelName = this.secretName;
@@ -674,7 +674,7 @@ public class ApvssShareholder {
 		if (senderEpoch == 0) {
 			logger.info("DKG Complete!");
 		} else {
-			System.out.print("Refresh Complete!");
+			logger.info("Refresh Complete!");
 
 			// Sanity check, make sure public keys match before advancing epoch state
 			if (this.getCurrentSharing().getSharePublicKeys()[0].equals(sharingState.getSharePublicKeys()[0])) {
@@ -760,7 +760,7 @@ public class ApvssShareholder {
 		Collections.sort(contributors);
 		final BigInteger[] xCoords = contributors.stream().map(i -> BigInteger.valueOf(i)).toArray(BigInteger[]::new);
 
-		System.err.println(Arrays.toString(xCoords));
+		logger.error(Arrays.toString(xCoords));
 		
 		// Start counters at zero
 		BigInteger share1Y = BigInteger.ZERO;
@@ -805,7 +805,7 @@ public class ApvssShareholder {
 		logger.info("Share2: " + share2Y);
 		
 		if (!sharePublicKey1.equals(sharingState.getSharePublicKeys()[this.index])) {
-			System.err.println(sharePublicKey1);
+			logger.error(sharePublicKey1);
 			throw new IllegalArgumentException("Failed to recover same public key");
 		}
 		

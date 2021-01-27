@@ -17,24 +17,29 @@ package bftsmart.tools;
 
 import bftsmart.reconfiguration.ViewManager;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  *
  * @author Andre Nogueira
  */
 
 public class VMServices {
+	private static final Logger logger = LogManager.getLogger(VMServices.class);
+
 	public static void main(String[] args) throws InterruptedException {
 
 		ViewManager viewManager = new ViewManager();
 
 		if (args.length == 1) {
-			System.out.println("####Tpp Service[Disjoint]####");
+			logger.info("####Tpp Service[Disjoint]####");
 
 			int smartId = Integer.parseInt(args[0]);
 
 			viewManager.removeServer(smartId);
 		} else if (args.length == 3) {
-			System.out.println("####Tpp Service[Join]####");
+			logger.info("####Tpp Service[Join]####");
 
 			int smartId = Integer.parseInt(args[0]);
 			String ipAddress = args[1];
@@ -43,7 +48,7 @@ public class VMServices {
 			viewManager.addServer(smartId, ipAddress, port);
 
 		} else {
-			System.out.println("Usage: java -jar TppServices <smart id> [ip address] [port]");
+			logger.info("Usage: java -jar TppServices <smart id> [ip address] [port]");
 			System.exit(1);
 		}
 

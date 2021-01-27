@@ -38,11 +38,14 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.VMMessage;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.util.Logger;
+
 import bftsmart.tom.util.TOMUtil;
 
 /**
@@ -75,6 +78,8 @@ public class ServerConnection {
 	private Lock sendLock;
 	private boolean doWork = true;
 
+	private static final Logger logger = LogManager.getLogger(ServerConnection.class);
+
 	public ServerConnection(ServerViewController controller, Socket socket, int remoteId,
 			LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
 
@@ -101,7 +106,7 @@ public class ServerConnection {
 						.writeInt(this.controller.getStaticConf().getProcessId());
 
 			} catch (IOException e) {
-				System.out.println("Error connecting to: " + host + ":" + port + " - "+ e.getMessage());
+				logger.info("Error connecting to: " + host + ":" + port + " - "+ e.getMessage());
 			}
 		}
 		// else I have to wait a connection from the remote server
@@ -111,7 +116,7 @@ public class ServerConnection {
 				socketOutStream = new DataOutputStream(this.socket.getOutputStream());
 				socketInStream = new DataInputStream(this.socket.getInputStream());
 			} catch (IOException ex) {
-				Logger.println("Error creating connection to " + remoteId);
+				logger.info("Error creating connection to " + remoteId);
 				ex.printStackTrace();
 			}
 		}
@@ -145,7 +150,7 @@ public class ServerConnection {
 	 * Stop message sending and reception.
 	 */
 	public void shutdown() {
-		Logger.println("SHUTDOWN for " + remoteId);
+		logger.info("SHUTDOWN for " + remoteId);
 
 		doWork = false;
 		closeSocket();
@@ -158,12 +163,12 @@ public class ServerConnection {
 		if (useSenderThread) {
 			// only enqueue messages if there queue is not full
 			if (!useMAC) {
-				Logger.println("(ServerConnection.send) Not sending defaultMAC " + System.identityHashCode(data));
+				logger.info("(ServerConnection.send) Not sending defaultMAC " + System.identityHashCode(data));
 				noMACs.add(System.identityHashCode(data));
 			}
 
 			if (!outQueue.offer(data)) {
-				Logger.println("(ServerConnection.send) out queue for " + remoteId + " full (message discarded).");
+				logger.info("(ServerConnection.send) out queue for " + remoteId + " full (message discarded).");
 			}
 		} else {
 			sendLock.lock();
@@ -297,7 +302,7 @@ public class ServerConnection {
 				ex.printStackTrace();
 			} catch (IOException ex) {
 
-				System.out.println("Impossible to reconnect to replica " + remoteId);
+				logger.info("Impossible to reconnect to replica " + remoteId);
 				// ex.printStackTrace();
 			}
 
@@ -385,7 +390,7 @@ public class ServerConnection {
 
 			if (!TOMUtil.verifySignature(remoteRSAPubkey, remote_Bytes, remote_Signature)) {
 
-				System.out.println(remoteId + " sent an invalid signature!");
+				logger.info(remoteId + " sent an invalid signature!");
 				shutdown();
 				return;
 			}
@@ -395,7 +400,7 @@ public class ServerConnection {
 			// Create secret key
 			BigInteger secretKey = remoteDHPubKey.modPow(DHPrivKey, controller.getStaticConf().getDHP());
 
-			System.out.println("-- Diffie-Hellman complete with " + remoteId);
+			logger.info("-- Diffie-Hellman complete with " + remoteId);
 
 			SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
 			PBEKeySpec spec = new PBEKeySpec(secretKey.toString().toCharArray());
@@ -419,9 +424,9 @@ public class ServerConnection {
 				socketOutStream.flush();
 				socket.close();
 			} catch (IOException ex) {
-				Logger.println("Error closing socket to " + remoteId);
+				logger.info("Error closing socket to " + remoteId);
 			} catch (NullPointerException npe) {
-				Logger.println("Socket already closed");
+				logger.info("Socket already closed");
 			}
 
 			socket = null;
@@ -466,13 +471,13 @@ public class ServerConnection {
 					// sendBytes(data, noMACs.contains(System.identityHashCode(data)));
 					int ref = System.identityHashCode(data);
 					boolean sendMAC = !noMACs.remove(ref);
-					Logger.println(
+					logger.info(
 							"(ServerConnection.run) " + (sendMAC ? "Sending" : "Not sending") + " MAC for data " + ref);
 					sendBytes(data, sendMAC);
 				}
 			}
 
-			Logger.println("Sender for " + remoteId + " stopped!");
+			logger.info("Sender for " + remoteId + " stopped!");
 		}
 	}
 
@@ -527,21 +532,21 @@ public class ServerConnection {
 
 							if (sm.getSender() == remoteId) {
 								if (!inQueue.offer(sm)) {
-									Logger.println("(ReceiverThread.run) in queue full (message from " + remoteId
+									logger.info("(ReceiverThread.run) in queue full (message from " + remoteId
 											+ " discarded).");
-									System.out.println("(ReceiverThread.run) in queue full (message from " + remoteId
+									logger.info("(ReceiverThread.run) in queue full (message from " + remoteId
 											+ " discarded).");
 								}
 							}
 						} else {
 							// TODO: violation of authentication... we should do something
-							Logger.println("WARNING: Violation of authentication in message received from " + remoteId);
+							logger.info("WARNING: Violation of authentication in message received from " + remoteId);
 						}
 					} catch (ClassNotFoundException ex) {
 						// invalid message sent, just ignore;
 					} catch (IOException ex) {
 						if (doWork) {
-							Logger.println("Closing socket and reconnecting");
+							logger.info("Closing socket and reconnecting");
 							closeSocket();
 							waitAndConnect();
 						}
@@ -599,7 +604,7 @@ public class ServerConnection {
 						byte hasMAC = socketInStream.readByte();
 						if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
 
-							System.out.println("TTP CON USEMAC");
+							logger.info("TTP CON USEMAC");
 							read = 0;
 							do {
 								read += socketInStream.read(receivedMac, read, macSize - read);
@@ -613,19 +618,19 @@ public class ServerConnection {
 									.readObject());
 
 							if (sm.getSender() == remoteId) {
-								// System.out.println("Mensagem recebia de: "+remoteId);
+								// logger.info("Mensagem recebia de: "+remoteId);
 								/*
-								 * if (!inQueue.offer(sm)) { bftsmart.tom.util.Logger.
+								 * if (!inQueue.offer(sm)) { logger.info
 								 * println("(ReceiverThread.run) in queue full (message from " + remoteId +
 								 * " discarded).");
-								 * System.out.println("(ReceiverThread.run) in queue full (message from " +
+								 * logger.info("(ReceiverThread.run) in queue full (message from " +
 								 * remoteId + " discarded)."); }
 								 */
 								this.replica.joinMsgReceived((VMMessage) sm);
 							}
 						} else {
 							// TODO: violation of authentication... we should do something
-							Logger.println("WARNING: Violation of authentication in message received from " + remoteId);
+							logger.info("WARNING: Violation of authentication in message received from " + remoteId);
 						}
 					} catch (ClassNotFoundException ex) {
 						ex.printStackTrace();

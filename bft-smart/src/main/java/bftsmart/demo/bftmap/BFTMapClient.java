@@ -18,13 +18,18 @@ package bftsmart.demo.bftmap;
 import java.util.Random;
 import java.util.TreeMap;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class BFTMapClient {
+
+	private static final Logger logger = LogManager.getLogger(BFTMapClient.class);
 
 	private static int VALUE_SIZE = 1024;
 
 	public static void main(String[] args) {
 		if (args.length < 1) {
-			System.out.println("Usage: java BFTMapClient <process id>");
+			logger.info("Usage: java BFTMapClient <process id>");
 			System.exit(-1);
 		}
 
@@ -37,7 +42,7 @@ public class BFTMapClient {
 			createTable(bftMap, tableName);
 		} catch (Exception e1) {
 			e1.printStackTrace();
-			System.out.println(
+			logger.info(
 					"Problems: Inserting a new value into the table(" + tableName + "): " + e1.getLocalizedMessage());
 			System.exit(1);
 		}
@@ -47,13 +52,13 @@ public class BFTMapClient {
 			try {
 				boolean result = insertValue(bftMap, tableName, ops);
 				if (!result) {
-					// System.out.println("Problems: Inserting a new value into the
+					// logger.info("Problems: Inserting a new value into the
 					// table("+tableName+")");
 					// System.exit(1);
 				}
 
 				if (ops % 100 == 0)
-					System.out.println("ops sent: " + ops);
+					logger.info("ops sent: " + ops);
 				ops++;
 				// Thread.sleep(10);
 			} catch (Exception e) {
@@ -66,10 +71,10 @@ public class BFTMapClient {
 		boolean tableExists;
 
 		tableExists = bftMap.containsKey(nameTable);
-		System.out.println("tableExists:" + tableExists);
+		logger.info("tableExists:" + tableExists);
 		if (tableExists == false)
 			bftMap.put(nameTable, new TreeMap<String, byte[]>());
-		System.out.println("Created the table. Maybe");
+		logger.info("Created the table. Maybe");
 
 		return tableExists;
 	}
@@ -82,7 +87,7 @@ public class BFTMapClient {
 		valueBytes = new byte[VALUE_SIZE];
 		rand.nextBytes(valueBytes);
 		byte[] resultBytes = bftMap.putEntry(nameTable, key, valueBytes);
-		// System.out.println("resultBytes" + resultBytes);
+		// logger.info("resultBytes" + resultBytes);
 		if (resultBytes == null)
 			return false;
 		return true;

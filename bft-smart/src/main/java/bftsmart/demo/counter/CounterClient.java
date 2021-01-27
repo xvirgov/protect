@@ -22,7 +22,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 import bftsmart.tom.ServiceProxy;
-import bftsmart.tom.util.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Example client that updates a BFT replicated service (a counter).
@@ -31,17 +33,17 @@ import bftsmart.tom.util.Logger;
  */
 public class CounterClient {
 
+	private static final Logger logger = LogManager.getLogger(CounterClient.class);
+
 	public static void main(String[] args) throws IOException {
 		if (args.length < 2) {
-			System.out.println("Usage: java ... CounterClient <process id> <increment> [<number of operations>]");
-			System.out.println("       if <increment> equals 0 the request will be read-only");
-			System.out.println("       default <number of operations> equals 1000");
+			logger.info("Usage: java ... CounterClient <process id> <increment> [<number of operations>]");
+			logger.info("       if <increment> equals 0 the request will be read-only");
+			logger.info("       default <number of operations> equals 1000");
 			System.exit(-1);
 		}
 
 		ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]));
-
-		Logger.debug = false;
 
 		try {
 
@@ -59,9 +61,9 @@ public class CounterClient {
 
 				if (reply != null) {
 					int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
-					System.out.println(", returned value: " + newValue);
+					logger.info(", returned value: " + newValue);
 				} else {
-					System.out.println(", ERROR! Exiting.");
+					logger.info(", ERROR! Exiting.");
 					break;
 				}
 			}

@@ -29,6 +29,9 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Example replica that implements a BFT replicated service (a counter).
  * If the increment > 0 the counter is incremented, otherwise, the counter
@@ -38,6 +41,8 @@ import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
  */
 
 public final class CounterServer extends DefaultSingleRecoverable  {
+
+    private static final Logger logger = LogManager.getLogger(CounterServer.class);
     
     private int counter = 0;
     private int iterations = 0;
@@ -49,7 +54,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     @Override
     public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {         
         iterations++;
-        System.out.println("(" + iterations + ") Counter current value: " + counter);
+        logger.info("(" + iterations + ") Counter current value: " + counter);
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
@@ -67,7 +72,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
             counter += increment;
             
-            System.out.println("(" + iterations + ") Counter was incremented. Current value = " + counter);
+            logger.info("(" + iterations + ") Counter was incremented. Current value = " + counter);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
@@ -80,7 +85,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
 
     public static void main(String[] args){
         if(args.length < 1) {
-            System.out.println("Use: java CounterServer <processId>");
+            logger.info("Use: java CounterServer <processId>");
             System.exit(-1);
         }      
         new CounterServer(Integer.parseInt(args[0]));
@@ -89,7 +94,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     @Override
     public void installSnapshot(byte[] state) {
         try {
-            System.out.println("setState called");
+            logger.info("setState called");
             ByteArrayInputStream bis = new ByteArrayInputStream(state);
             ObjectInput in = new ObjectInputStream(bis);
             counter = in.readInt();
@@ -104,7 +109,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     @Override
     public byte[] getSnapshot() {
         try {
-            System.out.println("getState called");
+            logger.info("getState called");
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutput out = new ObjectOutputStream(bos);
             out.writeInt(counter);

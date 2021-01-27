@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
@@ -32,7 +31,9 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
-import bftsmart.tom.util.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class provides a basic state transfer protocol using the interface
@@ -57,13 +58,15 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     private List<MessageContext> msgContexts = new ArrayList<>();
     
     private StateManager stateManager;
+
+    private static final Logger logger = LogManager.getLogger(DefaultSingleRecoverable.class);
     
     public DefaultSingleRecoverable() {
 
         try {
             md = MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException ex) {
-            java.util.logging.Logger.getLogger(DefaultSingleRecoverable.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error(ex);
         }
     }
     
@@ -91,7 +94,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         
         if(msgCtx.isLastInBatch()) {
 	        if ((cid > 0) && ((cid % checkpointPeriod) == 0)) {
-	            Logger.println("(DefaultSingleRecoverable.executeOrdered) Performing checkpoint for consensus " + cid);
+	            logger.info("(DefaultSingleRecoverable.executeOrdered) Performing checkpoint for consensus " + cid);
 	            stateLock.lock();
 	            byte[] snapshot = getSnapshot();
 	            stateLock.unlock();
@@ -125,24 +128,24 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 
         logLock.lock();
 
-        Logger.println("(TOMLayer.saveState) Saving state of CID " + lastCID);
+        logger.info("(TOMLayer.saveState) Saving state of CID " + lastCID);
 
         thisLog.newCheckpoint(snapshot, computeHash(snapshot), lastCID);
         thisLog.setLastCID(-1);
         thisLog.setLastCheckpointCID(lastCID);
 
         logLock.unlock();
-        /*System.out.println("fiz checkpoint");
-        System.out.println("tamanho do snapshot: " + snapshot.length);
-        System.out.println("tamanho do log: " + thisLog.getMessageBatches().length);*/
-        Logger.println("(TOMLayer.saveState) Finished saving state of CID " + lastCID);
+        /*logger.info("fiz checkpoint");
+        logger.info("tamanho do snapshot: " + snapshot.length);
+        logger.info("tamanho do log: " + thisLog.getMessageBatches().length);*/
+        logger.info("(TOMLayer.saveState) Finished saving state of CID " + lastCID);
     }
 
     private void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
         
         if (commands.length != msgCtx.length) {
-            System.out.println("----SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
-            System.out.println("----COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
+            logger.info("----SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
+            logger.info("----COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
         }
         logLock.lock();
 
@@ -178,7 +181,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         // of not storing anything after a checkpoint and before logging more requests        
         if (ret == null || (config.isBFT() && ret.getCertifiedDecision(this.controller) == null)) ret = new DefaultApplicationState();
 
-        System.out.println("Getting log until CID " + cid + ", null: " + (ret == null));
+        logger.info("Getting log until CID " + cid + ", null: " + (ret == null));
         logLock.unlock();
         return ret;
     }
@@ -190,7 +193,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
             
             DefaultApplicationState state = (DefaultApplicationState) recvState;
             
-            System.out.println("(DefaultSingleRecoverable.setState) last CID in state: " + state.getLastCID());
+            logger.info("(DefaultSingleRecoverable.setState) last CID in state: " + state.getLastCID());
             
             logLock.lock();
             initLog();
@@ -201,7 +204,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
             
             lastCID = state.getLastCID();
 
-            bftsmart.tom.util.Logger.println("(DefaultSingleRecoverable.setState) I'm going to update myself from CID "
+            logger.info("(DefaultSingleRecoverable.setState) I'm going to update myself from CID "
                     + lastCheckpointCID + " to CID " + lastCID);
 
             stateLock.lock();
@@ -209,7 +212,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 
             for (int cid = lastCheckpointCID + 1; cid <= lastCID; cid++) {
                 try {
-                    bftsmart.tom.util.Logger.println("(DurabilityCoordinator.setState) interpreting and verifying batched requests for CID " + cid);
+                    logger.info("(DurabilityCoordinator.setState) interpreting and verifying batched requests for CID " + cid);
 
                     CommandsInfo cmdInfo = state.getMessageBatch(cid); 
                     byte[][] cmds = cmdInfo.commands; // take a batch
@@ -225,10 +228,10 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
                     if (e instanceof ArrayIndexOutOfBoundsException) {
-                        System.out.println("Last checkpoint, last consensus ID (CID): " + state.getLastCheckpointCID());
-                        System.out.println("Last CID: " + state.getLastCID());
-                        System.out.println("number of messages expected to be in the batch: " + (state.getLastCID() - state.getLastCheckpointCID() + 1));
-                        System.out.println("number of messages in the batch: " + state.getMessageBatches().length);
+                        logger.info("Last checkpoint, last consensus ID (CID): " + state.getLastCheckpointCID());
+                        logger.info("Last CID: " + state.getLastCID());
+                        logger.info("number of messages expected to be in the batch: " + (state.getLastCID() - state.getLastCheckpointCID() + 1));
+                        logger.info("number of messages in the batch: " + state.getMessageBatches().length);
                     }
                 }
             }

@@ -16,7 +16,6 @@ import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.util.AbstractMap.SimpleEntry;
 
-import com.ibm.pross.server.app.avpss.ApvssShareholder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -46,7 +45,7 @@ public class CertificateAuthorityCli {
 
 		// Check usage
 		if (args.length < 4) {
-			System.err.println("USAGE: ca-path key-path cert-path [servers=true/false]");
+			logger.error("USAGE: ca-path key-path cert-path [servers=true/false]");
 			System.exit(1);
 		}
 

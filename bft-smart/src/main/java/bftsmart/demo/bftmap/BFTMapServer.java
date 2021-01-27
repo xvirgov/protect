@@ -25,12 +25,13 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
@@ -40,6 +41,8 @@ import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
  *         implementation of Executable and Recoverable interfaces.
  */
 public class BFTMapServer extends DefaultSingleRecoverable {
+
+	private static final Logger logger = LogManager.getLogger(BFTMapServer.class);
 
 	MapOfMaps tableMap = null;
 	ServiceReplica replica = null;
@@ -53,7 +56,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 
 	public static void main(String[] args) {
 		if (args.length < 1) {
-			System.out.println("Use: java BFTMapServer <processId>");
+			logger.info("Use: java BFTMapServer <processId>");
 			System.exit(-1);
 		}
 		new BFTMapServer(Integer.parseInt(args[0]));
@@ -73,10 +76,10 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				String key = new DataInputStream(in).readUTF();
 				String value = new DataInputStream(in).readUTF();
 				byte[] valueBytes = value.getBytes();
-				System.out.println("Key received: " + key);
+				logger.info("Key received: " + key);
 				byte[] ret = tableMap.addData(tableName, key, valueBytes);
 				if (ret == null) {
-					// System.out.println("Return is null, so there was no data before");
+					// logger.info("Return is null, so there was no data before");
 					ret = new byte[0];
 				}
 				reply = valueBytes;
@@ -84,10 +87,10 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			case BFTMapRequestType.REMOVE:
 				tableName = new DataInputStream(in).readUTF();
 				key = new DataInputStream(in).readUTF();
-				// System.out.println("Key received: " + key);
+				// logger.info("Key received: " + key);
 				valueBytes = tableMap.removeEntry(tableName, key);
 				value = new String(valueBytes);
-				System.out.println("Value removed is : " + value);
+				logger.info("Value removed is : " + value);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBytes(value);
 				reply = out.toByteArray();
@@ -101,7 +104,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				try {
 					table = (Map<String, byte[]>) objIn.readObject();
 				} catch (ClassNotFoundException ex) {
-					Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
+					logger.error(ex);
 				}
 				Map<String, byte[]> tableCreated = tableMap.addTable(tableName, table);
 				ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -124,7 +127,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 
 			case BFTMapRequestType.SIZE_TABLE:
 				int size1 = tableMap.getNumOfTables();
-				// System.out.println("Size " + size1);
+				// logger.info("Size " + size1);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeInt(size1);
 				reply = out.toByteArray();
@@ -132,12 +135,12 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				break;
 			case BFTMapRequestType.GET:
 				tableName = new DataInputStream(in).readUTF();
-				System.out.println("tablename: " + tableName);
+				logger.info("tablename: " + tableName);
 				key = new DataInputStream(in).readUTF();
-				// System.out.println("Key received: " + key);
+				// logger.info("Key received: " + key);
 				valueBytes = tableMap.getEntry(tableName, key);
 				value = new String(valueBytes);
-				System.out.println("The value to be get is: " + value);
+				logger.info("The value to be get is: " + value);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBytes(value);
 				reply = out.toByteArray();
@@ -154,7 +157,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			case BFTMapRequestType.CHECK:
 				tableName = new DataInputStream(in).readUTF();
 				key = new DataInputStream(in).readUTF();
-				// System.out.println("Table Key received: " + key);
+				// logger.info("Table Key received: " + key);
 				valueBytes = tableMap.getEntry(tableName, key);
 				boolean entryExists = valueBytes != null;
 				out = new ByteArrayOutputStream();
@@ -164,10 +167,10 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				break;
 			case BFTMapRequestType.TAB_CREATE_CHECK:
 				tableName = new DataInputStream(in).readUTF();
-				// System.out.println("Table of Table Key received: " + tableName);
+				// logger.info("Table of Table Key received: " + tableName);
 				table = tableMap.getTable(tableName);
 				boolean tableExists = (table != null);
-				System.out.println("Table exists: " + tableExists);
+				logger.info("Table exists: " + tableExists);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBoolean(tableExists);
 				reply = out.toByteArray();
@@ -192,7 +195,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			switch (cmd) {
 			case BFTMapRequestType.SIZE_TABLE:
 				int size1 = tableMap.getNumOfTables();
-				// System.out.println("Size " + size1);
+				// logger.info("Size " + size1);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeInt(size1);
 				reply = out.toByteArray();
@@ -200,12 +203,12 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				break;
 			case BFTMapRequestType.GET:
 				String tableName = new DataInputStream(in).readUTF();
-				System.out.println("tablename: " + tableName);
+				logger.info("tablename: " + tableName);
 				String key = new DataInputStream(in).readUTF();
-				// System.out.println("Key received: " + key);
+				// logger.info("Key received: " + key);
 				byte[] valueBytes = tableMap.getEntry(tableName, key);
 				String value = new String(valueBytes);
-				System.out.println("The value to be get is: " + value);
+				logger.info("The value to be get is: " + value);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBytes(value);
 				reply = out.toByteArray();
@@ -214,7 +217,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			case BFTMapRequestType.SIZE:
 				String tableName2 = new DataInputStream(in).readUTF();
 				int size = tableMap.getSize(tableName2);
-				// System.out.println("Size " + size);
+				// logger.info("Size " + size);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeInt(size);
 				reply = out.toByteArray();
@@ -223,7 +226,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			case BFTMapRequestType.CHECK:
 				tableName = new DataInputStream(in).readUTF();
 				key = new DataInputStream(in).readUTF();
-				// System.out.println("Table Key received: " + key);
+				// logger.info("Table Key received: " + key);
 				valueBytes = tableMap.getEntry(tableName, key);
 				boolean entryExists = valueBytes != null;
 				out = new ByteArrayOutputStream();
@@ -233,10 +236,10 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				break;
 			case BFTMapRequestType.TAB_CREATE_CHECK:
 				tableName = new DataInputStream(in).readUTF();
-				// System.out.println("Table of Table Key received: " + tableName);
+				// logger.info("Table of Table Key received: " + tableName);
 				Map<String, byte[]> table = tableMap.getTable(tableName);
 				boolean tableExists = (table != null);
-				System.out.println("Table exists: " + tableExists);
+				logger.info("Table exists: " + tableExists);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBoolean(tableExists);
 				reply = out.toByteArray();

@@ -27,10 +27,15 @@ import java.io.IOException;
 import bftsmart.communication.SystemMessage;
 import bftsmart.tom.util.DebugInfo;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * This class represents a total ordered message
  */
 public class TOMMessage extends SystemMessage implements Externalizable, Comparable, Cloneable {
+
+	private static final Logger logger = LogManager.getLogger(TOMMessage.class);
 
 	// ******* EDUARDO BEGIN **************//
 	private int viewID; // current sender view
@@ -318,7 +323,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		try {
 			m.rExternal(dis);
 		} catch (Exception e) {
-			System.out.println("error on bytesToMessage " + e);
+			logger.info("error on bytesToMessage " + e);
 			return null;
 		}
 

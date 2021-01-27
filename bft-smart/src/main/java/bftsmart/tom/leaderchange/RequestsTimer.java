@@ -24,7 +24,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.logging.Level;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
@@ -32,11 +31,16 @@ import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * This thread serves as a manager for all timers of pending requests.
  *
  */
 public class RequestsTimer {
+
+	private static final Logger logger = LogManager.getLogger(RequestsTimer.class);
 
 	private Timer timer = new Timer("request timer");
 	private RequestTimerTask rtTask = null;
@@ -160,7 +164,7 @@ public class RequestsTimer {
 
 		long t = (shortTimeout > -1 ? shortTimeout : timeout);
 
-		// System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO
+		// logger.info("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO
 		// TIMEOUT");
 
 		LinkedList<TOMMessage> pendingRequests = new LinkedList<TOMMessage>();
@@ -191,7 +195,7 @@ public class RequestsTimer {
 			}
 
 			if (!pendingRequests.isEmpty()) {
-				System.out.println("Timeout for messages: " + pendingRequests);
+				logger.info("Timeout for messages: " + pendingRequests);
 				// Logger.debug = true;
 				// tomLayer.requestTimeout(pendingRequests);
 				// if (reconfManager.getStaticConf().getProcessId() == 4) Logger.debug = true;
@@ -244,8 +248,7 @@ public class RequestsTimer {
 	public void shutdown() {
 		timer.cancel();
 		stopAllSTOPs();
-		java.util.logging.Logger.getLogger(RequestsTimer.class.getName()).log(Level.INFO, "RequestsTimer stopped.");
-
+		logger.info("RequestsTimer stopped.");
 	}
 
 	class RequestTimerTask extends TimerTask {
@@ -280,7 +283,7 @@ public class RequestsTimer {
 		 */
 		public void run() {
 
-			System.out.println("(SendStopTask.run) Re-transmitting STOP message to install regency " + stop.getReg());
+			logger.info("(SendStopTask.run) Re-transmitting STOP message to install regency " + stop.getReg());
 			communication.send(controller.getCurrentViewOtherAcceptors(), this.stop);
 
 			setSTOP(stop.getReg(), stop); // repeat

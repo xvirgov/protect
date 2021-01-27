@@ -26,8 +26,9 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import bftsmart.tom.ServiceProxy;
 
@@ -37,6 +38,8 @@ import bftsmart.tom.ServiceProxy;
  * @author sweta
  */
 public class BFTMap implements Map<String, Map<String, byte[]>> {
+
+	private static final Logger logger = LogManager.getLogger(BFTMap.class);
 
 	ServiceProxy KVProxy = null;
 
@@ -61,10 +64,10 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 			in.close();
 			return table;
 		} catch (ClassNotFoundException ex) {
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return null;
 		} catch (IOException ex) {
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return null;
 		}
 
@@ -80,7 +83,7 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 			byte[] rep = KVProxy.invokeUnordered(out.toByteArray());
 			return rep;
 		} catch (IOException ex) {
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return null;
 		}
 	}
@@ -105,11 +108,11 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 
 		} catch (ClassNotFoundException ex) {
 			ex.printStackTrace();
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return null;
 		} catch (IOException ex) {
 			ex.printStackTrace();
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return null;
 		}
 	}
@@ -126,7 +129,7 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 			return rep;
 		} catch (IOException ex) {
 			ex.printStackTrace();
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return null;
 		}
 
@@ -147,10 +150,10 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 			in.close();
 			return table;
 		} catch (ClassNotFoundException ex) {
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return null;
 		} catch (IOException ex) {
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return null;
 		}
 
@@ -166,7 +169,7 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 			byte[] rep = KVProxy.invokeOrdered(out.toByteArray());
 			return rep;
 		} catch (IOException ex) {
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return null;
 		}
 
@@ -182,7 +185,7 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 			int size = new DataInputStream(in).readInt();
 			return size;
 		} catch (IOException ex) {
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return -1;
 		}
 	}
@@ -199,7 +202,7 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 			int size = new DataInputStream(in).readInt();
 			return size;
 		} catch (IOException ex) {
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return 0;
 		}
 	}
@@ -217,7 +220,7 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 			return res;
 		} catch (IOException ex) {
 			ex.printStackTrace();
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return false;
 		}
 
@@ -236,7 +239,7 @@ public class BFTMap implements Map<String, Map<String, byte[]>> {
 			boolean res = new DataInputStream(in).readBoolean();
 			return res;
 		} catch (IOException ex) {
-			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
+			logger.error(ex);
 			return false;
 		}
 	}

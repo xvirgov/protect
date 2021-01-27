@@ -27,14 +27,15 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
-import org.slf4j.LoggerFactory;
-
 import bftsmart.reconfiguration.ViewController;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.Logger;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
@@ -68,7 +69,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
     
     private boolean useMAC;
 
-    private org.slf4j.Logger logger = LoggerFactory.getLogger(NettyTOMMessageDecoder.class);
+    private static final Logger logger = LogManager.getLogger(NettyTOMMessageDecoder.class);
 
     
     public NettyTOMMessageDecoder(boolean isClient, Map sessionTable, int macLength, ViewController controller, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {
@@ -80,7 +81,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         this.rl = rl;
         this.signatureSize = signatureLength;
         this.useMAC = useMAC;
-        bftsmart.tom.util.Logger.println("new NettyTOMMessageDecoder!!, isClient=" + isClient);
+        logger.info("new NettyTOMMessageDecoder!!, isClient=" + isClient);
     }
 
     @Override
@@ -93,7 +94,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
 
         int dataLength = buffer.getInt(buffer.readerIndex());
 
-        //Logger.println("Receiving message with "+dataLength+" bytes.");
+        //logger.info("Receiving message with "+dataLength+" bytes.");
 
         // Wait until the whole data is available.
         if (buffer.readableBytes() < dataLength + 4) {
@@ -154,7 +155,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                 //verify MAC
                 if (useMAC) {
                     if (!verifyMAC(sm.getSender(), data, digest)) {
-                        System.out.println("MAC error: message discarded");
+                        logger.info("MAC error: message discarded");
                         return;
                     }
                 }
@@ -165,14 +166,14 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     rl.readLock().unlock();
                     if (useMAC) {
                         if (!verifyMAC(sm.getSender(), data, digest)) {
-                            Logger.println("MAC error: message discarded");
+                            logger.info("MAC error: message discarded");
                             return;
                         }
                     }
                 } else {
                     //creates MAC/publick key stuff if it's the first message received from the client
-                    bftsmart.tom.util.Logger.println("Creating MAC/public key stuff, first message from client" + sm.getSender());
-                    bftsmart.tom.util.Logger.println("sessionTable size=" + sessionTable.size());
+                    logger.info("Creating MAC/public key stuff, first message from client" + sm.getSender());
+                    logger.info("sessionTable size=" + sessionTable.size());
 
                     rl.readLock().unlock();
                     
@@ -190,18 +191,18 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     rl.writeLock().lock();
 //                    logger.info("PUT INTO SESSIONTABLE - [client id]:"+sm.getSender()+" [channel]: "+cs.getChannel());
                     sessionTable.put(sm.getSender(), cs);
-                    bftsmart.tom.util.Logger.println("#active clients " + sessionTable.size());
+                    logger.info("#active clients " + sessionTable.size());
                     rl.writeLock().unlock();
                     if (useMAC && !verifyMAC(sm.getSender(), data, digest)) {
-                        Logger.println("MAC error: message discarded");
+                        logger.info("MAC error: message discarded");
                         return;
                     }
                 }
             }
-            Logger.println("Decoded reply from " + sm.getSender() + " with sequence number " + sm.getSequence());
+            logger.info("Decoded reply from " + sm.getSender() + " with sequence number " + sm.getSequence());
             list.add(sm);
         } catch (Exception ex) {
-            bftsmart.tom.util.Logger.println("Impossible to decode message: "+
+            logger.info("Impossible to decode message: "+
                     ex.getMessage());
             ex.printStackTrace();
         }

@@ -22,7 +22,8 @@ import java.util.StringTokenizer;
 
 import com.ibm.pross.common.config.KeyLoader;
 
-import bftsmart.tom.util.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class TOMConfiguration extends Configuration {
 
@@ -61,6 +62,8 @@ public class TOMConfiguration extends Configuration {
 	private int numRepliers;
 	private int numNettyWorkers;
 	private boolean sameBatchSize;
+
+	private static final Logger logger = LogManager.getLogger(TOMConfiguration.class);
 
 	/** Creates a new instance of TOMConfiguration */
 	public TOMConfiguration(int processId) {
@@ -141,17 +144,17 @@ public class TOMConfiguration extends Configuration {
 				maxBatchSize = Integer.parseInt(s);
 			}
 
-			s = (String) configs.remove("system.debug");
-			if (s == null) {
-				Logger.debug = false;
-			} else {
-				debug = Integer.parseInt(s);
-				if (debug == 0) {
-					Logger.debug = false;
-				} else {
-					Logger.debug = true;
-				}
-			}
+//			s = (String) configs.remove("system.debug");
+//			if (s == null) {
+//				Logger.debug = false;
+//			} else {
+//				debug = Integer.parseInt(s);
+//				if (debug == 0) {
+//					Logger.debug = false;
+//				} else {
+//					Logger.debug = true;
+//				}
+//			}
 
 			s = (String) configs.remove("system.totalordermulticast.replayVerificationTime");
 			if (s == null) {
