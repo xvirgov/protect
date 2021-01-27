@@ -45,6 +45,8 @@ import com.ibm.pross.server.configuration.permissions.AccessEnforcement;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @SuppressWarnings("restriction")
 public class HttpRequestProcessor {
@@ -53,6 +55,8 @@ public class HttpRequestProcessor {
 	public static int NUM_PROCESSING_THREADS = 15;
 
 	private final HttpsServer server;
+
+	private static final Logger logger = LogManager.getLogger(HttpRequestProcessor.class);
 
 	public HttpRequestProcessor(final int serverIndex, final ServerConfiguration serverConfig,
 			final AccessEnforcement accessEnforcement, final ConcurrentMap<String, ApvssShareholder> shareholders,
@@ -66,11 +70,11 @@ public class HttpRequestProcessor {
 
 		setupTls(caCerts, hostCert, privateKey, serverIndex);
 
-		System.out.println("HTTPS server listening on port: " + httpListenPort);
+		logger.info("HTTPS server listening on port: " + httpListenPort);
 
 		addHandlers(serverIndex, serverConfig, accessEnforcement, shareholders, clientKeys, serverKeys, caCerts, hostCert, privateKey);
 
-		System.out.println("Ready to process requests.");
+		logger.info("Ready to process requests.");
 
 		// this.server.setExecutor(Executors.newFixedThreadPool(NUM_PROCESSING_THREADS));
 	}

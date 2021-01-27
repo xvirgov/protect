@@ -13,6 +13,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import com.ibm.pross.common.config.KeyLoader;
+import com.ibm.pross.server.channel.bft.BftChannelSender;
 import com.ibm.pross.server.communication.handlers.MessageHandler;
 import com.ibm.pross.server.communication.pointtopoint.MessageReceiver;
 import com.ibm.pross.server.communication.pointtopoint.MessageSender;
@@ -21,6 +22,8 @@ import com.ibm.pross.server.messages.RelayedMessage;
 import com.ibm.pross.server.messages.SignedMessage;
 import com.ibm.pross.server.messages.SignedRelayedMessage;
 import com.ibm.pross.server.util.MessageSerializer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Tracks all of the connections related to a server
@@ -37,6 +40,8 @@ public class MessageDeliveryManager {
 
 	public static final int RESEND_DELAY = 3000; // 3 seconds
 	private final Timer timer = new Timer(true);
+
+	private static final Logger logger = LogManager.getLogger(MessageDeliveryManager.class);
 
 	public MessageDeliveryManager(final List<InetSocketAddress> serverAddresses, final int myIndex,
 			final KeyLoader keyLoader, final File saveLocation, final MessageHandler messageHandler,
@@ -69,7 +74,7 @@ public class MessageDeliveryManager {
 					if (object instanceof SignedRelayedMessage) {
 
 						final SignedRelayedMessage signedRelayedMessage = (SignedRelayedMessage) object;
-						// System.out.println("RAW Opt BFT --- Received signed relay message: " +
+						// logger.info("RAW Opt BFT --- Received signed relay message: " +
 						// signedRelayedMessage);
 
 						// Validate it, and process if necessary
@@ -122,7 +127,7 @@ public class MessageDeliveryManager {
 			final Map<SignedMessage, Set<Integer>> pendingConfirmations = messageStateTracker
 					.determineMessagesNotKnownByAll();
 
-			//System.out.println("Resending " + pendingConfirmations.size() + " unconfirmed messages.");
+			//logger.info("Resending " + pendingConfirmations.size() + " unconfirmed messages.");
 			
 			for (final Entry<SignedMessage, Set<Integer>> entry : pendingConfirmations.entrySet()) {
 				final SignedMessage signedMessage = entry.getKey();

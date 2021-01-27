@@ -14,6 +14,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
 import com.ibm.pross.common.config.KeyLoader;
+import com.ibm.pross.server.app.ServerApplication;
 import com.ibm.pross.server.app.avpss.channel.FifoAtomicBroadcastChannel;
 import com.ibm.pross.server.channel.ChannelListener;
 import com.ibm.pross.server.channel.ChannelSender;
@@ -25,6 +26,8 @@ import com.ibm.pross.server.messages.SignedMessage;
 import com.ibm.pross.server.messages.payloads.optbft.CertificationPayload;
 import com.ibm.pross.server.util.AtomicFileOperations;
 import com.ibm.pross.server.util.MessageSerializer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Connects the BFT layer to the Certified Opt chain
@@ -51,6 +54,8 @@ public class ChainBuildingMessageHandler implements ChannelListener, MessageHand
 
 	private final File bftMessageFolder;
 	private final File certifiedMessageFolder;
+
+	private static final Logger logger = LogManager.getLogger(ChainBuildingMessageHandler.class);
 
 	public ChainBuildingMessageHandler(final int myIndex, final int optQuorum, final KeyLoader keyLoader,
 			final File saveLocation) {
@@ -93,7 +98,7 @@ public class ChainBuildingMessageHandler implements ChannelListener, MessageHand
 	public void handleMessage(final Message message) {
 
 		// TODO: Implement stuff here
-		// System.out.println("OPT BFT --- Received unique authenticated message: " /*+
+		// logger.info("OPT BFT --- Received unique authenticated message: " /*+
 		// message*/);
 
 		// Count votes for messages in a given position
@@ -126,7 +131,7 @@ public class ChainBuildingMessageHandler implements ChannelListener, MessageHand
 			// to Opt-BFT Chain: " /*+ bftMessage*/);
 			synchronized (this.optChain) {
 
-				System.out.println("Certified message #" + (messagePosition + 1) + " is available.");
+				logger.info("Certified message #" + (messagePosition + 1) + " is available.");
 				if (this.optChain.putIfAbsent(messagePosition + 1, bftMessage) == null) {
 
 					// Increment contiguousOptMessages if we are contiguous
@@ -169,7 +174,7 @@ public class ChainBuildingMessageHandler implements ChannelListener, MessageHand
 			return;
 		}
 
-		// System.out.println("Received new BFT message"); //: " /*+ bftMessage*/);
+		// logger.info("Received new BFT message"); //: " /*+ bftMessage*/);
 
 		// Add BFT message to the BFT chain
 		synchronized (this.bftChain) {

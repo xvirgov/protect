@@ -35,6 +35,8 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
@@ -81,6 +83,8 @@ public class RecoverHandler extends AuthenticatedClientRequestHandler {
 	private final KeyLoader serverKeys;
 	private final X509Certificate hostCert;
 	private final PrivateKey privateKey;
+
+	private static final Logger logger = LogManager.getLogger(RecoverHandler.class);
 
 	public RecoverHandler(final KeyLoader clientKeys, final AccessEnforcement accessEnforcement,
 			final ServerConfiguration serverConfig, final ConcurrentMap<String, ApvssShareholder> shareholders,
@@ -251,7 +255,7 @@ public class RecoverHandler extends AuthenticatedClientRequestHandler {
 		public void run() {
 
 			try {
-				System.out.println("Reading encrypted partial share from: " + this.requestUrl);
+				logger.info("Reading encrypted partial share from: " + this.requestUrl);
 
 				// Create HTTPS connection to the remote server
 				final URL url = new URL(this.requestUrl);
@@ -283,7 +287,7 @@ public class RecoverHandler extends AuthenticatedClientRequestHandler {
 					}
 
 					final String inputLine = bufferedReader.readLine();
-					System.out.println("Received encrypted partial: " + inputLine);
+					logger.info("Received encrypted partial: " + inputLine);
 
 					// Parse JSON
 					final JSONParser parser = new JSONParser();

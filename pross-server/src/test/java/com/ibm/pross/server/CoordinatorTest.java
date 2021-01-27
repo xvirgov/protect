@@ -9,8 +9,10 @@ package com.ibm.pross.server;
 public class CoordinatorTest {
 /**
 	public static Administration DEFAULT_ADMINISTRATION;
-	
-	@BeforeClass
+
+ 	private static final Logger logger = LogManager.getLogger(CoordinatorTest.class);
+
+ @BeforeClass
 	public static void setupBeforeClass() throws NoSuchAlgorithmException, BadPaddingException, IllegalBlockSizeException, ClassNotFoundException, IOException
 	{
 		Security.addProvider(new BouncyCastleProvider());
@@ -75,19 +77,19 @@ public class CoordinatorTest {
 		final PrfClient prfClient = DEFAULT_ADMINISTRATION.provisionClient();
 
 		// Derive a key
-		System.out.println("Deriving KDF from bytes");
+		logger.info("Deriving KDF from bytes");
 		final byte[] input = "test".getBytes(StandardCharsets.UTF_8);
 		final HmacKeyDerivationFunction hkdf = prfClient.deriveKeyGeneratorFromBytes(input);
 		Assert.assertNotNull(hkdf);
 		
 		// Wrap a key
-		System.out.println("Wrapping a key");
+		logger.info("Wrapping a key");
 		final EcPoint output1 = prfClient.derivePointFromBytes(input);
-		System.out.println("Prf Output 1: " + output1);
+		logger.info("Prf Output 1: " + output1);
 		
 		// Unwrap a key
 		final EcPoint output2 = prfClient.derivePointFromBytes(input);
-		System.out.println("Prf Output 2: " + output2);
+		logger.info("Prf Output 2: " + output2);
 		Assert.assertEquals(output1, output2);
 	}
 */

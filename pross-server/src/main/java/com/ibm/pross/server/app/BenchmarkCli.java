@@ -8,6 +8,8 @@ import java.security.Signature;
 import java.util.Random;
 import java.util.function.Function;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import com.ibm.pross.common.config.CommonConfiguration;
@@ -73,6 +75,8 @@ public class BenchmarkCli {
 	public static final Signature ECDSA_VERIFIER;
 	public static final Signature EDDSA_SIGNER;
 	public static final Signature EDDSA_VERIFIER;
+
+	private static final Logger logger = LogManager.getLogger(BenchmarkCli.class);
 
 	static {
 
@@ -233,7 +237,7 @@ public class BenchmarkCli {
 
 		final long operationsPerSecond = (long) (((double) (1_000_000_000L * iterations)) / ((double) totalTime));
 
-		System.out.print(methodName + ": " + operationsPerSecond + "/s;  ");
+		logger.info(methodName + ": " + operationsPerSecond + "/s");
 	}
 
 	public static void runAllBenchmarks() {
@@ -270,7 +274,7 @@ public class BenchmarkCli {
 		// PedersenEqRangeProofs Verify
 		benchmarkMethod(BenchmarkCli::benchmarkPedersenEqRangeProofVerify, "EqRange Verify", 5);
 
-		System.out.println();
+		logger.info("Benchmarks finished successfully");
 	}
 
 	public static void main(final String args[]) {

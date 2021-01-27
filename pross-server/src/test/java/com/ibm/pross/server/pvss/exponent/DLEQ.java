@@ -7,6 +7,9 @@ import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
+import com.ibm.pross.server.util.EcDsaSigningTest;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class DLEQ {
 
@@ -24,7 +27,9 @@ public class DLEQ {
 	private final BigInteger r;
 	private final EcPoint a1;
 	private final EcPoint a2;
-	
+
+	private static final Logger logger = LogManager.getLogger(DLEQ.class);
+
 	public DLEQ(final EcPoint g1, final EcPoint g2, final EcCurve curve, final BigInteger x)
 	{
 		this.x = x;
@@ -105,7 +110,7 @@ public class DLEQ {
 			return;
 		}
 		
-		System.out.println("Proof passed!");
+		logger.info("Proof passed!");
 	}
 	
 }

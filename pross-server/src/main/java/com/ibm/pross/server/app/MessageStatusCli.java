@@ -17,6 +17,8 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.util.io.pem.PemObject;
 import org.bouncycastle.util.io.pem.PemWriter;
 
@@ -33,6 +35,8 @@ import net.i2p.crypto.eddsa.EdDSAPublicKey;
  * Used to generate key pairs for servers
  */
 public class MessageStatusCli {
+
+	private static final Logger logger = LogManager.getLogger(MessageStatusCli.class);
 
 	public static void main(String[] args) throws InvalidKeySpecException, NoSuchAlgorithmException, IOException {
 
@@ -74,16 +78,15 @@ public class MessageStatusCli {
 					System.err.print("Something went wrong, BFT message does not match certified message for position " + messageIndex);
 				}
 				
-				System.out.println(strIndex + " [CERTIFIED] " + bftMessage.toString());
+				logger.info(strIndex + " [CERTIFIED] " + bftMessage.toString());
 			} else {
-				System.out.println(strIndex + "             " + bftMessage.toString());
+				logger.info(strIndex + "             " + bftMessage.toString());
 			}
 
 			messageIndex++;
 		}
 		
-		System.out.println();
-		System.out.println("Done listing messages");
+		logger.info("Done listing messages");
 	}
 
 	private static void writeObject(final Key key, final PemWriter writer) throws IOException {

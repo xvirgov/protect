@@ -11,8 +11,12 @@ import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import com.ibm.pross.common.util.shamir.Shamir;
 import com.ibm.pross.common.util.shamir.ShamirShare;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class Driver {
+
+	private static final Logger logger = LogManager.getLogger(Driver.class);
 
 	public static void main(String[] args) {
 
@@ -99,7 +103,7 @@ public class Driver {
 
 		// Verify publicly
 		for (int i = 0; i < n; i++) {
-			System.out.println("Proof #" + i + ": " + proofs[i].isValid());
+			logger.info("Proof #" + i + ": " + proofs[i].isValid());
 			// TODO: Compare values within proof against what was published
 		}
 
@@ -111,13 +115,13 @@ public class Driver {
 			// Share = Yi/x
 			final EcPoint decryptedShare = curve.multiply(encryptedShares[i], x.modInverse(curve.getR()));
 			
-			System.out.println("Share[" + i + "] Decrypted properly: " + decryptedShare.equals(shares[i]));
+			logger.info("Share[" + i + "] Decrypted properly: " + decryptedShare.equals(shares[i]));
 			results.add(new DerivationResult(BigInteger.valueOf(i + 1), decryptedShare));
 		}
 
 		// Recover Secret
 		final EcPoint recoveredShare = Polynomials.interpolateExponents(results, t, 0);
-		System.out.println("Recovered share: " + recoveredShare.equals(S));
+		logger.info("Recovered share: " + recoveredShare.equals(S));
 	}
 
 }

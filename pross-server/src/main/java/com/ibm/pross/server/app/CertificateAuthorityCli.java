@@ -16,6 +16,9 @@ import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.util.AbstractMap.SimpleEntry;
 
+import com.ibm.pross.server.app.avpss.ApvssShareholder;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.io.pem.PemReader;
 
@@ -32,6 +35,8 @@ import net.i2p.crypto.eddsa.EdDSASecurityProvider;
 public class CertificateAuthorityCli {
 
 	public static final String ISSUER_DN = "O=Threshold, OU=Security, CN=PROTECT CA";
+
+	private static final Logger logger = LogManager.getLogger(CertificateAuthorityCli.class);
 
 	public static void main(final String args[]) throws IOException, CertificateException, NoSuchAlgorithmException,
 			InvalidKeySpecException, KeyStoreException {
@@ -74,8 +79,8 @@ public class CertificateAuthorityCli {
 		try {
 			final X509Certificate caCert = Pem.loadCertificateFromFile(caCertificateFile);
 			final PrivateKey caPrivateKey = (PrivateKey) Pem.loadKeyFromFile(caPrivateKeyFile);
-			System.out.println("Loaded CA certificate from file: " + caCertificateFile.getAbsolutePath());
-			System.out.println("Loaded CA private key from file: " + caPrivateKeyFile.getAbsolutePath());
+			logger.info("Loaded CA certificate from file: " + caCertificateFile.getAbsolutePath());
+			logger.info("Loaded CA private key from file: " + caPrivateKeyFile.getAbsolutePath());
 			return new SimpleEntry<>(caCert, caPrivateKey);
 		} catch (final FileNotFoundException e) {
 
@@ -89,11 +94,11 @@ public class CertificateAuthorityCli {
 
 			// Write CA certificate to file
 			Pem.storeCertificateToFile(caCert, caCertificateFile);
-			System.out.println("Wrote: " + caCertificateFile.getAbsolutePath());
+			logger.info("Wrote: " + caCertificateFile.getAbsolutePath());
 
 			// Write CA private key to file
 			Pem.storeKeyToFile(caPrivateKey, caPrivateKeyFile);
-			System.out.println("Wrote: " + caPrivateKeyFile.getAbsolutePath());
+			logger.info("Wrote: " + caPrivateKeyFile.getAbsolutePath());
 
 			return new SimpleEntry<>(caCert, caPrivateKey);
 		}
@@ -114,12 +119,11 @@ public class CertificateAuthorityCli {
 			final File publicKeyFile = new File(keyPath, "public-" + keyIndex);
 
 			if (!publicKeyFile.exists()) {
-				System.out.println(publicKeyFile.getAbsoluteFile() + " not found, skipping...");
+				logger.info(publicKeyFile.getAbsoluteFile() + " not found, skipping...");
 				continue;
 			} else {
 				// Load CA certificate (or generate a new one)
 				final SimpleEntry<X509Certificate, PrivateKey> entry = loadOrGenerateCa(caPath, "server-" + keyIndex);
-				System.out.println();
 
 				final String issuerDn = entry.getKey().getIssuerDN().getName();
 				final PrivateKey caKey = entry.getValue();
@@ -127,26 +131,24 @@ public class CertificateAuthorityCli {
 				try (final PemReader reader = new PemReader(new FileReader(publicKeyFile.getAbsolutePath()))) {
 					// Load public key from file
 					final PublicKey publicKey = ((PublicKey) Pem.readObject(reader.readPemObject()));
-					System.out.println("Read: " + publicKeyFile.getAbsolutePath());
+					logger.info("Read: " + publicKeyFile.getAbsolutePath());
 
 					// Generate certificate
 					final String subjectDn = "O=Threshold, OU=Security, CN=server-" + keyIndex;
 
-					System.out.println("  Issued certificate for: " + subjectDn);
+					logger.info("  Issued certificate for: " + subjectDn);
 
 					final InetSocketAddress serverAddress = configuration.getServerAddresses().get(keyIndex - 1);
 					final String serverIp = serverAddress.getAddress().toString().split("/")[1];
 					final String serverHost = serverAddress.getAddress().getCanonicalHostName();
 					final X509Certificate certificate = CertificateGeneration.generateCertificate(subjectDn, serverIp,
 							serverHost, publicKey, 730, false, issuerDn, caKey);
-					System.out.println("  Alternative names: IP:" + serverIp + ", DNS:" + serverHost);
+					logger.info("  Alternative names: IP:" + serverIp + ", DNS:" + serverHost);
 
 					// Write certificate file
 					final File certificateFile = new File(certPath, "cert-" + keyIndex);
 					Pem.storeCertificateToFile(certificate, certificateFile);
-					System.out.println("Wrote: " + certificateFile.getAbsolutePath());
-					System.out.println();
-
+					logger.info("Wrote: " + certificateFile.getAbsolutePath());
 				}
 			}
 		}
@@ -168,7 +170,6 @@ public class CertificateAuthorityCli {
 		final SimpleEntry<X509Certificate, PrivateKey> clientCaEntry = loadOrGenerateCa(caPath, "clients");
 		final String issuerDnClient = clientCaEntry.getKey().getIssuerDN().getName();
 		final PrivateKey caKeyClient = clientCaEntry.getValue();
-		System.out.println();
 
 		// For each ECDSA public key in the keyPath, create a certificate
 		for (final String username : accessEnforcement.getKnownUsers()) {
@@ -176,7 +177,7 @@ public class CertificateAuthorityCli {
 			final File publicKeyFile = new File(keyPath, "public-" + username);
 
 			if (!publicKeyFile.exists()) {
-				System.out.println(publicKeyFile.getAbsoluteFile() + " not found, skipping...");
+				logger.info(publicKeyFile.getAbsoluteFile() + " not found, skipping...");
 				continue;
 			} else {
 
@@ -184,7 +185,7 @@ public class CertificateAuthorityCli {
 
 					// Load client public key from file
 					final PublicKey publicKey = ((PublicKey) Pem.readObject(reader.readPemObject()));
-					System.out.println("Read: " + publicKeyFile.getAbsolutePath());
+					logger.info("Read: " + publicKeyFile.getAbsolutePath());
 
 					// Generate certificate
 					final String subjectDn = "O=Threshold, OU=Security, CN=client-" + username;
@@ -192,7 +193,7 @@ public class CertificateAuthorityCli {
 					final X509Certificate certificate = CertificateGeneration.generateCertificate(subjectDn, null, null,
 							publicKey, 730, false, issuerDnClient, caKeyClient);
 
-					System.out.println("  Issued certificate for: " + subjectDn);
+					logger.info("  Issued certificate for: " + subjectDn);
 
 					// Load entity private key from file
 					final File privateKeyFile = new File(keyPath, "private-" + username);
@@ -202,14 +203,13 @@ public class CertificateAuthorityCli {
 						// Write PKCS12 file for import to browsers
 						final File pfxFile = new File(keyPath, "bundle-private-" + username + ".p12");
 						CertificateGeneration.createP12File(pfxFile, "password".toCharArray(), certificate, privateKey);
-						System.out.println("Wrote: " + pfxFile.getAbsolutePath());
+						logger.info("Wrote: " + pfxFile.getAbsolutePath());
 					}
 
 					// Write certificate file
 					final File certificateFile = new File(certPath, "cert-" + username);
 					Pem.storeCertificateToFile(certificate, certificateFile);
-					System.out.println("Wrote: " + certificateFile.getAbsolutePath());
-					System.out.println();
+					logger.info("Wrote: " + certificateFile.getAbsolutePath());
 				}
 			}
 		}

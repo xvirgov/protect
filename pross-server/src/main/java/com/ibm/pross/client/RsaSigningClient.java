@@ -18,6 +18,8 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Date;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.DERNull;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
@@ -51,6 +53,8 @@ public class RsaSigningClient {
 
 	public static final String HASH_ALGORITHM = "SHA-512";
 	public static final String CERTIFICATE_SIGNING_ALGORITHM = "SHA512withRSA"; // Must match hash algorithm
+
+	private static final Logger logger = LogManager.getLogger(RsaSigningClient.class);
 
 	protected static X509CertInfo createCertificateInfo(final String subjectDn, final String altNameIp,
 			final String altNameHost, final PublicKey subjectPublicKey, final long validForDays, final boolean makeCa,
@@ -180,9 +184,9 @@ public class RsaSigningClient {
 		// Create the certificate passing in the signature
 		final X509Certificate cert = createCertificateFromTbsAndSignature(certInfo, signature);
 
-		System.out.println(cert);
+		logger.info(cert);
 		cert.verify(rsaKeyPair.getPublic());
-		System.out.println("Certificate is valid!");
+		logger.info("Certificate is valid!");
 	}
 
 }

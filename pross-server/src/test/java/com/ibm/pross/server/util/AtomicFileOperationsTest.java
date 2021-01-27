@@ -4,11 +4,15 @@ import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Test;
 
 
 
 public class AtomicFileOperationsTest {
+
+	private static final Logger logger = LogManager.getLogger(AtomicFileOperationsTest.class);
 
 	@Test
 	public void testAtomicWrite() throws IOException {
@@ -22,8 +26,8 @@ public class AtomicFileOperationsTest {
 			long start = System.nanoTime();
 			AtomicFileOperations.atomicWriteString(tempFile, str);
 			long end = System.nanoTime();
-			System.out.println("Atomically wrote file in: " + (end - start) + " ns");
-			System.out.println("Wrote to: " + tempFile.getAbsolutePath());
+			logger.info("Atomically wrote file in: " + (end - start) + " ns");
+			logger.info("Wrote to: " + tempFile.getAbsolutePath());
 			
 			//String readString = (String) AtomicFileOperations.readObject(tempFile);
 			//Assert.assertEquals(str, readString);

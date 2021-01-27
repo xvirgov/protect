@@ -10,11 +10,15 @@ import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.serialization.Parse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class Prover {
 	
 	public static final String HASH_ALGORITHM = "SHA-512";
-	
+
+	private static final Logger logger = LogManager.getLogger(Prover.class);
+
 	public static Proof sign(final BigInteger x1, final BigInteger x2, final EcPoint G1, final EcPoint G2, final EcPoint H1,
 			final EcPoint H2, final EcCurve curve) {
 		
@@ -77,7 +81,7 @@ public class Prover {
 		final BigInteger x2 = RandomNumberGenerator.generateRandomInteger(curve.getR());
 		
 		final Proof proof = sign(x1, x2, G1, G2, H1, H2, curve);
-		System.out.println(proof.isValid());
+		logger.info(proof.isValid());
 	}
 	
 }

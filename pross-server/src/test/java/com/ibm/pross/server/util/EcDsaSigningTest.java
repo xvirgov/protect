@@ -12,6 +12,8 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.util.Random;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -26,7 +28,9 @@ public class EcDsaSigningTest {
 	{
 		Security.addProvider(new EdDSASecurityProvider());
 	}
-	
+
+	private static final Logger logger = LogManager.getLogger(EcDsaSigningTest.class);
+
 	@Test
 	public void testSignaturePerformanceEcDsa() throws SignatureException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException {
 
@@ -51,7 +55,7 @@ public class EcDsaSigningTest {
 			signingContext.update(message);
 			signature = signingContext.sign();
 		}
-		System.out.println("Signature size: " + signature.length);
+		logger.info("Signature size: " + signature.length);
 
 		// Do test
 		long timeNs = 0;
@@ -65,7 +69,7 @@ public class EcDsaSigningTest {
 			timeNs += (end - start);
 		}
 
-		System.out.println("Total time (ms): " + timeNs / (((long) iterations) * 1_000_000.0));
+		logger.info("Total time (ms): " + timeNs / (((long) iterations) * 1_000_000.0));
 	}
 
 	@Test
@@ -99,7 +103,7 @@ public class EcDsaSigningTest {
 			verifyingContext.update(message);
 			verifyingContext.verify(signature);
 		}
-		System.out.println("Signature size: " + signature.length);
+		logger.info("Signature size: " + signature.length);
 
 		// Do test
 		long timeNs = 0;
@@ -115,7 +119,7 @@ public class EcDsaSigningTest {
 			timeNs += (end - start);
 		}
 
-		System.out.println("Total time (ms): " + timeNs / (((long) iterations) * 1_000_000.0));
+		logger.info("Total time (ms): " + timeNs / (((long) iterations) * 1_000_000.0));
 	}
 
 	@Test
@@ -207,7 +211,7 @@ public class EcDsaSigningTest {
 			signingContext.update(message);
 			signature = signingContext.sign();
 		}
-		System.out.println("Signature size: " + signature.length);
+		logger.info("Signature size: " + signature.length);
 
 		// Do test
 		long timeNs = 0;
@@ -221,7 +225,7 @@ public class EcDsaSigningTest {
 			timeNs += (end - start);
 		}
 
-		System.out.println("Total time (ms): " + timeNs / (((long) iterations) * 1_000_000.0));
+		logger.info("Total time (ms): " + timeNs / (((long) iterations) * 1_000_000.0));
 	}
 
 	@Test
@@ -256,7 +260,7 @@ public class EcDsaSigningTest {
 			verifyingContext.update(message);
 			verifyingContext.verify(signature);
 		}
-		System.out.println("Signature size: " + signature.length);
+		logger.info("Signature size: " + signature.length);
 
 		// Do test
 		long timeNs = 0;
@@ -272,7 +276,7 @@ public class EcDsaSigningTest {
 			timeNs += (end - start);
 		}
 
-		System.out.println("Total time (ms): " + timeNs / (((long) iterations) * 1_000_000.0));
+		logger.info("Total time (ms): " + timeNs / (((long) iterations) * 1_000_000.0));
 	}
 
 }

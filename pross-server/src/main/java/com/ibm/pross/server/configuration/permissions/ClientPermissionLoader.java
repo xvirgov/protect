@@ -9,6 +9,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.ibm.pross.server.communication.MessageDeliveryManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ini4j.Profile;
 import org.ini4j.Wini;
 
@@ -16,9 +19,11 @@ import com.ibm.pross.server.configuration.permissions.ClientPermissions.Permissi
 
 public class ClientPermissionLoader {
 
+	private static final Logger logger = LogManager.getLogger(ClientPermissionLoader.class);
+
 	public static AccessEnforcement loadIniFile(final File iniFile) throws IOException {
 
-		System.out.println("Loading client permissions: " + iniFile.toString());
+		logger.info("Loading client permissions: " + iniFile.toString());
 
 		// Load ini file
 		final Wini ini = new Wini(iniFile);
@@ -47,7 +52,7 @@ public class ClientPermissionLoader {
 				
 				// Parse permissions
 				final String[] permissionArray = permissions.split(",");
-				//System.out.println(Arrays.toString(permissionArray));
+				//logger.info(Arrays.toString(permissionArray));
 
 				// Add permissions from the comma-separated list
 				permissionMap.putIfAbsent(username, new ClientPermissions());

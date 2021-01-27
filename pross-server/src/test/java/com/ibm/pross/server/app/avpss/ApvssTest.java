@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -30,6 +32,8 @@ import com.ibm.pross.server.app.avpss.channel.FifoAtomicBroadcastChannelLocalImp
 
 public class ApvssTest {
 
+	private static final Logger logger = LogManager.getLogger(ApvssTest.class);
+
 	@BeforeClass
 	public static void setupBefore() {
 		Security.addProvider(new BouncyCastleProvider());
@@ -39,12 +43,12 @@ public class ApvssTest {
 	{
 		for (ApvssShareholder shareholder : shareholders)
 		{
-			System.out.println("Errors reported by shareholder with index = " + shareholder.getIndex() + ":");
+			logger.info("Errors reported by shareholder with index = " + shareholder.getIndex() + ":");
 			for (SimpleEntry<Integer, ErrorCondition> alert : shareholder.alertLog.getAlerts())
 			{
 				int reportedShareholder = alert.getKey();
 				ErrorCondition error = alert.getValue();
-				System.out.println("   Shareholder[" + reportedShareholder + "] committed a " + error + " error");
+				logger.info("   Shareholder[" + reportedShareholder + "] committed a " + error + " error");
 			}
 		}
 	}
@@ -90,7 +94,7 @@ public class ApvssTest {
 		// Ensure qual sets are identical
 		final SortedSet<Integer> expectedQual = shareholders.get(0).getQualSet();
 		for (int i = 0; i < n; i++) {
-			System.out.println(i + ": qual = " + shareholders.get(i).getQualSet());
+			logger.info(i + ": qual = " + shareholders.get(i).getQualSet());
 			Assert.assertEquals(expectedQual, shareholders.get(i).getQualSet());
 		}
 
@@ -98,14 +102,14 @@ public class ApvssTest {
 		final Set<ShamirShare> shares1 = new HashSet<>();
 		final Set<ShamirShare> shares2 = new HashSet<>();
 		for (int i = 0; i < n; i++) {
-			System.out.println(i + ": share = " + shareholders.get(i).getShare1());
+			logger.info(i + ": share = " + shareholders.get(i).getShare1());
 			shares1.add(shareholders.get(i).getShare1());
 			shares2.add(shareholders.get(i).getShare2());
 		}
 
 		for (int i = 1; i <= n; i++) {
 			final BigInteger y1 = Polynomials.interpolateComplete(shares1, k, i);
-			System.out.println(y1);
+			logger.info(y1);
 			Assert.assertEquals(y1, shareholders.get(i - 1).getShare1().getY());
 
 			final BigInteger y2 = Polynomials.interpolateComplete(shares2, k, i);
@@ -120,12 +124,12 @@ public class ApvssTest {
 		// Compute expected public key for the overall secret
 		final BigInteger secret = Polynomials.interpolateComplete(shares1, k, 0);
 		final EcPoint publicKey = ApvssShareholder.curve.multiply(ApvssShareholder.g, secret);
-		System.out.println("Determined public key: " + publicKey);
+		logger.info("Determined public key: " + publicKey);
 
 		// Ensure public key matches everyone's expectations
 		for (int i = 0; i < n; i++) {
-			System.out.println("For i = " + i);
-			System.out.println(shareholders.get(i).getSecretPublicKey());
+			logger.info("For i = " + i);
+			logger.info(shareholders.get(i).getSecretPublicKey());
 			Assert.assertEquals(publicKey, shareholders.get(i).getSecretPublicKey());
 		}
 		
@@ -138,7 +142,7 @@ public class ApvssTest {
 				Assert.assertEquals(ecPublicKey, shareholder.getSharePublicKey(i));
 			}
 		}
-		System.out.println("All shareholders have the same public keys");
+		logger.info("All shareholders have the same public keys");
 		
 		// Stop shareholder threads
 		for (int i = 0; i < n; i++) {
@@ -180,7 +184,7 @@ public class ApvssTest {
 		// Ensure qual sets are identical
 		final SortedSet<Integer> expectedQual = shareholders.get(0).getQualSet();
 		for (int i = 0; i < n; i++) {
-			System.out.println(i + ": qual = " + shareholders.get(i).getQualSet());
+			logger.info(i + ": qual = " + shareholders.get(i).getQualSet());
 			Assert.assertEquals(expectedQual, shareholders.get(i).getQualSet());
 		}
 
@@ -188,14 +192,14 @@ public class ApvssTest {
 		final Set<ShamirShare> shares1 = new HashSet<>();
 		final Set<ShamirShare> shares2 = new HashSet<>();
 		for (int i = 0; i < n; i++) {
-			System.out.println(i + ": share = " + shareholders.get(i).getShare1());
+			logger.info(i + ": share = " + shareholders.get(i).getShare1());
 			shares1.add(shareholders.get(i).getShare1());
 			shares2.add(shareholders.get(i).getShare2());
 		}
 
 		for (int i = 1; i <= n; i++) {
 			final BigInteger y1 = Polynomials.interpolateComplete(shares1, k, i);
-			System.out.println(y1);
+			logger.info(y1);
 			Assert.assertEquals(y1, shareholders.get(i - 1).getShare1().getY());
 
 			final BigInteger y2 = Polynomials.interpolateComplete(shares2, k, i);
@@ -210,12 +214,12 @@ public class ApvssTest {
 		// Compute expected public key for the overall secret
 		final BigInteger secret = Polynomials.interpolateComplete(shares1, k, 0);
 		final EcPoint publicKey = ApvssShareholder.curve.multiply(ApvssShareholder.g, secret);
-		System.out.println("Determined public key: " + publicKey);
+		logger.info("Determined public key: " + publicKey);
 
 		// Ensure public key matches everyone's expectations
 		for (int i = 0; i < n; i++) {
-			System.out.println("For i = " + i);
-			System.out.println(shareholders.get(i).getSecretPublicKey());
+			logger.info("For i = " + i);
+			logger.info(shareholders.get(i).getSecretPublicKey());
 			Assert.assertEquals(publicKey, shareholders.get(i).getSecretPublicKey());
 		}
 		
@@ -228,7 +232,7 @@ public class ApvssTest {
 				Assert.assertEquals(ecPublicKey, shareholder.getSharePublicKey(i));
 			}
 		}
-		System.out.println("All shareholders have the same public keys");
+		logger.info("All shareholders have the same public keys");
 		
 		// Stop shareholder threads
 		for (int i = 0; i < n; i++) {
@@ -278,7 +282,7 @@ public class ApvssTest {
 		// Ensure qual sets are identical
 		final SortedSet<Integer> expectedQual = shareholders.get(0).getQualSet();
 		for (int i = 0; i < n; i++) {
-			System.out.println(i + ": qual = " + shareholders.get(i).getQualSet());
+			logger.info(i + ": qual = " + shareholders.get(i).getQualSet());
 			Assert.assertEquals(expectedQual, shareholders.get(i).getQualSet());
 		}
 
@@ -286,14 +290,14 @@ public class ApvssTest {
 		final Set<ShamirShare> shares1 = new HashSet<>();
 		final Set<ShamirShare> shares2 = new HashSet<>();
 		for (int i = 0; i < n; i++) {
-			System.out.println(i + ": share = " + shareholders.get(i).getShare1());
+			logger.info(i + ": share = " + shareholders.get(i).getShare1());
 			shares1.add(shareholders.get(i).getShare1());
 			shares2.add(shareholders.get(i).getShare2());
 		}
 
 		for (int i = 1; i <= n; i++) {
 			final BigInteger y1 = Polynomials.interpolateComplete(shares1, k, i);
-			System.out.println(y1);
+			logger.info(y1);
 			Assert.assertEquals(y1, shareholders.get(i - 1).getShare1().getY());
 
 			final BigInteger y2 = Polynomials.interpolateComplete(shares2, k, i);
@@ -308,12 +312,12 @@ public class ApvssTest {
 		// Compute expected public key for the overall secret
 		final BigInteger secret = Polynomials.interpolateComplete(shares1, k, 0);
 		final EcPoint publicKey = ApvssShareholder.curve.multiply(ApvssShareholder.g, secret);
-		System.out.println("Determined public key: " + publicKey);
+		logger.info("Determined public key: " + publicKey);
 
 		// Ensure public key matches everyone's expectations
 		for (int i = 0; i < n; i++) {
-			System.out.println("For i = " + i);
-			System.out.println(shareholders.get(i).getSecretPublicKey());
+			logger.info("For i = " + i);
+			logger.info(shareholders.get(i).getSecretPublicKey());
 			Assert.assertEquals(publicKey, shareholders.get(i).getSecretPublicKey());
 		}
 		
@@ -326,7 +330,7 @@ public class ApvssTest {
 				Assert.assertEquals(ecPublicKey, shareholder.getSharePublicKey(i));
 			}
 		}
-		System.out.println("All shareholders have the same public keys");
+		logger.info("All shareholders have the same public keys");
 		
 		// Stop shareholder threads
 		for (int i = 0; i < n; i++) {

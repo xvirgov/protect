@@ -13,15 +13,12 @@ import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import com.ibm.pross.common.config.KeyLoader;
@@ -53,6 +50,8 @@ public class ServerApplication {
 	public static String AUTH_DIRECTORY = "../client/clients.config";
 	public static String CA_DIRECTORY = "../ca";
 
+	private static final Logger logger = LogManager.getLogger(ServerApplication.class);
+
 	public ServerApplication(final File baseDirectory, final int serverIndex)
 			throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, InterruptedException,
 			CertificateException, KeyManagementException, UnrecoverableKeyException, KeyStoreException {
@@ -60,12 +59,12 @@ public class ServerApplication {
 		// Load configuration
 		final File configFile = new File(baseDirectory, CONFIG_FILENAME);
 		final ServerConfiguration configuration = ServerConfigurationLoader.load(configFile);
-		System.out.println(configuration);
+		logger.info(configuration);
 
 		// Load server keys
 		final File keysDirectory = new File(baseDirectory, SERVER_KEYS_DIRECTORY);
 		final KeyLoader serverKeys = new KeyLoader(keysDirectory, configuration.getNumServers(), serverIndex);
-		System.out.println("Loaded encryption and verification keys");
+		logger.info("Loaded encryption and verification keys");
 
 		// Load Client Access Controls
 		final AccessEnforcement accessEnforcement = ClientPermissionLoader.loadIniFile(new File(baseDirectory, AUTH_DIRECTORY));
@@ -80,10 +79,10 @@ public class ServerApplication {
 		final int myPort = configuration.getServerAddresses().get(serverIndex - 1).getPort();
 		final MessageReceiver messageReceiver = new MessageReceiver(myPort);
 		messageReceiver.start();
-		System.out.println("Listening on port: " + myPort);
+		logger.info("Listening on port: " + myPort);
 
 		// Perform basic benchmark before starting up
-		System.out.print("Benchmarking Algorithms: ");
+		logger.info("Benchmarking Algorithms: ");
 		BenchmarkCli.runAllBenchmarks();
 
 		// Create message handler for the Certified Chain
@@ -102,7 +101,7 @@ public class ServerApplication {
 		final int k = configuration.getReconstructionThreshold();
 		for (final String secretName : accessEnforcement.getKnownSecrets()) {
 			// Create Shareholder
-			System.out.println("Starting APVSS Shareholder for secret: " + secretName);
+			logger.info("Starting APVSS Shareholder for secret: " + secretName);
 			final ApvssShareholder shareholder = new ApvssShareholder(secretName, serverKeys, chainBuilder, serverIndex,
 					n, k);
 			shareholder.start(false); // Start the message processing thread but don't start the DKG
@@ -113,7 +112,7 @@ public class ServerApplication {
 		while (!chainBuilder.isBftReady()) {
 			Thread.sleep(100);
 		}
-		System.out.println("BFT ready.");
+		logger.info("BFT ready.");
 
 		// Load certificates to support TLS
 		final File caDirectory = new File(baseDirectory, CA_DIRECTORY);
@@ -131,7 +130,7 @@ public class ServerApplication {
 		// Load client authentication keys
 		final File clientKeysDirectory = new File(baseDirectory, CLIENT_KEYS_DIRECTORY);
 		final KeyLoader clientKeys = new KeyLoader(clientKeysDirectory, accessEnforcement.getKnownUsers());
-		System.out.println("Loaded client keys");
+		logger.info("Loaded client keys");
 
 		// Start server to process client requests
 		final HttpRequestProcessor requestProcessor = new HttpRequestProcessor(serverIndex, configuration,
@@ -145,13 +144,13 @@ public class ServerApplication {
 			CertificateException, KeyManagementException, UnrecoverableKeyException, KeyStoreException {
 		
 		// Configure logging
-		BasicConfigurator.configure();
-		@SuppressWarnings("unchecked")
-		final List<Logger> loggers = Collections.<Logger>list(LogManager.getCurrentLoggers());
-		loggers.add(LogManager.getRootLogger());
-		for (Logger logger : loggers) {
-			logger.setLevel(Level.OFF);
-		}
+//		BasicConfigurator.configure();
+//		@SuppressWarnings("unchecked")
+//		final List<Logger> loggers = Collections.<Logger>list(LogManager.getCurrentLoggers());
+//		loggers.add(LogManager.getRootLogger());
+//		for (Logger logger : loggers) {
+//			logger.setLevel(Level.OFF);
+//		}
 
 		// Delete BFT SMaRt's cache of the view
 		final File configPath = new File("config");
@@ -159,11 +158,11 @@ public class ServerApplication {
 		cachedView.delete();
 
 		// Print launch configuration
-		System.out.println(Arrays.toString(args));
+		logger.info(Arrays.toString(args));
 
 		// Parse arguments
 		if (args.length < 2) {
-			System.err.println("USAGE: config-dir server-index");
+			logger.error("USAGE: config-dir server-index");
 			System.exit(-1);
 		}
 		final File baseDirectory = new File(args[0]);

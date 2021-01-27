@@ -20,6 +20,8 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.io.pem.PemWriter;
 
@@ -36,6 +38,8 @@ import net.i2p.crypto.eddsa.EdDSASecurityProvider;
  * Used to generate key pairs for servers
  */
 public class KeyGeneratorCli {
+
+	private static final Logger logger = LogManager.getLogger(KeyGeneratorCli.class);
 
 	public static void main(String[] args) throws InvalidKeySpecException, NoSuchAlgorithmException, IOException, CertificateEncodingException {
 
@@ -69,11 +73,11 @@ public class KeyGeneratorCli {
 			Pem.writeObject(signingKeyPair.getPublic(), writer);
 			Pem.writeObject(encryptionKeyPair.getPublic(), writer);
 		}
-		System.out.println("Wrote: " + publicKeyFile.getAbsolutePath());
+		logger.info("Wrote: " + publicKeyFile.getAbsolutePath());
 		try (final BufferedReader reader = new BufferedReader(new FileReader(publicKeyFile));) {
 			String line;
 			while ((line = reader.readLine()) != null) {
-				System.out.println(line);
+				logger.info(line);
 			}
 		}
 
@@ -84,7 +88,7 @@ public class KeyGeneratorCli {
 			Pem.writeObject(signingKeyPair.getPrivate(), writer);
 			Pem.writeObject(encryptionKeyPair.getPrivate(), writer);
 		}
-		System.out.println("Wrote: " + privateKeyFile.getAbsolutePath());
+		logger.info("Wrote: " + privateKeyFile.getAbsolutePath());
 	}
 
 

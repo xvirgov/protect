@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.ibm.pross.client.RsaSigningClient;
 import com.ibm.pross.common.DerivationResult;
 import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.config.KeyLoader;
@@ -44,6 +45,8 @@ import com.ibm.pross.server.messages.Message;
 import com.ibm.pross.server.messages.Payload.OpCode;
 import com.ibm.pross.server.messages.payloads.apvss.PublicSharingPayload;
 import com.ibm.pross.server.messages.payloads.apvss.ZkpPayload;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ApvssShareholder {
 
@@ -105,6 +108,8 @@ public class ApvssShareholder {
 
 	// Used to hold an initial share of a secret (to supported stored secrets)
 	private volatile BigInteger storedShareOfSecret = null;
+
+	private static final Logger logger = LogManager.getLogger(ApvssShareholder.class);
 
 	public ApvssShareholder(final String secretName, final KeyLoader keyLoader,
 			final FifoAtomicBroadcastChannel channel, final int index, final int n, final int k) {
@@ -169,7 +174,7 @@ public class ApvssShareholder {
 		public void run() {
 			final long currentEpoch = ApvssShareholder.this.nextEpoch.get();
 			final long nextEpoch = ApvssShareholder.this.nextEpoch.incrementAndGet();
-			System.out.println("Performing Refresh for secret '" + ApvssShareholder.this.secretName + "' epoch: ("
+			logger.info("Performing Refresh for secret '" + ApvssShareholder.this.secretName + "' epoch: ("
 					+ currentEpoch + " -> " + nextEpoch + ")");
 			broadcastPublicSharing(nextEpoch);
 		}
@@ -190,7 +195,7 @@ public class ApvssShareholder {
 		// Deliver only if this message is relevant for the given epoch and secret
 		final String channelName = this.secretName;
 		if (message.isRecipient(channelName)) {
-			// System.out.println("DKG app processing message #" + messageId);
+			// logger.info("DKG app processing message #" + messageId);
 			deliver(message);
 		}
 	}
@@ -311,7 +316,7 @@ public class ApvssShareholder {
 			final PublicSharingGenerator generator = new PublicSharingGenerator(this.n, this.k);
 			final PublicSharing publicSharing;
 			if (epoch == 0) {
-				System.out.println("Starting DKG operation!");
+				logger.info("Starting DKG operation!");
 				if (storedShareOfSecret == null) {
 					// No share was stored, do a DKG of a random value
 					publicSharing = generator.shareRandomSecret(publicKeys);
@@ -503,7 +508,7 @@ public class ApvssShareholder {
 
 		final long shareEnd = System.nanoTime();
 		final long startTime = sharingState.getStartTime();
-		System.out.println("Time to establish share:             "
+		logger.info("Time to establish share:             "
 				+ (((double) (shareEnd - startTime)) / 1_000_000_000.0) + " seconds");
 	}
 
@@ -605,7 +610,7 @@ public class ApvssShareholder {
 
 				if (senderEpoch > this.getCurrentEpoch()) {
 					final long newEpoch = currentEpoch.incrementAndGet();
-					System.out.println("Refresh complete for secret '" + ApvssShareholder.this.secretName
+					logger.info("Refresh complete for secret '" + ApvssShareholder.this.secretName
 							+ "', now at epoch: " + newEpoch);
 				}
 			}
@@ -644,37 +649,36 @@ public class ApvssShareholder {
 
 		final long startTime = sharingState.getStartTime();
 		final long endVerification = System.nanoTime();
-		System.out.println("Time to establish verification keys: "
+		logger.info("Time to establish verification keys: "
 				+ (((double) (endVerification - startTime)) / 1_000_000_000.0) + " seconds");
 
 		// Print our share
-		System.out.println();
-		System.out.println("Sharing Result:");
-		System.out.println("This Server's Share:     s_" + this.index + "     =  " + sharingState.getShare1());
+		logger.info("Sharing Result:");
+		logger.info("This Server's Share:     s_" + this.index + "     =  " + sharingState.getShare1());
 
 		// Print secret verification key
-		System.out.println("Secret Verification key: g^{s}   =  " + sharingState.getSharePublicKeys()[0]);
+		logger.info("Secret Verification key: g^{s}   =  " + sharingState.getSharePublicKeys()[0]);
 
 		// Print share verification keys
 		for (int i = 1; i <= n; i++) {
-			System.out.println("Share Verification key:  g^{s_" + i + "} =  " + sharingState.getSharePublicKeys()[i]);
+			logger.info("Share Verification key:  g^{s_" + i + "} =  " + sharingState.getSharePublicKeys()[i]);
 		}
 
 		// Print Feldman Coefficients
 		for (int i = 0; i < k; i++) {
-			System.out.println("Feldman Coefficient:     g^{a_" + i + "} =  " + sharingState.getFeldmanValues()[i]);
+			logger.info("Feldman Coefficient:     g^{a_" + i + "} =  " + sharingState.getFeldmanValues()[i]);
 		}
 
 		sharingState.setCreationTime(new Date());
 
 		if (senderEpoch == 0) {
-			System.out.println("DKG Complete!");
+			logger.info("DKG Complete!");
 		} else {
 			System.out.print("Refresh Complete!");
 
 			// Sanity check, make sure public keys match before advancing epoch state
 			if (this.getCurrentSharing().getSharePublicKeys()[0].equals(sharingState.getSharePublicKeys()[0])) {
-				System.out.println(" Consistency with previous epoch has been verified.");
+				logger.info(" Consistency with previous epoch has been verified.");
 
 				// Delete the previous share
 				this.getCurrentSharing().setShare1(null);
@@ -686,12 +690,12 @@ public class ApvssShareholder {
 		}
 
 		// Schedule Proactive Refresh Task
-		System.out.println("Scheduling next Refresh to occur in " + this.getRefreshFrequency() + " seconds");
+		logger.info("Scheduling next Refresh to occur in " + this.getRefreshFrequency() + " seconds");
 		final int refreshPeriodMillis = this.getRefreshFrequency() * 1000;
 		this.timer.schedule(new RefreshTask(), refreshPeriodMillis);
 
-		// System.out.println("Signatures generated: " + SigningUtil.signCount.get());
-		// System.out.println("Signatures verified: " + SigningUtil.verCount.get());
+		// logger.info("Signatures generated: " + SigningUtil.signCount.get());
+		// logger.info("Signatures verified: " + SigningUtil.verCount.get());
 	}
 
 
@@ -797,8 +801,8 @@ public class ApvssShareholder {
 		// Verify we have the correct share (by comparing against public key
 		final EcPoint sharePublicKey1 = curve.multiply(g, share1Y);
 		
-		System.out.println("Share1: " + share1Y);
-		System.out.println("Share2: " + share2Y);
+		logger.info("Share1: " + share1Y);
+		logger.info("Share2: " + share2Y);
 		
 		if (!sharePublicKey1.equals(sharingState.getSharePublicKeys()[this.index])) {
 			System.err.println(sharePublicKey1);

@@ -1,5 +1,9 @@
 package com.ibm.pross.server.communication.pointtopoint;
 
+import com.ibm.pross.server.communication.MessageDeliveryManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -37,6 +41,8 @@ public class MessageReceiver {
 	public MessageReceiver(final int localPort) {
 		this.localPort = localPort;
 	}
+
+	private static final Logger logger = LogManager.getLogger(MessageReceiver.class);
 
 	public byte[] awaitNextMessage() {
 		try {
@@ -181,7 +187,7 @@ public class MessageReceiver {
 
 	private void printDebug(final String message) {
 		if (DEBUG_MODE) {
-			System.out.println(message);
+			logger.info(message);
 		}
 	}
 
@@ -191,7 +197,7 @@ public class MessageReceiver {
 
 		for (int i = 0; i < 3; i++) {
 			byte[] message = receiver.awaitNextMessage();
-			System.out.println("READY TO PROCESS: " + new String(message));
+			logger.info("READY TO PROCESS: " + new String(message));
 		}
 
 		receiver.stop();
@@ -200,7 +206,7 @@ public class MessageReceiver {
 
 		for (int i = 0; i < 3; i++) {
 			byte[] message = receiver.awaitNextMessage();
-			System.out.println("READY TO PROCESS, Take 2: " + new String(message));
+			logger.info("READY TO PROCESS, Take 2: " + new String(message));
 		}
 
 		receiver.stop();
