@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/bft-smart/bft-smart.iml" filepath="$PROJECT_DIR$/bft-smart/bft-smart.iml" />
+      <module fileurl="file://$PROJECT_DIR$/pross.iml" filepath="$PROJECT_DIR$/pross.iml" />
+      <module fileurl="file://$PROJECT_DIR$/pross-client/pross-client.iml" filepath="$PROJECT_DIR$/pross-client/pross-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/pross-common/pross-common.iml" filepath="$PROJECT_DIR$/pross-common/pross-common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/pross-server/pross-server.iml" filepath="$PROJECT_DIR$/pross-server/pross-server.iml" />
+    </modules>
+  </component>
+</project>
