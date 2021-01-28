@@ -40,6 +40,7 @@
               </filters>
               <transformers>
                 <transformer>
+                  <mainClass>com.ibm.pross.client.app.ClientApplication</mainClass>
                   <mainClass>com.ibm.pross.client.encryption.EciesEncryptionClient</mainClass>
                   <mainClass>com.ibm.pross.client.signing.RsaCertificateAuthorityClient</mainClass>
                   <mainClass>com.ibm.pross.client.storage.ReadWriteClient</mainClass>

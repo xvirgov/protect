@@ -1,22 +1,16 @@
 package com.ibm.pross.client.app.http.handlers;
 
+import com.ibm.pross.common.config.KeyLoader;
+import com.ibm.pross.common.exceptions.http.*;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpsExchange;
+
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
 import java.io.IOException;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-
-import javax.net.ssl.SSLPeerUnverifiedException;
-import javax.net.ssl.SSLSession;
-
-import com.ibm.pross.common.config.KeyLoader;
-import com.ibm.pross.common.exceptions.http.BadRequestException;
-import com.ibm.pross.common.exceptions.http.ConflictException;
-import com.ibm.pross.common.exceptions.http.InternalServerException;
-import com.ibm.pross.common.exceptions.http.NotFoundException;
-import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
-import com.ibm.pross.common.exceptions.http.UnauthorizedException;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpsExchange;
 
 @SuppressWarnings("restriction")
 public abstract class AuthenticatedClientRequestHandler extends BaseHttpHandler {

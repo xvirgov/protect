@@ -64,11 +64,13 @@ public class HttpRequestProcessor {
         // Returns basic information about this server: (quorum information, other servers)
         this.server.createContext("/", new RootHandler(appIndex, serverConfig));
         //Public modulus is used during the signing/storing as a part of the public parameter
-        this.server.createContext("/sign", new SignHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, publicModulus, baseDirectory));
-        this.server.createContext("/store", new StoreHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, publicModulus, baseDirectory));
-        this.server.createContext("/delete", new DeleteHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
-        this.server.createContext("/disable", new DisableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
-        this.server.createContext("/enable", new EnableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
+//        this.server.createContext("/sign", new SignHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, publicModulus, baseDirectory));
+//        this.server.createContext("/store", new StoreHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, publicModulus, baseDirectory));
+//        this.server.createContext("/delete", new DeleteHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
+//        this.server.createContext("/disable", new DisableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
+//        this.server.createContext("/enable", new EnableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
+
+        this.server.createContext("/encrypt", new EncryptHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
 /*
         /*
         // Used to debug authentication and access control problems

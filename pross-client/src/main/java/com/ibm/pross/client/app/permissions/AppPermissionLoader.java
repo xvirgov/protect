@@ -1,5 +1,6 @@
 package com.ibm.pross.client.app.permissions;
 
+import com.ibm.pross.client.app.permissions.AppPermissions.Permissions;
 import org.ini4j.Profile;
 import org.ini4j.Wini;
 
@@ -11,8 +12,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import com.ibm.pross.client.app.permissions.AppPermissions.Permissions;
 
 public class AppPermissionLoader {
 

@@ -50,6 +50,7 @@
 							<transformers>
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<mainClass>com.ibm.pross.client.app.ClientApplication</mainClass>
 									<mainClass>com.ibm.pross.client.encryption.EciesEncryptionClient</mainClass>
 									<mainClass>com.ibm.pross.client.signing.RsaCertificateAuthorityClient</mainClass>
 									<mainClass>com.ibm.pross.client.storage.ReadWriteClient</mainClass>
@@ -69,6 +70,12 @@
 			<groupId>${project.groupId}</groupId>
 			<artifactId>pross-common</artifactId>
 			<version>${current.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.ini4j</groupId>
+			<artifactId>ini4j</artifactId>
+			<version>0.5.4</version>
 		</dependency>
 
 	</dependencies>
