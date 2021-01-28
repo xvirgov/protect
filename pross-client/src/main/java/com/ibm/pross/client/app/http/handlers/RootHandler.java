@@ -10,6 +10,9 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * This handler returns basic configuration information about the server,
  * including this server's id, the threshold parameters, identities of other
@@ -17,6 +20,8 @@ import java.nio.charset.StandardCharsets;
  */
 @SuppressWarnings("restriction")
 public class RootHandler extends BaseHttpHandler {
+
+    private static final Logger logger = LogManager.getLogger(RootHandler.class);
 
     private final int appIndex;
     private final ServerConfiguration serverConfiguration;
@@ -29,7 +34,7 @@ public class RootHandler extends BaseHttpHandler {
     public void handleWithExceptions(final HttpExchange exchange) throws IOException {
 
         // Create response
-        System.out.println(" IN HANDLER AFTER CALL");
+        logger.info(" IN HANDLER AFTER CALL");
         final StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("<html>\n");
         stringBuilder.append("<body>\n");

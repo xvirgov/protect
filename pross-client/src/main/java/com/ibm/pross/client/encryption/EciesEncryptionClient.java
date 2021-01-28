@@ -83,28 +83,24 @@ public class EciesEncryptionClient extends BaseClient {
 		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
 		logger.info("Public key for secret:    " + publicKey);
 		logger.info("Current epoch for secret: " + currentEpoch);
-		;
 
 		// Reading
 		logger.info("Reading input file: " + this.inputFile + "... ");
 		final byte[] plaintextData = Files.readAllBytes(inputFile.toPath());
 		logger.info(" (done)");
 		logger.info("Read " + plaintextData.length + " bytes.");
-		;
 
 		// Perform ECIES encryption
 		logger.info("Performing ECIES encryption of file content... ");
 		final byte[] ciphertext = EciesEncryption.encrypt(plaintextData, publicKey);
 		logger.info(" (done)");
 		logger.info("Encrypted length " + ciphertext.length + " bytes.");
-		;
 
 		// Write ciphertext to output file
 		logger.info("Writing ciphertext to file: " + this.outputFile + "... ");
 		Files.write(this.outputFile.toPath(), ciphertext);
 		logger.info(" (done)");
 		logger.info("Wrote " + ciphertext.length + " bytes.");
-		;
 
 		logger.info("Done.");
 	}
@@ -121,14 +117,14 @@ public class EciesEncryptionClient extends BaseClient {
 		final byte[] ciphertextData = Files.readAllBytes(inputFile.toPath());
 		logger.info(" (done)");
 		logger.info("Read " + ciphertextData.length + " bytes of ciphertext.");
-		;
+
 
 		// Extract public value from ciphertext
 		logger.info("Extracting public value from ciphertext: " + this.inputFile + "... ");
 		final EcPoint publicValue = EciesEncryption.getPublicValue(ciphertextData);
 		logger.info(" (done)");
 		logger.info("Public Value is: " + publicValue);
-		;
+
 
 		// Get public key and current epoch from the server
 		logger.info("Accessing public key for secret: " + this.secretName + "... ");
@@ -138,14 +134,12 @@ public class EciesEncryptionClient extends BaseClient {
 		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
 		logger.info("Public key for secret:    " + publicKey);
 		logger.info("Current epoch for secret: " + currentEpoch);
-		;
 
 		// Get public key and current epoch from the server
 		logger.info("Performing threshold exponentiation on public value using: " + this.secretName + "... ");
 		final EcPoint exponentiationResult = this.exponentiatePoint(publicValue, currentEpoch);
 		logger.info(" (done)");
 		logger.info("Shared secret obtained:    " + exponentiationResult);
-		;
 
 		// Perform ECIES decryption
 		logger.info("Performing ECIES decryption of file content... ");
@@ -159,7 +153,6 @@ public class EciesEncryptionClient extends BaseClient {
 		Files.write(this.outputFile.toPath(), plaintext);
 		logger.info(" (done)");
 		logger.info("Wrote " + plaintext.length + " bytes.");
-		;
 
 		logger.info("Done.");
 

@@ -10,7 +10,7 @@ CLIENT_SK=private
 mkdir -p ca server/certs server/keys
 
 # Generate keys and certificates for servers
-i=0
+i=1
 while [ $i -le "$NODES_NR" ]
 do
 	java -classpath ../../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli server/keys $i

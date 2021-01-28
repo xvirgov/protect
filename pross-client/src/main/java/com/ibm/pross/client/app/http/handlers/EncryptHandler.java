@@ -41,20 +41,14 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 
 
 	// Fields
-	private final AccessEnforcement accessEnforcement;
-	private final ServerConfiguration serverConfiguration;
 	private final List<X509Certificate> caCerts;
 	private final KeyLoader serverKeys;
-	private final File baseDirectory;
 
-	public EncryptHandler(final KeyLoader clientKeys, final AccessEnforcement accessEnforcement, final ServerConfiguration serverConfiguration, final List<X509Certificate> caCerts,
-						 final KeyLoader serverKeys, final File baseDirectory) {
+	public EncryptHandler(final KeyLoader clientKeys, final List<X509Certificate> caCerts,
+						 final KeyLoader serverKeys) {
 		super(clientKeys);
-		this.accessEnforcement = accessEnforcement;
-		this.serverConfiguration = serverConfiguration;
 		this.caCerts = caCerts;
 		this.serverKeys = serverKeys;
-		this.baseDirectory = baseDirectory;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -63,63 +57,63 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 			UnauthorizedException, NotFoundException, BadRequestException, ResourceUnavailableException, InternalServerException {
 
 		// Extract secret name from request
-		final String queryString = exchange.getRequestURI().getQuery();
+//		final String queryString = exchange.getRequestURI().getQuery();
+//
+//		final Map<String, List<String>> params = HttpRequestProcessor.parseQueryString(queryString);
+//		final String secretName = HttpRequestProcessor.getParameterValue(params, SECRET_NAME_FIELD);
+//		if (secretName == null || !secretName.equals("rsa-secret")) {
+//			throw new BadRequestException();
+//		}
+//		final String userName = HttpRequestProcessor.getParameterValue(params, USER_FIELD);
+//
+//		// Perform authentication
+//		accessEnforcement.enforceAccess(userName, secretName, REQUEST_PERMISSION);
+//
+//		// Load client certificate
+//		X509Certificate clientCertificate;
+//		final File clientDirectory = new File(baseDirectory, CLIENT_DIRECTORY);
+//		final File certDirectory = new File(clientDirectory, CERTS_DIRECTORY);
+//		final File clientCertificateFile = new File(certDirectory, "cert-" + userName);
+//		try {
+//			clientCertificate = Pem.loadCertificateFromFile(clientCertificateFile);
+//		} catch (CertificateException e) {
+//			e.printStackTrace();
+//			throw new UnauthorizedException();
+//		} catch (NoSuchAlgorithmException e) {
+//			e.printStackTrace();
+//			throw new UnauthorizedException();
+//		} catch (InvalidKeySpecException e) {
+//			e.printStackTrace();
+//			throw new UnauthorizedException();
+//		}
+//
+//		// Load client key
+//		PrivateKey clientPrivateKey;
+//		final File clientKeysDirectory = new File(baseDirectory, CLIENT_KEYS_DIRECTORY);
+//		final File clientKeysFile = new File(clientKeysDirectory, "private-" + userName);
+//		try {
+//			clientPrivateKey = (PrivateKey) Pem.loadKeyFromFile(clientKeysFile);
+//		} catch (CertificateException e) {
+//			e.printStackTrace();
+//			throw new UnauthorizedException();
+//		} catch (NoSuchAlgorithmException e) {
+//			e.printStackTrace();
+//			throw new UnauthorizedException();
+//		} catch (InvalidKeySpecException e) {
+//			e.printStackTrace();
+//			throw new UnauthorizedException();
+//		}
 
-		final Map<String, List<String>> params = HttpRequestProcessor.parseQueryString(queryString);
-		final String secretName = HttpRequestProcessor.getParameterValue(params, SECRET_NAME_FIELD);
-		if (secretName == null || !secretName.equals("rsa-secret")) {
-			throw new BadRequestException();
-		}
-		final String userName = HttpRequestProcessor.getParameterValue(params, USER_FIELD);
 
-		// Perform authentication
-		accessEnforcement.enforceAccess(userName, secretName, REQUEST_PERMISSION);
+//		final String name = HttpRequestProcessor.getParameterValue(params, NAME_FIELD);
 
-		// Load client certificate
-		X509Certificate clientCertificate;
-		final File clientDirectory = new File(baseDirectory, CLIENT_DIRECTORY);
-		final File certDirectory = new File(clientDirectory, CERTS_DIRECTORY);
-		final File clientCertificateFile = new File(certDirectory, "cert-" + userName);
-		try {
-			clientCertificate = Pem.loadCertificateFromFile(clientCertificateFile);
-		} catch (CertificateException e) {
-			e.printStackTrace();
-			throw new UnauthorizedException();
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-			throw new UnauthorizedException();
-		} catch (InvalidKeySpecException e) {
-			e.printStackTrace();
-			throw new UnauthorizedException();
-		}
-
-		// Load client key
-		PrivateKey clientPrivateKey;
-		final File clientKeysDirectory = new File(baseDirectory, CLIENT_KEYS_DIRECTORY);
-		final File clientKeysFile = new File(clientKeysDirectory, "private-" + userName);
-		try {
-			clientPrivateKey = (PrivateKey) Pem.loadKeyFromFile(clientKeysFile);
-		} catch (CertificateException e) {
-			e.printStackTrace();
-			throw new UnauthorizedException();
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-			throw new UnauthorizedException();
-		} catch (InvalidKeySpecException e) {
-			e.printStackTrace();
-			throw new UnauthorizedException();
-		}
-
-
-		final String name = HttpRequestProcessor.getParameterValue(params, NAME_FIELD);
-
-		Boolean success;
-		String response = "Encrypt handler";
+		String response = "Encrypt handle olololololor";
+		doStoring()
 //		try {
 //			success = doStoring(secretName,name,clientCertificate,clientPrivateKey);
 //			if (success) {
 //				response = "RSA shares deleted. \n";
-//				System.out.println("Deletion complete");
+//				logger.info("Deletion complete");
 //			} else {
 //				response = "RSA not deleted";
 //			}

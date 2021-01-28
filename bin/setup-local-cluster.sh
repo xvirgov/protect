@@ -85,7 +85,7 @@ echo "num_servers = $NODES_NR" > common.config
 printf "[v3_ca]\nbasicConstraints = CA:FALSE\nkeyUsage = digitalSignature, keyEncipherment\nsubjectAltName = " > ssl-extensions-x509.cnf-tmp
 
 # Start server containers
-i=0
+i=1
 CONTAINERS=()
 while [ $i -le "$NODES_NR" ]
 do
@@ -129,12 +129,12 @@ do
 	echo "Server $i was started"
   i=$((i+1))
 done
-#
+
 ## Start client application
-#CONTAINER_ID=$(sudo docker run -d -p 127.0.0.1:$PORT_BASE:$PORT_BASE -p $APP_PORT_BASE:$APP_PORT_BASE --hostname "${IMAGE_NAME}_c" -i -t "${IMAGE_NAME}" /bin/bash &)
-#echo "Container $CONTAINER_ID is running a client app"
+CONTAINER_ID=$(sudo docker run -d -p 127.0.0.1:$PORT_BASE:$PORT_BASE -p $APP_PORT_BASE:$APP_PORT_BASE --hostname "${IMAGE_NAME}_c" --label client_host -i -t "${IMAGE_NAME}" /bin/bash &)
+echo "Container $CONTAINER_ID is running a client app"
 #CONTAINER_IP=$(sudo docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER_ID")
-#sudo docker cp  $CONFIG_DIR "$CONTAINER_ID":/protect/config
-#sudo docker cp ../pross-client/target/pross-client-1.0-SNAPSHOT.jar "$CONTAINER_ID":/protect/pross-client-1.0-SNAPSHOT.jar
-#sudo docker exec "$CONTAINER_ID" java -classpath /protect/pross-client-1.0-SNAPSHOT.jar com.ibm.pross.client.app.ClientApplication /protect/config/server 0 &
+sudo docker cp  $CONFIG_DIR "$CONTAINER_ID":/protect/config
+sudo docker cp ../pross-client/target/pross-client-1.0-SNAPSHOT.jar "$CONTAINER_ID":/protect/pross-client-1.0-SNAPSHOT.jar
+#sudo docker exec "$CONTAINER_ID" java -classpath /protect/pross-client-1.0-SNAPSHOT.jar com.ibm.pross.client.app.ClientApplication /protect/config administrator &
 #

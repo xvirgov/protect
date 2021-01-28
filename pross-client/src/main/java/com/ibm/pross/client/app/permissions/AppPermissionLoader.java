@@ -13,11 +13,16 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class AppPermissionLoader {
+
+    private static final Logger logger = LogManager.getLogger(AppPermissionLoader.class);
 
     public static AccessEnforcement loadIniFile(final File iniFile) throws IOException {
 
-        System.out.println("Loading client permissions: " + iniFile.toString());
+        logger.info("Loading client permissions: " + iniFile.toString());
 
         // Load ini file
         final Wini ini = new Wini(iniFile);
@@ -42,11 +47,11 @@ public class AppPermissionLoader {
                 final String permissions = userPermission.getValue();
 
                 // PRint username and secret
-                //System.out.print(username + "." + secretName + "\t\t = ");
+                //logger.info(username + "." + secretName + "\t\t = ");
 
                 // Parse permissions
                 final String[] permissionArray = permissions.split(",");
-                //System.out.println(Arrays.toString(permissionArray));
+                //logger.info(Arrays.toString(permissionArray));
 
                 // Add permissions from the comma-separated list
                 permissionMap.putIfAbsent(username, new AppPermissions());

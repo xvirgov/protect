@@ -68,7 +68,7 @@ public class KeyLoader {
 		if (myIndex != null) {
 			final File publicKeyFile = new File(keyPath, "private-" + myIndex);
 			try (final PemReader reader = new PemReader(new FileReader(publicKeyFile.getAbsolutePath()))) {
-				this.tlsKey = (PrivateKey) Pem.readObject(reader.readPemObject());
+				this.tlsKey = (PrivateKey) Pem.readObject(reader.readPemObject()); // TODO-thesis: vulnerability - using same key for tls, decryption and signing
 				this.signingKey = (PrivateKey) Pem.readObject(reader.readPemObject());
 				this.decryptionKey = (PrivateKey) Pem.readObject(reader.readPemObject());
 			}

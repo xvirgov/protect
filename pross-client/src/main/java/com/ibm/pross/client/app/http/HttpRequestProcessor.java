@@ -27,42 +27,65 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 @SuppressWarnings("restriction")
 public class HttpRequestProcessor {
+
+    private static final Logger logger = LogManager.getLogger(HttpRequestProcessor.class);
 
     public static int SHUTDOWN_DELAY_SECONDS = 5;
     public static int NUM_PROCESSING_THREADS = 15;
 
     private final HttpsServer server;
 
-    public HttpRequestProcessor(final int appIndex, final ServerConfiguration serverConfig,
-                                final AccessEnforcement accessEnforcement,
-                                final List<X509Certificate> caCerts, final X509Certificate hostCert, final PrivateKey privateKey,
-                                final KeyLoader clientKeys, final KeyLoader serverKeys, final X509Certificate caCertHost, BigInteger publicModulus, final File baseDirectory)
+//    public HttpRequestProcessor(final int appIndex, final ServerConfiguration serverConfig,
+//                                final AccessEnforcement accessEnforcement,
+//                                final List<X509Certificate> caCerts, final X509Certificate hostCert, final PrivateKey privateKey,
+//                                final KeyLoader clientKeys, final KeyLoader serverKeys,  final PrivateKey privateKeyTls, final X509Certificate caCertHost, BigInteger publicModulus, final File baseDirectory)
+//            throws IOException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException,
+//            UnrecoverableKeyException, CertificateException {
+//
+//        final int httpListenPort = CommonConfiguration.BASE_HTTP_PORT;
+//        this.server = HttpsServer.create(new InetSocketAddress(httpListenPort), 0);
+//
+//        setupTls(hostCert, privateKeyTls, caCertHost);
+//
+//        logger.info("HTTPS server listening on port: " + httpListenPort);
+//
+//        addHandlers(appIndex, serverConfig, accessEnforcement, clientKeys, serverKeys, caCerts, publicModulus, baseDirectory);
+//
+//        logger.info("Ready to process requests.");
+//
+//        // this.server.setExecutor(Executors.newFixedThreadPool(NUM_PROCESSING_THREADS));
+//    }
+
+    public HttpRequestProcessor(final ServerConfiguration serverConfiguration, final List<X509Certificate> caCertificates,
+                                final KeyLoader serverKeys, final X509Certificate clientCertificate,
+                                PrivateKey clientTlsKey, final X509Certificate caCertHost)
             throws IOException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException,
             UnrecoverableKeyException, CertificateException {
 
         final int httpListenPort = CommonConfiguration.BASE_HTTP_PORT;
         this.server = HttpsServer.create(new InetSocketAddress(httpListenPort), 0);
 
-        setupTls(hostCert, privateKey, caCertHost);
+        setupTls(clientCertificate, clientTlsKey, caCertHost);
 
-        System.out.println("HTTPS server listening on port: " + httpListenPort);
+        logger.info("HTTPS server listening on port: " + httpListenPort);
 
-        addHandlers(appIndex, serverConfig, accessEnforcement, clientKeys, serverKeys, caCerts, publicModulus, baseDirectory);
+        addHandlers(serverConfiguration, serverKeys, serverKeys, caCertificates);
 
-        System.out.println("Ready to process requests.");
+        logger.info("Ready to process requests.");
 
         // this.server.setExecutor(Executors.newFixedThreadPool(NUM_PROCESSING_THREADS));
     }
 
-    public void addHandlers(final int appIndex, final ServerConfiguration serverConfig,
-                            final AccessEnforcement accessEnforcement,
-                            final KeyLoader clientKeys, final KeyLoader serverKeys, final List<X509Certificate> caCerts,
-                            final BigInteger publicModulus, final File baseDirectory) {
+    public void addHandlers(final ServerConfiguration serverConfig,
+                            final KeyLoader clientKeys, final KeyLoader serverKeys, final List<X509Certificate> caCerts) {
 
         // Returns basic information about this server: (quorum information, other servers)
-        this.server.createContext("/", new RootHandler(appIndex, serverConfig));
+        this.server.createContext("/", new RootHandler(0, serverConfig));
         //Public modulus is used during the signing/storing as a part of the public parameter
 //        this.server.createContext("/sign", new SignHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, publicModulus, baseDirectory));
 //        this.server.createContext("/store", new StoreHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, publicModulus, baseDirectory));
@@ -70,7 +93,7 @@ public class HttpRequestProcessor {
 //        this.server.createContext("/disable", new DisableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
 //        this.server.createContext("/enable", new EnableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
 
-        this.server.createContext("/encrypt", new EncryptHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
+        this.server.createContext("/encrypt", new EncryptHandler(clientKeys, caCerts, null));
 /*
         /*
         // Used to debug authentication and access control problems
@@ -144,7 +167,7 @@ public class HttpRequestProcessor {
                     params.setWantClientAuth(true);
                     params.setNeedClientAuth(false);
                     params.setCipherSuites(engine.getEnabledCipherSuites());
-                    //System.out.println(engine.getEnabledCipherSuites());
+                    //logger.info(engine.getEnabledCipherSuites());
                 } catch (Exception ex) {
                     throw new RuntimeException("Failed to create HTTPS server");
                 }
