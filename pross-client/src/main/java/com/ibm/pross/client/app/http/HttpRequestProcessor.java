@@ -74,18 +74,23 @@ public class HttpRequestProcessor {
 
         logger.info("HTTPS server listening on port: " + httpListenPort);
 
-        addHandlers(serverConfiguration, serverKeys, serverKeys, caCertificates);
+        addHandlers(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, caCertHost);
+//        addHandlers(serverConfiguration, serverKeys, serverKeys, caCertificates);
 
         logger.info("Ready to process requests.");
 
         // this.server.setExecutor(Executors.newFixedThreadPool(NUM_PROCESSING_THREADS));
     }
 
-    public void addHandlers(final ServerConfiguration serverConfig,
-                            final KeyLoader clientKeys, final KeyLoader serverKeys, final List<X509Certificate> caCerts) {
+//    public void addHandlers(final ServerConfiguration serverConfig,
+//                            final KeyLoader clientKeys, final KeyLoader serverKeys, final List<X509Certificate> caCerts) {
+    public void addHandlers(final ServerConfiguration serverConfiguration, final List<X509Certificate> caCertificates,
+                            final KeyLoader serverKeys, final X509Certificate clientCertificate,
+                            PrivateKey clientTlsKey, final X509Certificate caCertHost) {
 
+        logger.info("Creating handlers");
         // Returns basic information about this server: (quorum information, other servers)
-        this.server.createContext("/", new RootHandler(0, serverConfig));
+        this.server.createContext("/", new RootHandler(0, serverConfiguration));
         //Public modulus is used during the signing/storing as a part of the public parameter
 //        this.server.createContext("/sign", new SignHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, publicModulus, baseDirectory));
 //        this.server.createContext("/store", new StoreHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, publicModulus, baseDirectory));
@@ -93,7 +98,9 @@ public class HttpRequestProcessor {
 //        this.server.createContext("/disable", new DisableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
 //        this.server.createContext("/enable", new EnableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
 
-        this.server.createContext("/encrypt", new EncryptHandler(clientKeys, caCerts, null));
+        this.server.createContext("/encrypt", new EncryptHandler(serverKeys, caCertificates, null));
+        this.server.createContext("/ecies", new EciesHandler(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey));
+//        this.server.createContext("/generate", new GenerateHandler(clientKeys, caCerts, serverConfig));
 /*
         /*
         // Used to debug authentication and access control problems

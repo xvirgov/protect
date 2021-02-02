@@ -23,6 +23,14 @@ do
 	i=$((i+1))
 done
 
+java -classpath ../../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli server/keys 0
+#openssl req -new -sha256 -key server/keys/$CLIENT_SK-0 -out my-0.csr -subj '/CN=Server client '0'/ST=TEST/O=TEST'
+#openssl ecparam -name secp521r1 -genkey -noout -out ca/$CA_KEY-0
+#openssl req -x509 -new -nodes -key ca/$CA_KEY-0 -sha256 -days 1024 -out ca/$CA_CERT-0.pem -subj '/CN=CA Server '0'/ST=TEST/O=TEST'
+#openssl x509 -req -in my-0.csr -CA ca/$CA_CERT-0.pem -CAkey ca/$CA_KEY-0 -CAcreateserial -out server/certs/$CLIENT_CERT-0 -days 500 -sha256 -extensions v3_ca -extfile ./ssl-extensions-x509.cnf
+#rm my-0.csr
+#rm ca/$CA_CERT-0.srl
+
 ## Generate key and certificate for a client
 #openssl ecparam -name secp521r1 -genkey -noout -out private.key
 #openssl req -new -sha256 -key private.key -out my.csr -subj '/CN=Client App/ST=TEST/O=TEST'

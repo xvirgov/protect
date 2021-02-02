@@ -1,15 +1,16 @@
 package com.ibm.pross.client.app.http.handlers;
 
 import com.ibm.pross.client.app.http.HttpRequestProcessor;
-import com.ibm.pross.client.app.permissions.AccessEnforcement;
 import com.ibm.pross.client.app.permissions.AppPermissions;
-import com.ibm.pross.client.signing.RsaCertificateAuthorityClient;
+import com.ibm.pross.client.encryption.EciesEncryptionClient;
+import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.config.KeyLoader;
 import com.ibm.pross.common.config.ServerConfiguration;
 import com.ibm.pross.common.exceptions.http.*;
+import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThresholdException;
-import com.ibm.pross.common.util.serialization.Pem;
+import com.ibm.pross.common.util.shamir.ShamirShare;
 import com.sun.net.httpserver.HttpExchange;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,23 +19,23 @@ import java.io.*;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.security.spec.InvalidKeySpecException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("restriction")
-public class EncryptHandler extends AuthenticatedClientRequestHandler {
-	private static final Logger logger = LogManager.getLogger(EncryptHandler.class);
+public class EciesHandler extends AuthenticatedClientRequestHandler {
+	private static final Logger logger = LogManager.getLogger(EciesHandler.class);
 
 	public static final AppPermissions.Permissions REQUEST_PERMISSION = AppPermissions.Permissions.DELETE;
 
 	// Query names
+	public static final String OPERATION_FIELD = "operation";
 	public static final String SECRET_NAME_FIELD = "secretName";
-	public static final String NAME_FIELD = "name";
+
 	public static final String USER_FIELD = "userName";
 
 	//Path names
@@ -44,20 +45,33 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 
 
 	// Fields
-	private final List<X509Certificate> caCerts;
+	private final ServerConfiguration serverConfiguration;
+	private final List<X509Certificate> caCertificates;
 	private final KeyLoader serverKeys;
+	private final X509Certificate clientCertificate;
+	private PrivateKey clientTlsKey;
+//	private final List<X509Certificate> caCerts;
+//	private final KeyLoader serverKeys;
 
-	public EncryptHandler(final KeyLoader clientKeys, final List<X509Certificate> caCerts,
-						 final KeyLoader serverKeys) {
-		super(clientKeys);
-		this.caCerts = caCerts;
+	public EciesHandler(final ServerConfiguration serverConfiguration, final List<X509Certificate> caCertificates,
+						final KeyLoader serverKeys, final X509Certificate clientCertificate,
+						PrivateKey clientTlsKey) {
+		super(serverKeys);
+//		this.caCerts = caCerts;
+//		this.serverKeys = serverKeys;
+		this.serverConfiguration = serverConfiguration;
+		this.caCertificates = caCertificates;
 		this.serverKeys = serverKeys;
+		this.clientCertificate = clientCertificate;
+		this.clientTlsKey = clientTlsKey;
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public void authenticatedClientHandle(final HttpExchange exchange, final String user) throws IOException,
 			UnauthorizedException, NotFoundException, BadRequestException, ResourceUnavailableException, InternalServerException {
+
+		logger.info("Started ECIES operation");
 
 		// Extract secret name from request
 		final URI requestUri = exchange.getRequestURI();
@@ -69,7 +83,61 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 
 		String response = requestParameters;
 
-		logger.debug("Encrypt operation requested with parameters: " + requestParameters);
+		final Map<String, List<String>> params = HttpRequestProcessor.parseQueryString(requestParameters);
+		final String operation = Objects.requireNonNull(HttpRequestProcessor.getParameterValue(params, OPERATION_FIELD)).toLowerCase();
+		final String secretName = Objects.requireNonNull(HttpRequestProcessor.getParameterValue(params, SECRET_NAME_FIELD)).toLowerCase();
+
+		// TODO check if operation is encryption or decryption
+		// TODO check if secret exists
+		logger.debug("ECIES operation \"" + operation + "\" requested using a secret \"" + secretName + "\"");
+
+//		InputStream inputStream = new InputStreamReader(exchange.getRequestBody());
+
+//		try (InputStreamReader inputStreamReader = new InputStreamReader(exchange.getRequestBody());
+//			 BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
+//			int character;
+//			while ((character = bufferedReader.read()) != EOF) {
+//
+//			}
+//		}
+
+		// Print the binary data
+//		int count = 0;
+//		InputStream inputStream = exchange.getRequestBody();
+//		int character;
+//		while ((character = inputStream.read()) != -1) {
+//			System.out.printf("%02x : %c \n",character, character);
+//			count++;
+//		}
+//		logger.info("Number of bytes: " + count);
+
+		EciesEncryptionClient eciesEncryptionClient = new EciesEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName, exchange.getRequestBody());
+
+//		logger.info("Server configuration: " + serverConfiguration);
+//		logger.info("caCertificates: " + caCertificates.size());
+//		logger.info("serverKeys: " + serverKeys);
+//		logger.info("clientCertificate: " + clientCertificate);
+//		logger.info("clientTlsKey: " + clientTlsKey);
+
+
+		try (final OutputStream os = exchange.getResponseBody();) {
+			final byte[] binaryResponse = (operation.equals("encrypt")) ? eciesEncryptionClient.encryptStream() : eciesEncryptionClient.decryptStream();
+			exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
+			os.write(binaryResponse);
+		}
+		catch (Exception ex) {
+			logger.error(ex);
+		}
+
+		// Write headers
+		// exchange.getResponseHeaders().add("Strict-Transport-Security", "max-age=300;
+		// includeSubdomains");
+//		exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
+//
+//		// Write response
+//		try (final OutputStream os = exchange.getResponseBody();) {
+//			os.write(binaryResponse);
+//		}
 
 //
 //		final Map<String, List<String>> params = HttpRequestProcessor.parseQueryString(queryString);
@@ -165,18 +233,31 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 
 		// Create response
 
-		final byte[] binaryResponse = response.getBytes(StandardCharsets.UTF_8);
-
-		// Write headers
-		// exchange.getResponseHeaders().add("Strict-Transport-Security", "max-age=300;
-		// includeSubdomains");
-		exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
-
-		// Write response
-		try (final OutputStream os = exchange.getResponseBody();) {
-			os.write(binaryResponse);
-		}
+//		new EciesEncryptionClient()
+//
+//		final byte[] binaryResponse = response.getBytes(StandardCharsets.UTF_8);
+//
+//		// Write headers
+//		// exchange.getResponseHeaders().add("Strict-Transport-Security", "max-age=300;
+//		// includeSubdomains");
+//		exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
+//
+//		// Write response
+//		try (final OutputStream os = exchange.getResponseBody();) {
+//			os.write(binaryResponse);
+//		}
 	}
+
+//	private EcPoint doExponentiation(final ApvssShareholder shareholder, EcPoint basePoint) throws NotFoundException {
+//		final ShamirShare share = shareholder.getShare1();
+//		if ((shareholder.getSecretPublicKey() == null) || (share == null)) {
+//			throw new NotFoundException();
+//		} else {
+//			// Compute exponentiation using share
+//			return CommonConfiguration.CURVE.multiply(basePoint, share.getY());
+//		}
+//
+//	}
 
 	private Boolean doStoring(String secretName, String name, X509Certificate clientCertificate, PrivateKey clientPrivateKey) throws ResourceUnavailableException, GeneralSecurityException, BelowThresholdException, IOException, BadArgumentException, ClassNotFoundException {
 //		RsaCertificateAuthorityClient client = new RsaCertificateAuthorityClient(serverConfiguration,caCerts,serverKeys,clientCertificate,clientPrivateKey, secretName, name);

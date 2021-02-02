@@ -1,44 +1,26 @@
 package com.ibm.pross.client.app;
 
-import java.io.File;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.net.InetSocketAddress;
-import java.nio.file.Files;
-import java.security.*;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 import com.ibm.pross.client.app.http.HttpRequestProcessor;
-import com.ibm.pross.client.app.permissions.AccessEnforcement;
-import com.ibm.pross.client.app.permissions.AppPermissionLoader;
-import com.ibm.pross.client.encryption.EciesEncryptionClient;
 import com.ibm.pross.client.util.BaseClient;
+import com.ibm.pross.common.config.KeyLoader;
+import com.ibm.pross.common.config.ServerConfiguration;
+import com.ibm.pross.common.config.ServerConfigurationLoader;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThresholdException;
+import com.ibm.pross.common.util.serialization.Pem;
+import net.i2p.crypto.eddsa.EdDSASecurityProvider;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
-import com.ibm.pross.common.config.KeyLoader;
-import com.ibm.pross.common.config.ServerConfiguration;
-import com.ibm.pross.common.config.ServerConfigurationLoader;
-import com.ibm.pross.common.util.serialization.Pem;
-//import com.ibm.pross.server.app.avpss.ApvssShareholder;
-//import com.ibm.pross.server.app.http.HttpRequestProcessor;
-//import com.ibm.pross.server.communication.MessageDeliveryManager;
-//import com.ibm.pross.server.communication.handlers.ChainBuildingMessageHandler;
-//import com.ibm.pross.server.communication.pointtopoint.MessageReceiver;
-//import com.ibm.pross.server.configuration.permissions.AccessEnforcement;
-//import com.ibm.pross.server.configuration.permissions.ClientPermissionLoader;
-
-import net.i2p.crypto.eddsa.EdDSASecurityProvider;
+import java.io.File;
+import java.io.IOException;
+import java.security.*;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClientApplication extends BaseClient {
 
@@ -55,7 +37,7 @@ public class ClientApplication extends BaseClient {
 //    public static String AUTH_DIRECTORY = "../client/clients.config";
 //    public static String CA_DIRECTORY = "../ca";
 
-    private static final Logger logger = LogManager.getLogger(EciesEncryptionClient.class);
+    private static final Logger logger = LogManager.getLogger(ClientApplication.class);
 
     public ClientApplication(final ServerConfiguration serverConfiguration, final List<X509Certificate> caCertificates,
                              final KeyLoader serverKeys, final X509Certificate clientCertificate,
@@ -68,6 +50,32 @@ public class ClientApplication extends BaseClient {
         final HttpRequestProcessor requestProcessor = new HttpRequestProcessor(serverConfiguration, caCertificates,
                 serverKeys, clientCertificate, clientTlsKey, caCertHost);
         requestProcessor.start();
+
+        // Test connection between client app and nodes
+//        String url_link = "https://" + serverConfiguration.getServerAddresses().get(0).getAddress().getHostAddress() + ":" + ((int) CommonConfiguration.BASE_HTTP_PORT + 1) + "/id";
+//        logger.debug(url_link);
+//
+//        final URL url = new URL(url_link);
+//        final HttpsURLConnection httpsURLConnection = (HttpsURLConnection) url.openConnection();
+//        this.configureHttps(httpsURLConnection, 1);
+//
+//        httpsURLConnection.setRequestMethod("GET");
+//        httpsURLConnection.setConnectTimeout(10_000);
+//        httpsURLConnection.setReadTimeout(10_000);
+//
+//        httpsURLConnection.connect();
+//
+//        try (final InputStream inputStream = httpsURLConnection.getInputStream();
+//             final InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+//             final BufferedReader bufferedReader = new BufferedReader(inputStreamReader);) {
+////            logger.debug(bufferedReader.readLine());
+//            while (true) {
+//                String line = bufferedReader.readLine();
+//                logger.debug(line);
+//                if(line==null)
+//                    break;
+//            }
+//        }
     }
 
     public static void main(final String[] args)
@@ -89,17 +97,20 @@ public class ClientApplication extends BaseClient {
         // Load server keys
         final File keysDirectory = new File(baseDirectory, SERVER_KEYS_DIRECTORY);
         final KeyLoader serverKeys = new KeyLoader(keysDirectory, configuration.getNumServers(), null);
+        logger.debug("Loaded " + configuration.getNumServers() + " public server keys from directory " + SERVER_KEYS_DIRECTORY);
 
         // Load client certificate
         final File clientDirectory = new File(baseDirectory, CLIENT_DIRECTORY);
         final File certDirectory = new File(clientDirectory, CERTS_DIRECTORY);
         final File clientCertificateFile = new File(certDirectory, "cert-" + clientRole);
         final X509Certificate clientCertificate = Pem.loadCertificateFromFile(clientCertificateFile);
+        logger.debug("Loaded client certificate from file: " + baseDirectory + "/" + CLIENT_DIRECTORY + "/" + "cert-" + clientRole);
 
         // Load client key
         final File clientKeysDirectory = new File(baseDirectory, CLIENT_KEYS_DIRECTORY);
         final File clientKeysFile = new File(clientKeysDirectory, "private-" + clientRole);
         final PrivateKey clientPrivateKey = (PrivateKey) Pem.loadKeyFromFile(clientKeysFile);
+        logger.debug("Loaded client private key from file: " + baseDirectory + "/" + CLIENT_KEYS_DIRECTORY + "/" + "private-" + clientRole);
 
         // Load CA certificates
         final File caDirectory = new File(baseDirectory, CA_DIRECTORY);
@@ -110,7 +121,10 @@ public class ClientApplication extends BaseClient {
         }
         final File caCertificateFile = new File(caDirectory, "ca-cert-clients.pem");
         caCerts.add(Pem.loadCertificateFromFile(caCertificateFile));
+        logger.debug("Number of loaded ca certificates:" + caCerts.size());
+
         final X509Certificate caCertHost = Pem.loadCertificateFromFile(caCertificateFile);
+        logger.debug("Loaded ca certificate of the host.");
 
         new ClientApplication(configuration, caCerts, serverKeys, clientCertificate, clientPrivateKey, caCertHost);
     }
@@ -260,3 +274,11 @@ public class ClientApplication extends BaseClient {
 //    }
 
 }
+
+/*
+@startuml
+class ClientApplication {
+
+}
+@enduml
+*/

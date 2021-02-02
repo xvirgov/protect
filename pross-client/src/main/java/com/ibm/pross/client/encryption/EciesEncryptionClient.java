@@ -1,9 +1,9 @@
 package com.ibm.pross.client.encryption;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
+import javax.net.ssl.HttpsURLConnection;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -43,6 +44,8 @@ import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThres
 import com.ibm.pross.common.util.serialization.Pem;
 import com.ibm.pross.common.util.shamir.Polynomials;
 
+import org.apache.commons.io.IOUtils;
+
 /**
  * Performs ECIES (Elliptic Curve based ElGamal Encryption and Decryption of
  * files used a distributed secret key)
@@ -51,8 +54,9 @@ public class EciesEncryptionClient extends BaseClient {
 
 	// Parameters of operation
 	private final String secretName;
-	private final File inputFile;
-	private final File outputFile;
+	private File inputFile;
+	private File outputFile;
+	private InputStream inputStream;
 
 	private static final Logger logger = LogManager.getLogger(EciesEncryptionClient.class);
 
@@ -66,6 +70,17 @@ public class EciesEncryptionClient extends BaseClient {
 		this.secretName = secretName;
 		this.inputFile = inputFile;
 		this.outputFile = outputFile;
+	}
+
+	public EciesEncryptionClient(final ServerConfiguration serverConfiguration,
+								 final List<X509Certificate> caCertificates, final KeyLoader serverKeys,
+								 final X509Certificate clientCertificate, PrivateKey clientTlsKey, final String secretName,
+								 InputStream inputStream) {
+
+		super(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey);
+
+		this.secretName = secretName;
+		this.inputStream = inputStream;
 	}
 
 	public void encryptFile() throws BadPaddingException, IllegalBlockSizeException, ClassNotFoundException,
@@ -158,6 +173,111 @@ public class EciesEncryptionClient extends BaseClient {
 
 	}
 
+	public byte[] encryptStream() throws BadPaddingException, IllegalBlockSizeException, ClassNotFoundException,
+			IOException, ResourceUnavailableException, BelowThresholdException {
+		logger.info("Beginning ECIES encryption...");
+		// Print status
+//		logger.info("-----------------------------------------------------------");
+//		logger.info("Beginning encryption of file: " + this.inputFile);
+
+		// Get public key and current epoch from the server
+		logger.info("Accessing public key for secret: " + this.secretName + "... ");
+		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+//		logger.info(" (done)");
+		final EcPoint publicKey = shareVerificationKeysAndEpoch.getKey().get(0);
+		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
+
+		// Reading
+//		logger.info("Reading input file: " + this.inputFile + "... ");
+//		final byte[] plaintextData = Files.readAllBytes(inputFile.toPath());
+//		final byte[] plaintextData = inputStream.readAllBytes();
+		final byte[] plaintextData = IOUtils.toByteArray(inputStream);
+
+
+//		logger.info(" (done)");
+//		logger.info("Read " + plaintextData.length + " bytes.");
+
+		// Perform ECIES encryption
+//		logger.info("Performing ECIES encryption of file content... ");
+		final byte[] ciphertext = EciesEncryption.encrypt(plaintextData, publicKey);
+//		logger.info(" (done)");
+//		logger.info("Encrypted length " + ciphertext.length + " bytes.");
+
+//		// Write ciphertext to output file
+//		logger.info("Writing ciphertext to file: " + this.outputFile + "... ");
+////		Files.write(this.outputFile.toPath(), ciphertext);
+//		logger.info(" (done)");
+//		logger.info("Wrote " + ciphertext.length + " bytes.");
+//
+//		logger.info("Done.");
+		logger.info("Public key for secret:    " + publicKey);
+		logger.info("Current epoch for secret: " + currentEpoch);
+		logger.info("Size of the plaintext:    " + plaintextData.length);
+		logger.info("Size of the ciphertext:   " + ciphertext.length);
+		return ciphertext;
+	}
+
+	public byte[] decryptStream() throws BadPaddingException, IllegalBlockSizeException, ClassNotFoundException,
+			IOException, ResourceUnavailableException, BelowThresholdException {
+
+		logger.info("Beginning ECIES decryption...");
+		// Print status
+//		logger.info("-----------------------------------------------------------");
+//		logger.info("Beginning decryption of file: " + this.inputFile);
+
+		// Reading ciphertext
+//		logger.info("Reading input file: " + this.inputFile + "... ");
+//		final byte[] ciphertextData = Files.readAllBytes(inputFile.toPath());
+//		final byte[] ciphertextData = inputStream.readAllBytes();
+		final byte[] ciphertextData = IOUtils.toByteArray(inputStream);
+//		logger.info(" (done)");
+//		logger.info("Read " + ciphertextData.length + " bytes of ciphertext.");
+
+
+		// Extract public value from ciphertext
+//		logger.info("Extracting public value from ciphertext: " + this.inputFile + "... ");
+		final EcPoint publicValue = EciesEncryption.getPublicValue(ciphertextData);
+//		logger.info(" (done)");
+//		logger.info("Public Value is: " + publicValue);
+
+
+		// Get public key and current epoch from the server
+//		logger.info("Accessing public key for secret: " + this.secretName + "... ");
+		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+//		logger.info(" (done)");
+		final EcPoint publicKey = shareVerificationKeysAndEpoch.getKey().get(0);
+		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
+//		logger.info("Public key for secret:    " + publicKey);
+//		logger.info("Current epoch for secret: " + currentEpoch);
+
+		// Get public key and current epoch from the server
+		logger.info("Performing threshold exponentiation on public value using: " + this.secretName + "... ");
+		final EcPoint exponentiationResult = this.exponentiatePoint(publicValue, currentEpoch);
+//		logger.info(" (done)");
+//		logger.info("Shared secret obtained:    " + exponentiationResult);
+
+		// Perform ECIES decryption
+//		logger.info("Performing ECIES decryption of file content... ");
+		final byte[] plaintext = EciesEncryption.decrypt(ciphertextData, exponentiationResult);
+//		logger.info(" (done)");
+//		logger.info("Plaintext length " + plaintext.length + " bytes.");
+		;
+
+		// Write plaintext to output file
+//		logger.info("Writing plaintext to file: " + this.outputFile + "... ");
+////		Files.write(this.outputFile.toPath(), plaintext);
+//		logger.info(" (done)");
+//		logger.info("Wrote " + plaintext.length + " bytes.");
+//
+//		logger.info("Done.");
+
+		logger.info("Public key for secret:    " + publicKey);
+		logger.info("Current epoch for secret: " + currentEpoch);
+		logger.info("Size of the ciphertext:   " + ciphertextData.length);
+		logger.info("Size of the plaintext:    " + plaintext.length);
+		return plaintext;
+	}
+
 	public static void main(final String args[]) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException,
 			CertificateException, BadPaddingException, IllegalBlockSizeException, ClassNotFoundException,
 			ResourceUnavailableException, BelowThresholdException {
@@ -239,6 +359,7 @@ public class EciesEncryptionClient extends BaseClient {
 	private EcPoint exponentiatePoint(final EcPoint inputPoint, final long expectedEpoch)
 			throws ResourceUnavailableException {
 
+		logger.info("Initiating exponentiation on each shareholder...");
 		// Server configuration
 		final int numShareholders = this.serverConfiguration.getNumServers();
 		final int reconstructionThreshold = this.serverConfiguration.getReconstructionThreshold();
@@ -264,6 +385,36 @@ public class EciesEncryptionClient extends BaseClient {
 			final int serverPort = CommonConfiguration.BASE_HTTP_PORT + serverId;
 			final String linkUrl = "https://" + serverIp + ":" + serverPort + "/exponentiate?secretName="
 					+ this.secretName + "&x=" + inputPoint.getX() + "&y=" + inputPoint.getY() + "&json=true";
+
+//			final String linkUrl = "https://" + serverIp + ":" + serverPort + "/id";
+//			logger.info("Performing id on server " + serverId);
+//			try {
+//				final URL url = new URL(linkUrl);
+//				final HttpsURLConnection httpsURLConnection = (HttpsURLConnection) url.openConnection();
+//				this.configureHttps(httpsURLConnection, serverId);
+//
+//				httpsURLConnection.setRequestMethod("GET");
+//				httpsURLConnection.setConnectTimeout(10_000);
+//				httpsURLConnection.setReadTimeout(10_000);
+//
+//				httpsURLConnection.connect();
+//
+//				try (final InputStream inputStream = httpsURLConnection.getInputStream();
+//					 final InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+//					 final BufferedReader bufferedReader = new BufferedReader(inputStreamReader);) {
+////            logger.debug(bufferedReader.readLine());
+//					while (true) {
+//						String line = bufferedReader.readLine();
+//						logger.debug(line);
+//						if (line == null)
+//							break;
+//					}
+//				}
+//			} catch( Exception ex){
+//				logger.error(ex);
+//			}
+
+			logger.info("Requesting exponentiation of public value from server " + serverId);
 
 			final int thisServerId = serverId;
 
