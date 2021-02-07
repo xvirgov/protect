@@ -98,8 +98,11 @@ public class HttpRequestProcessor {
 //        this.server.createContext("/disable", new DisableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
 //        this.server.createContext("/enable", new EnableHandler(clientKeys, accessEnforcement, serverConfig, caCerts, serverKeys, baseDirectory));
 
-        this.server.createContext("/encrypt", new EncryptHandler(serverKeys, caCertificates, null));
-        this.server.createContext("/ecies", new EciesHandler(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey));
+        this.server.createContext("/encrypt", new EncryptHandler(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey));
+        this.server.createContext("/decrypt", new EncryptHandler(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey));
+//        this.server.createContext("/ecies", new EciesHandler(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey));
+
+        this.server.createContext("/generate-keys", new GenerateKeysHandler(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey));
 //        this.server.createContext("/generate", new GenerateHandler(clientKeys, caCerts, serverConfig));
 /*
         /*

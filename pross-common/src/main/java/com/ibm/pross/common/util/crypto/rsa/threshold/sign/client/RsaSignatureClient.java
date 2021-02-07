@@ -79,8 +79,7 @@ public class RsaSignatureClient {
 			try {
 				signatureTriplets.add(server.computeSignatureShare(keyName, blindedToBeSigned));
 			} catch (BadArgumentException | UserNotFoundException e1) {
-				System.out
-						.print("    Failed to get result from server[" + serverIndex + "], error = " + e1.getMessage());
+				logger.error("    Failed to get result from server[" + serverIndex + "], error = " + e1.getMessage());
 			}
 		}
 		logger.info(" done. Collected " + signatureTriplets.size() + " unique signature shares");

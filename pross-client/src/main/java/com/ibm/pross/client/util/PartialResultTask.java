@@ -1,5 +1,8 @@
 package com.ibm.pross.client.util;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -9,6 +12,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -42,11 +46,36 @@ public abstract class PartialResultTask implements Runnable {
 		this.maximumFailures = maximumFailures;
 	}
 
+	/**
+	 * For retrieving rsa public parameters
+	 * @param baseClient
+	 * @param remoteServerId
+	 * @param requestUrl
+	 * @param verifiedResultsCounter
+	 * @param latch
+	 * @param failureCounter
+	 * @param maximumFailures
+	 */
+	public PartialResultTask(final BaseClient baseClient, final int remoteServerId, final String requestUrl, final Map<RsaPublicParameters, Integer> verifiedResultsCounter,
+							 final CountDownLatch latch, final AtomicInteger failureCounter, final int maximumFailures) {
+
+		this.baseClient = baseClient;
+		// Remote server info
+		this.remoteServerId = remoteServerId;
+		this.requestUrl = requestUrl;
+
+		// State management
+		this.latch = latch;
+		this.failureCounter = failureCounter;
+		this.maximumFailures = maximumFailures;
+	}
+
 	@Override
 	public void run() {
 
 		try {
 			// Create HTTPS connection to the remote server
+//			System.out.println(this.requestUrl);
 			final URL url = new URL(this.requestUrl);
 			final HttpsURLConnection httpsConnection = (HttpsURLConnection) url.openConnection();
 			this.baseClient.configureHttps(httpsConnection, remoteServerId);
@@ -77,6 +106,10 @@ public abstract class PartialResultTask implements Runnable {
 
 				final String inputLine = bufferedReader.readLine();
 
+//				System.out.println("=====================================================================");
+//				System.out.println(inputLine);
+//				System.out.println("=====================================================================");
+
 				// Parse and process
 				this.parseJsonResult(inputLine);
 
@@ -92,7 +125,7 @@ public abstract class PartialResultTask implements Runnable {
 					latch.countDown();
 				}
 			}
-			System.err.println("Exception from server #" + remoteServerId + ": " + e.getMessage());
+			System.err.println("Exception from server #" + remoteServerId + ": " + e);
 		}
 	}
 
