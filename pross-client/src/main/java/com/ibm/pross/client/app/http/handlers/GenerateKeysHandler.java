@@ -67,7 +67,7 @@ public class GenerateKeysHandler extends AuthenticatedClientRequestHandler {
     public void authenticatedClientHandle(final HttpExchange exchange, final String user) throws IOException,
             UnauthorizedException, NotFoundException, BadRequestException, ResourceUnavailableException, InternalServerException {
 
-        logger.info("Started key-generation operation");
+//        logger.info("Started key-generation operation");
 
         // Extract secret name from request
         final URI requestUri = exchange.getRequestURI();
@@ -84,7 +84,7 @@ public class GenerateKeysHandler extends AuthenticatedClientRequestHandler {
         final String cipher = Objects.requireNonNull(HttpRequestProcessor.getParameterValue(params, CIPHER)).toLowerCase();
         final String secretName = Objects.requireNonNull(HttpRequestProcessor.getParameterValue(params, SECRET_NAME_FIELD)).toLowerCase();
 
-        logger.debug("Key generation requested, parameters: [" + cipher + ", " + secretName + "]");
+        logger.debug(cipher + "-key generation requested for secret : " + secretName);
 
 //		InputStream inputStream = new InputStreamReader(exchange.getRequestBody());
 

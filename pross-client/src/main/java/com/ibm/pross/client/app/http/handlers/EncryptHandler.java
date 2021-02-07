@@ -72,7 +72,7 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
     public void authenticatedClientHandle(final HttpExchange exchange, final String user) throws IOException,
             UnauthorizedException, NotFoundException, BadRequestException, ResourceUnavailableException, InternalServerException {
 
-        logger.info("Started encryption operation");
+//        logger.info("Started encryption operation");
 
         // Extract secret name from request
         final URI requestUri = exchange.getRequestURI();
@@ -91,7 +91,7 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
         // TODO check if operation is encryption or decryption
         // TODO check if secret exists
 //        logger.debug("ECIES operation \"" + cipher + "\" requested using a secret \"" + secretName + "\"");
-        logger.info("Encrypt operation parameters: " + cipher + ", " + secretName);
+        logger.info(cipher + "-encryption operation requested with secret " + secretName);
 
 //		InputStream inputStream = new InputStreamReader(exchange.getRequestBody());
 
@@ -114,7 +114,6 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 //		logger.info("Number of bytes: " + count);
 
         if (cipher.equals(ECIES_CIPHER)) {
-        	logger.info("ECIES encryption using key " + secretName);
 			EciesEncryptionClient eciesEncryptionClient = new EciesEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName, exchange.getRequestBody());
 
 			try (final OutputStream os = exchange.getResponseBody();) {
@@ -126,7 +125,6 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 			}
 		}
         else if (cipher.equals(RSA_CIPHER)) {
-			logger.info("RSA encryption using key " + secretName);
 			RsaEncryptionClient rsaEncryptionClient = new RsaEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName, exchange.getRequestBody());
 
 			try (final OutputStream os = exchange.getResponseBody();) {

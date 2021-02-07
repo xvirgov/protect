@@ -132,7 +132,7 @@ public class RsaEncryptionClient extends BaseClient {
 
         return recoveredPlaintext.toByteArray();
     }
-    
+
     private List<Object> requestPartialRsaDecryptions(final BigInteger message, final long expectedEpoch) throws ResourceUnavailableException {
         logger.info("Performing threshold RSA decryption");
 

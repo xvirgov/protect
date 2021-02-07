@@ -49,23 +49,23 @@ public class RsaSharing {
 	}
 	
 	public static RsaSharing generateSharing(final int keySizeBits, final int numServers, final int threshold) throws InvalidKeySpecException, NoSuchAlgorithmException {
-
+		logger.info("Generating RSA keys with max bit size: " + keySizeBits);
 		final int primeLength = (keySizeBits / 2);
 		
-		logger.info("  Generating p...");
+		logger.info("Generating p...");
 		final BigInteger p = Primes.generateSafePrime(primeLength);
 		final BigInteger pPrime = Primes.getSophieGermainPrime(p);
-		logger.info(" done.");
+		logger.info("[DONE]");
 
-		logger.info("  Generating q...");
+		logger.info("Generating q...");
 		final BigInteger q = Primes.generateSafePrime(primeLength);
 		final BigInteger qPrime = Primes.getSophieGermainPrime(q);
-		logger.info(" done.");
+		logger.info("[DONE]");
 
-		logger.info("  Computing moduli...");
+		logger.info("Computing moduli...");
 		final BigInteger m = pPrime.multiply(qPrime);
 		final BigInteger n = p.multiply(q);
-		logger.info(" done.");
+		logger.info("[DONE]");
 
 		// Public exponent (e must be greater than numServers)
 		final BigInteger e = BigInteger.valueOf(65537);
@@ -74,7 +74,7 @@ public class RsaSharing {
 		}
 
 		// Create standard RSA Public key pair
-		logger.info("  Creating RSA keypair...");
+		logger.info("Creating RSA keypair...");
 		final RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(n, e);
 		final KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 		final RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(publicKeySpec);
@@ -84,10 +84,10 @@ public class RsaSharing {
 		final BigInteger realD = Exponentiation.modInverse(e, totient);
 		final RSAPrivateKeySpec privateKeySpec = new RSAPrivateKeySpec(n, realD);
 		final RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory.generatePrivate(privateKeySpec);
-		logger.info(" done.");
+		logger.info("[DONE]");
 
 		// Create secret shares of "d"
-		logger.info("  Generating secret shares...");
+		logger.info("Generating secret shares...");
 		final BigInteger d = Exponentiation.modInverse(e, m);
 
 		// Generate random polynomial coefficients for secret sharing of d
@@ -102,10 +102,10 @@ public class RsaSharing {
 			BigInteger xCoord = BigInteger.valueOf(i + 1);
 			shares[i] = Polynomials.evaluatePolynomial(coefficients, xCoord, m);
 		}
-		logger.info(" done.");
+		logger.info("[DONE]");
 
 		// Generate public and private verification keys
-		logger.info("  Creating public and private verification keys...");
+		logger.info("Creating public and private verification keys...");
 
 		// Generate public verification key v as a random square modulo n
 		final BigInteger sqrtV = RandomNumberGenerator.generateRandomInteger(n);
@@ -116,7 +116,7 @@ public class RsaSharing {
 		for (int i = 0; i < shares.length; i++) {
 			verificationKeys[i] = v.modPow(shares[i].getY(), n);
 		}
-		logger.info(" done.");
+		logger.info("[DONE]");
 
 		return new RsaSharing(numServers, threshold, publicKey, privateKey, shares, v, verificationKeys);
 	}

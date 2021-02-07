@@ -27,6 +27,8 @@ import com.ibm.pross.server.app.http.HttpRequestProcessor;
 import com.ibm.pross.server.configuration.permissions.AccessEnforcement;
 import com.ibm.pross.server.configuration.permissions.ClientPermissions.Permissions;
 import com.sun.net.httpserver.HttpExchange;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This handler pre-stores a share of the secret Client's must have a specific
@@ -40,6 +42,8 @@ import com.sun.net.httpserver.HttpExchange;
  */
 @SuppressWarnings("restriction")
 public class StoreHandler extends AuthenticatedClientRequestHandler {
+
+	private static final Logger logger = LogManager.getLogger(StoreHandler.class);
 
 	public static final Permissions REQUEST_PERMISSION = Permissions.STORE;
 
@@ -143,6 +147,8 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
 						+ "' in the DKG.";
 			}
 		}
+
+		logger.info(response);
 
 		// Create response
 		final byte[] binaryResponse = response.getBytes(StandardCharsets.UTF_8);

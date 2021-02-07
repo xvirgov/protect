@@ -85,5 +85,4 @@ public abstract class AuthenticatedClientRequestHandler extends BaseHttpHandler 
     public abstract void authenticatedClientHandle(final HttpExchange exchange, final String username)
             throws IOException, UnauthorizedException, NotFoundException, ConflictException, BadRequestException,
             ResourceUnavailableException, InternalServerException;
-
 }

@@ -69,7 +69,7 @@ public class RsaKeyGeneratorClient extends BaseClient {
         final int numServers = serverConfiguration.getNumServers();
         final int threshold = serverConfiguration.getReconstructionThreshold();
 
-        logger.info("Generating threshold RSA keys with parameters: [number of private key shares : " + numServers + ", threshold: " + threshold + "]");
+//        logger.info("Generating threshold RSA keys with parameters: [number of private key shares : " + numServers + ", threshold: " + threshold + "]");
         final RsaSharing rsaSharing = RsaSharing.generateSharing(numServers, threshold);
         logger.info("RSA key generation complete");
 
