@@ -3,16 +3,18 @@ package com.ibm.pross.client.encryption;
 import com.ibm.pross.client.util.BaseClient;
 import com.ibm.pross.client.util.PartialResultTask;
 import com.ibm.pross.client.util.RsaPublicParameters;
-import com.ibm.pross.common.DerivationResult;
 import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.config.KeyLoader;
 import com.ibm.pross.common.config.ServerConfiguration;
-import com.ibm.pross.common.exceptions.http.NotFoundException;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
-import com.ibm.pross.common.util.crypto.ecc.EcPoint;
+import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.crypto.rsa.RsaUtil;
-import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSignatureClient;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureResponse;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureShareProof;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThresholdException;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.GcdTriplet;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.server.ServerPublicConfiguration;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import org.apache.commons.io.IOUtils;
@@ -87,7 +89,7 @@ public class RsaEncryptionClient extends BaseClient {
         return ciphertext;
     }
 
-    public byte[] decryptionStream() throws IOException, BelowThresholdException, ResourceUnavailableException {
+    public byte[] decryptionStream() throws IOException, BelowThresholdException, ResourceUnavailableException, BadArgumentException {
         logger.info("Starting RSA decryption with secret " + secretName);
 
         final byte[] ciphertextData = IOUtils.toByteArray(inputStream);
@@ -97,12 +99,17 @@ public class RsaEncryptionClient extends BaseClient {
 
         RsaPublicParameters rsaPublicParameters = this.getRsaPublicParams(secretName);
 
-        final BigInteger decryptionResult = decryptThresholdRsa(ciphertext, rsaPublicParameters.getEpoch());
+        final List<SignatureResponse> signatureResponses = requestPartialRsaDecryptions(ciphertext, rsaPublicParameters.getEpoch()).stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
 
-        return null;
+        BigInteger recoveredPlaintext = recoverPlaintext(ciphertext, signatureResponses, rsaPublicParameters);
+
+        logger.info("==================================================================================");
+        logger.info("Recovered plaintext: " + recoveredPlaintext);
+
+        return recoveredPlaintext.toByteArray();
     }
 
-    private BigInteger decryptThresholdRsa(final BigInteger message, final long expectedEpoch) throws ResourceUnavailableException {
+    private List<Object> requestPartialRsaDecryptions(final BigInteger message, final long expectedEpoch) throws ResourceUnavailableException {
         logger.info("Performing threshold RSA decryption");
 
         // Server configuration
@@ -161,7 +168,8 @@ public class RsaEncryptionClient extends BaseClient {
 //				logger.error(ex);
 //			}
 
-            logger.info("Requesting exponentiation of public value from server " + serverId);
+            logger.info("Requesting partial RSA decryption from server " + serverId);
+            logger.debug("Request: " + linkUrl);
 
             final int thisServerId = serverId;
 
@@ -175,8 +183,15 @@ public class RsaEncryptionClient extends BaseClient {
                     final JSONParser parser = new JSONParser();
                     final Object obj = parser.parse(json);
                     final JSONObject jsonObject = (JSONObject) obj;
-//                    final Long responder = (Long) jsonObject.get("responder");
-//                    final long epoch = (Long) jsonObject.get("epoch");
+                    final Long responder = (Long) jsonObject.get("responder");
+                    final long epoch = (Long) jsonObject.get("epoch");
+
+                    final JSONArray shareProof = (JSONArray) jsonObject.get("share_proof");
+                    SignatureShareProof decryptionShareProof = new SignatureShareProof(new BigInteger(shareProof.get(0).toString()),
+                            new BigInteger(shareProof.get(1).toString()));
+
+                    BigInteger decryptionShare = new BigInteger(jsonObject.get("share").toString());
+
 //                    final JSONArray resultPoint = (JSONArray) jsonObject.get("result_point");
 //                    final BigInteger x = new BigInteger((String) resultPoint.get(0));
 //                    final BigInteger y = new BigInteger((String) resultPoint.get(1));
@@ -187,20 +202,21 @@ public class RsaEncryptionClient extends BaseClient {
                     // TODO: Separate results by their epoch, wait for enough results of the same
                     // epoch
                     // TOOD: Implement retry if epoch mismatch and below threshold
-//                    if ((responder == thisServerId) && (epoch == expectedEpoch)) {
-//
-//                        // FIXME: Do verification of the results (using proofs)
+                    if ((responder == thisServerId) && (epoch == expectedEpoch)) {
+
+                        // FIXME: Do verification of the results (using proofs)
 //                        final EcPoint partialResult = new EcPoint(x, y);
-//
-//                        // Store result for later processing
+
+                        // Store result for later processing
 //                        verifiedResults.add(new DerivationResult(BigInteger.valueOf(responder), partialResult));
-//
-//                        // Everything checked out, increment successes
-//                        latch.countDown();
-//                    } else {
-//                        throw new Exception(
-//                                "Server " + thisServerId + " sent inconsistent results (likely during epoch change)");
-//                    }
+                        verifiedResults.add(new SignatureResponse(new BigInteger(responder.toString()), decryptionShare, decryptionShareProof));
+
+                        // Everything checked out, increment successes
+                        latch.countDown();
+                    } else {
+                        throw new Exception(
+                                "Server " + thisServerId + " sent inconsistent results (likely during epoch change)");
+                    }
 
                 }
             });
@@ -219,8 +235,13 @@ public class RsaEncryptionClient extends BaseClient {
 //                // When complete, interpolate the result at zero (where the secret lies)
 //                final EcPoint interpolatedResult = Polynomials.interpolateExponents(results, reconstructionThreshold,
 //                        0);
+//                logger.info("-------------------------------------------------------aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa--------------------------------");
+//                logger.info(verifiedResults);
+
+
+
                 executor.shutdown();
-                return null;
+                return verifiedResults;
 //                return interpolatedResult;
             } else {
                 executor.shutdown();
@@ -229,6 +250,46 @@ public class RsaEncryptionClient extends BaseClient {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private BigInteger recoverPlaintext(final BigInteger ciphertext,
+                                              final List<SignatureResponse> signatureResponses, final RsaPublicParameters rsaPublicParameters)
+            throws BadArgumentException {
+
+        // Extract values from configuration
+        final BigInteger n = rsaPublicParameters.getModulus();
+        final BigInteger e = rsaPublicParameters.getExponent();
+        final int serverCount = this.serverConfiguration.getNumServers();
+        final BigInteger delta = Polynomials.factorial(BigInteger.valueOf(serverCount));
+        final int threshold = this.serverConfiguration.getReconstructionThreshold();
+
+        // Determine coordinates
+        final BigInteger[] xCoords = new BigInteger[threshold];
+        for (int i = 0; i < threshold; i++) {
+            final SignatureResponse signatureResponse = signatureResponses.get(i);
+            xCoords[i] = signatureResponse.getServerIndex();
+        }
+
+        // Interpolate polynomial
+        logger.info(" " + Arrays.toString(xCoords));
+        BigInteger w = BigInteger.ONE;
+        for (int i = 0; i < threshold; i++) {
+            final SignatureResponse signatureResponse = signatureResponses.get(i);
+
+            final BigInteger j = signatureResponse.getServerIndex();
+            final BigInteger signatureShare = signatureResponse.getSignatureShare();
+            final BigInteger L_ij = Polynomials.interpolateNoModulus(xCoords, delta, BigInteger.ZERO, j);
+
+            w = w.multiply(Exponentiation.modPow(signatureShare, ThresholdSignatures.TWO.multiply(L_ij), n));
+        }
+
+        // Use Extended Euclidean Algorithm to solve for the signature
+        final BigInteger ePrime = delta.multiply(delta).multiply(BigInteger.valueOf(4)); // 4*D*D
+        final GcdTriplet gcdTriplet = GcdTriplet.extendedGreatestCommonDivisor(ePrime, e);
+        final BigInteger a = gcdTriplet.getX();
+        final BigInteger b = gcdTriplet.getY();
+
+        return Exponentiation.modPow(w, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n);
     }
 
 }

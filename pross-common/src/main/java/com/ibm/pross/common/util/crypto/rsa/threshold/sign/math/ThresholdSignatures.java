@@ -191,76 +191,76 @@ public class ThresholdSignatures {
 
 		// Use Extended Euclidean Algorithm to solve for the signature
 		final BigInteger ePrime = delta.multiply(delta).multiply(BigInteger.valueOf(4)); // 4*D*D
-		final GcdTriplet gcdTriplet = extendedGreatestCommonDivisor(ePrime, e);
+		final GcdTriplet gcdTriplet = GcdTriplet.extendedGreatestCommonDivisor(ePrime, e);
 		final BigInteger a = gcdTriplet.getX();
 		final BigInteger b = gcdTriplet.getY();
 
 		return Exponentiation.modPow(w, a, n).multiply(Exponentiation.modPow(inputMessage, b, n)).mod(n);
 	}
 
-	/**
-	 * Represents a triplet of numbers returned by the Extended Euclidean Algorithm
-	 */
-	protected static class GcdTriplet {
-
-		private final BigInteger g;
-		private final BigInteger x;
-		private final BigInteger y;
-
-		public GcdTriplet(final BigInteger g, final BigInteger x, final BigInteger y) {
-			this.g = g;
-			this.x = x;
-			this.y = y;
-		}
-
-		/**
-		 * Represents gcd(a, b)
-		 * 
-		 * @return
-		 */
-		public BigInteger getG() {
-			return g;
-		}
-
-		/**
-		 * Represents the co-efficient of b in the identity: ax + by = gcd(a, b)
-		 * 
-		 * @return
-		 */
-		public BigInteger getY() {
-			return y;
-		}
-
-		/**
-		 * Represents the co-efficient of b in the identity: ax + by = gcd(a, b)
-		 * 
-		 * @return
-		 */
-		public BigInteger getX() {
-			return x;
-		}
-
-	}
-
-	/**
-	 * Returns a triplet representing the greatest common divisor between a and b
-	 * (g), as well as the coefficients x and y that satisfy Bézout's identity: ax +
-	 * by = gcd(a, b)
-	 * 
-	 * @param a
-	 * @param b
-	 * @return (g, x, y)
-	 */
-	protected static GcdTriplet extendedGreatestCommonDivisor(BigInteger a, BigInteger b) {
-		if (a.equals(BigInteger.ZERO)) {
-			return new GcdTriplet(b, BigInteger.ZERO, BigInteger.ONE);
-		} else {
-			GcdTriplet t = extendedGreatestCommonDivisor(b.mod(a), a);
-			BigInteger g = t.getG();
-			BigInteger x = t.getX();
-			BigInteger y = t.getY();
-			return new GcdTriplet(g, y.subtract(b.divide(a).multiply(x)), x);
-		}
-	}
+//	/**
+//	 * Represents a triplet of numbers returned by the Extended Euclidean Algorithm
+//	 */
+//	protected static class GcdTriplet {
+//
+//		private final BigInteger g;
+//		private final BigInteger x;
+//		private final BigInteger y;
+//
+//		public GcdTriplet(final BigInteger g, final BigInteger x, final BigInteger y) {
+//			this.g = g;
+//			this.x = x;
+//			this.y = y;
+//		}
+//
+//		/**
+//		 * Represents gcd(a, b)
+//		 *
+//		 * @return
+//		 */
+//		public BigInteger getG() {
+//			return g;
+//		}
+//
+//		/**
+//		 * Represents the co-efficient of b in the identity: ax + by = gcd(a, b)
+//		 *
+//		 * @return
+//		 */
+//		public BigInteger getY() {
+//			return y;
+//		}
+//
+//		/**
+//		 * Represents the co-efficient of b in the identity: ax + by = gcd(a, b)
+//		 *
+//		 * @return
+//		 */
+//		public BigInteger getX() {
+//			return x;
+//		}
+//
+//	}
+//
+//	/**
+//	 * Returns a triplet representing the greatest common divisor between a and b
+//	 * (g), as well as the coefficients x and y that satisfy Bézout's identity: ax +
+//	 * by = gcd(a, b)
+//	 *
+//	 * @param a
+//	 * @param b
+//	 * @return (g, x, y)
+//	 */
+//	protected static GcdTriplet extendedGreatestCommonDivisor(BigInteger a, BigInteger b) {
+//		if (a.equals(BigInteger.ZERO)) {
+//			return new GcdTriplet(b, BigInteger.ZERO, BigInteger.ONE);
+//		} else {
+//			GcdTriplet t = extendedGreatestCommonDivisor(b.mod(a), a);
+//			BigInteger g = t.getG();
+//			BigInteger x = t.getX();
+//			BigInteger y = t.getY();
+//			return new GcdTriplet(g, y.subtract(b.divide(a).multiply(x)), x);
+//		}
+//	}
 
 }
