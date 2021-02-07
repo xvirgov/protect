@@ -344,8 +344,16 @@ public class BaseClient {
                     final long epoch = Long.parseLong(jsonObject.get("epoch").toString());
                     final BigInteger publicExponent = new BigInteger((String) jsonObject.get("public_key"));
                     final BigInteger publicModulus = new BigInteger((String) jsonObject.get("public_modulus"));
+                    final BigInteger verificationKey = new BigInteger((String) jsonObject.get("v"));
+
+                    List<BigInteger> shareVerificationKeys = new ArrayList<>();
+
+                    for(int i = 1; i <= numShareholders; i++) {
+                        shareVerificationKeys.add(new BigInteger((String) jsonObject.get("share_verification_key_" + i)));
+                    }
 
 //                    logger.info("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+//                    logger.info(json);
 
                     // TODO-thesis: retrieve also verification keys
 //					final List<BigInteger> verificationKeys = new ArrayList<>();
@@ -368,7 +376,7 @@ public class BaseClient {
 //						collectedResults.add(new SimpleEntry<List<EcPoint>, Long>(verificationKeys, epoch));
 //						rsaPublicParametersSet.add(new RsaPublicParameters(publicExponent, publicModulus, epoch));
 
-                        RsaPublicParameters rsaPublicParameters = new RsaPublicParameters(publicExponent, publicModulus, epoch);
+                        RsaPublicParameters rsaPublicParameters = new RsaPublicParameters(publicExponent, publicModulus, verificationKey, shareVerificationKeys, epoch);
 
                         // Add parameters to the hashmap
                         if (!rsaPublicParametersCount.containsKey(rsaPublicParameters)) {
@@ -403,8 +411,8 @@ public class BaseClient {
 
                 logger.info("Collected parameters: ");
                 for (Map.Entry<RsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
-                    logger.info(params.getValue());
-                    logger.info(params.getKey());
+//                    logger.info(params.getValue());
+//                    logger.info(params.getKey());
                     if (params.getValue() >= reconstructionThreshold) {
                         logger.debug("Public configuration was determined by majority voting: " + params.getKey());
                         return params.getKey();

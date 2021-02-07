@@ -16,6 +16,7 @@ import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThres
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.GcdTriplet;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.server.ServerPublicConfiguration;
+import com.ibm.pross.common.util.serialization.Parse;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
@@ -28,6 +29,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -63,17 +66,17 @@ public class RsaEncryptionClient extends BaseClient {
 
         RsaPublicParameters rsaPublicParameters = this.getRsaPublicParams(secretName);
 
-        logger.info(rsaPublicParameters);
+//        logger.info(rsaPublicParameters);
 
         final byte[] plaintextData = IOUtils.toByteArray(inputStream);
 
 //        logger.info("Encrypting message: " + Arrays.toString(plaintextData));
         BigInteger plaintext = new BigInteger(plaintextData);
-        logger.info("Encrypting message: " + plaintext);
+        logger.debug("Encrypting message: " + plaintext);
 
         final byte[] ciphertext = RsaUtil.rsaVerify(plaintext, rsaPublicParameters.getExponent(), rsaPublicParameters.getModulus()).toByteArray();
 
-        logger.info("Ciphertext: " + Arrays.toString(ciphertext));
+        logger.debug("Ciphertext: " + Arrays.toString(ciphertext));
 
 //        final byte[] ciphertext = (new String("aaa").getBytes());
 
@@ -99,16 +102,37 @@ public class RsaEncryptionClient extends BaseClient {
 
         RsaPublicParameters rsaPublicParameters = this.getRsaPublicParams(secretName);
 
-        final List<SignatureResponse> signatureResponses = requestPartialRsaDecryptions(ciphertext, rsaPublicParameters.getEpoch()).stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
+//        logger.debug(rsaPublicParameters);
 
-        BigInteger recoveredPlaintext = recoverPlaintext(ciphertext, signatureResponses, rsaPublicParameters);
+        // Get partial decryption shares
+        final List<SignatureResponse> decryptionShares = requestPartialRsaDecryptions(ciphertext, rsaPublicParameters.getEpoch()).stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
 
-        logger.info("==================================================================================");
-        logger.info("Recovered plaintext: " + recoveredPlaintext);
+        // Perform validation of decryption shares
+        List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
+        for (SignatureResponse decryptionShare : decryptionShares) {
+            BigInteger serverIndex = decryptionShare.getServerIndex();
+
+            try {
+                if (this.validateDecryptionShare(ciphertext, decryptionShare, rsaPublicParameters)) {
+                    validatedDecryptionShares.add(decryptionShare);
+                    logger.debug("Decryption share from server " + serverIndex + " passed validation");
+                }
+                else {
+                    logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation");
+                }
+            } catch (Exception exception) {
+                logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation, error = " + exception);
+            }
+        }
+
+        BigInteger recoveredPlaintext = recoverPlaintext(ciphertext, validatedDecryptionShares, rsaPublicParameters);
+//
+//        logger.info("==================================================================================");
+//        logger.info("Recovered plaintext: " + recoveredPlaintext);
 
         return recoveredPlaintext.toByteArray();
     }
-
+    
     private List<Object> requestPartialRsaDecryptions(final BigInteger message, final long expectedEpoch) throws ResourceUnavailableException {
         logger.info("Performing threshold RSA decryption");
 
@@ -169,7 +193,7 @@ public class RsaEncryptionClient extends BaseClient {
 //			}
 
             logger.info("Requesting partial RSA decryption from server " + serverId);
-            logger.debug("Request: " + linkUrl);
+//            logger.debug("Request: " + linkUrl);
 
             final int thisServerId = serverId;
 
@@ -196,7 +220,7 @@ public class RsaEncryptionClient extends BaseClient {
 //                    final BigInteger x = new BigInteger((String) resultPoint.get(0));
 //                    final BigInteger y = new BigInteger((String) resultPoint.get(1));
 
-                    logger.info(json);
+//                    logger.info(json);
 
                     // Verify result
                     // TODO: Separate results by their epoch, wait for enough results of the same
@@ -271,7 +295,7 @@ public class RsaEncryptionClient extends BaseClient {
         }
 
         // Interpolate polynomial
-        logger.info(" " + Arrays.toString(xCoords));
+        logger.info("Interpolate decryption shares from servers: " + Arrays.toString(xCoords));
         BigInteger w = BigInteger.ONE;
         for (int i = 0; i < threshold; i++) {
             final SignatureResponse signatureResponse = signatureResponses.get(i);
@@ -290,6 +314,62 @@ public class RsaEncryptionClient extends BaseClient {
         final BigInteger b = gcdTriplet.getY();
 
         return Exponentiation.modPow(w, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n);
+    }
+
+    private boolean validateDecryptionShare(final BigInteger ciphertext, final SignatureResponse decryptionShare,
+                                            final RsaPublicParameters rsaPublicParameters) {
+
+        // Extract configuration items
+        final BigInteger n = rsaPublicParameters.getModulus();
+        final BigInteger v = rsaPublicParameters.getVerificationKey();
+        final List<BigInteger> verificationKeys = rsaPublicParameters.getShareVerificationKeys();
+
+        final int serverCount = this.serverConfiguration.getNumServers();
+
+        // Extract elements from returned signature triplet
+        final BigInteger index = decryptionShare.getServerIndex();
+        final BigInteger signatureShare = decryptionShare.getSignatureShare();
+        final BigInteger z = decryptionShare.getSignatureShareProof().getZ();
+        final BigInteger c = decryptionShare.getSignatureShareProof().getC();
+
+        // Perform verification
+        final BigInteger vToZ = Exponentiation.modPow(v, z, n);
+        final int keyIndex = index.intValue() - 1;
+        if ((keyIndex < 0) || (keyIndex >= verificationKeys.size())) {
+            return false;
+        }
+        final BigInteger vk = verificationKeys.get(keyIndex);
+        final BigInteger invVerificationKey = Exponentiation.modInverse(vk, n);
+        final BigInteger invVkToC = Exponentiation.modPow(invVerificationKey, c, n);
+        final BigInteger vTerms = vToZ.multiply(invVkToC).mod(n);
+
+        final BigInteger delta = Polynomials.factorial(BigInteger.valueOf(serverCount));
+        final BigInteger mToFourD = Exponentiation.modPow(ciphertext, BigInteger.valueOf(4).multiply(delta), n);
+        final BigInteger xToZ = Exponentiation.modPow(mToFourD, z, n);
+        final BigInteger invShare = Exponentiation.modInverse(signatureShare, n);
+        final BigInteger invShareToTwoC = Exponentiation.modPow(invShare, ThresholdSignatures.TWO.multiply(c), n);
+        final BigInteger xTerms = xToZ.multiply(invShareToTwoC).mod(n);
+
+        final BigInteger shareSquared = Exponentiation.modPow(signatureShare, ThresholdSignatures.TWO, n);
+
+        final byte[] verificationString = Parse.concatenate(v, mToFourD, vk, shareSquared, vTerms, xTerms);
+        final BigInteger recomputedC = hashToInteger(verificationString, ThresholdSignatures.HASH_MOD);
+
+        if (recomputedC.equals(c)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private static BigInteger hashToInteger(final byte[] input, final BigInteger modulus) {
+        try {
+            byte[] hashed = MessageDigest.getInstance(CommonConfiguration.HASH_ALGORITHM).digest(input);
+            return (new BigInteger(1, hashed)).mod(modulus);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
 }

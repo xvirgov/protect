@@ -114,8 +114,15 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
 
             obj.put("public_key", shareholder.getRsaSharing().getPublicKey().getPublicExponent().toString());
             obj.put("public_modulus", shareholder.getRsaSharing().getPublicKey().getModulus().toString());
+
+//            logger.info(shareholder.getRsaSharing());
+            obj.put("v", shareholder.getRsaSharing().getV().toString());
 //			obj.put("public_exponent", shareholder.getRsaSharing().getVerificationKeys().
 //			);
+
+//            logger.info("---------------------------------------------------------------------------------");
+//            logger.info(shareholder.getRsaSharing().getVerificationKeys());
+//            logger.info("---------------------------------------------------------------------------------");
 
             List<String> verificationKeys = Arrays.stream(shareholder.getRsaSharing().getVerificationKeys())
                     .map(BigInteger::toString).collect(Collectors.toList());
