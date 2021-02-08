@@ -8,14 +8,12 @@ import com.ibm.pross.common.config.KeyLoader;
 import com.ibm.pross.common.config.ServerConfiguration;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
 import com.ibm.pross.common.util.Exponentiation;
-import com.ibm.pross.common.util.crypto.rsa.RsaUtil;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureResponse;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureShareProof;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThresholdException;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.GcdTriplet;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
-import com.ibm.pross.common.util.crypto.rsa.threshold.sign.server.ServerPublicConfiguration;
 import com.ibm.pross.common.util.serialization.Parse;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import org.apache.commons.io.IOUtils;
@@ -33,10 +31,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.security.*;
 import java.security.cert.X509Certificate;
-import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,17 +44,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public class RsaEncryptionClient extends BaseClient {
+public class TestingRsaEncryptionClient extends BaseClient {
 
     private final String secretName;
     private final InputStream inputStream;
 
-    private static final Logger logger = LogManager.getLogger(RsaEncryptionClient.class);
+    private static final Logger logger = LogManager.getLogger(TestingRsaEncryptionClient.class);
 
-    public RsaEncryptionClient(final ServerConfiguration serverConfiguration,
-                               final List<X509Certificate> caCertificates, final KeyLoader serverKeys,
-                               final X509Certificate clientCertificate, PrivateKey clientTlsKey, final String secretName,
-                               InputStream inputStream) {
+    public TestingRsaEncryptionClient(final ServerConfiguration serverConfiguration,
+                                      final List<X509Certificate> caCertificates, final KeyLoader serverKeys,
+                                      final X509Certificate clientCertificate, PrivateKey clientTlsKey, final String secretName,
+                                      InputStream inputStream) {
 
         super(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey);
 
@@ -99,75 +95,22 @@ public class RsaEncryptionClient extends BaseClient {
 //        return ciphertext;
     }
 
-    public static final int AES_KEY_SIZE = 256;
-    public static final int GCM_IV_LENGTH = 96;
-    public static final int GCM_TAG_LENGTH = 128;
-    public static final int SALT_LENGTH = 256;
-
     private byte[] rsaAesEncrypt(final byte[] message, BigInteger exponent, BigInteger modulus) {
 
         try {
             // Initialise random and generate session AES key
-//            SecureRandom random = SecureRandom.getInstanceStrong();
-//            KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
-//            keyGenerator.init(AES_KEY_SIZE, random);
-//            SecretKey secretKey = keyGenerator.generateKey();
-//
-//            // Encrypt
-//            Cipher aesGcmCipher = Cipher.getInstance("AES/GCM/NoPadding");
-//            final byte[] nonce = new byte[GCM_NONCE_LENGTH/8];
-//            random.nextBytes(nonce);
-//            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, nonce);
-//            aesGcmCipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmParameterSpec);
-//            final byte[] messageCiphertext = aesGcmCipher.doFinal(message);
-//
-//            // Compute hash
-//            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-//            final byte[] hash = digest.digest(message);
-//
-//            // Encrypt symmetric key with RSA
-//            final byte[] symmetricKeyCiphertext = Exponentiation.modPow(new BigInteger(secretKey.getEncoded()), exponent, modulus).toByteArray();
-//
-//            return Parse.concatenate(symmetricKeyCiphertext, messageCiphertext, hash);
-
-            // Create arrays
-            byte[] iv = new byte[GCM_IV_LENGTH/8];
-            byte[] salt = new byte[SALT_LENGTH/8];
-            byte[] aesEncResult = null;
-
-            // Create a random source
-            SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
-
-            // Initialise iv and salt
-            System.out.println("Initialising iv and salt...");
-            random.nextBytes(iv);
-            random.nextBytes(salt);
-
-            // Initialise random and generate session key
-            System.out.println("Generating session key...");
+            SecureRandom random = SecureRandom.getInstanceStrong();
             KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
             keyGenerator.init(AES_KEY_SIZE, random);
             SecretKey secretKey = keyGenerator.generateKey();
 
-            // Salt session key
-            System.out.println("Salting session key...");
-            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            KeySpec keySpec = new PBEKeySpec(Arrays.toString(secretKey.getEncoded()).toCharArray(), salt, 65536, AES_KEY_SIZE);
-            SecretKeySpec secretKeySpec = new SecretKeySpec(secretKeyFactory.generateSecret(keySpec).getEncoded(), "AES");
-
-            // Encrypt data using AES
-            System.out.println("Encrypting data...");
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmParameterSpec);
-            byte[] encrypted = cipher.doFinal(message);
-
-            // Concatenate salt, iv and encryption result
-            System.out.println("Concatenating salt, iv and encrypted data to create a result of AES-GCM encryption...");
-            byte[] result = new byte[encrypted.length + salt.length + iv.length];
-            System.arraycopy(salt, 0, result, 0, salt.length);
-            System.arraycopy(iv, 0, result, salt.length, iv.length);
-            System.arraycopy(encrypted, 0, result, salt.length + iv.length, encrypted.length);
+            // Encrypt
+            Cipher aesGcmCipher = Cipher.getInstance("AES/GCM/NoPadding");
+            final byte[] nonce = new byte[GCM_IV_LENGTH/8];
+            random.nextBytes(nonce);
+            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, nonce);
+            aesGcmCipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmParameterSpec);
+            final byte[] messageCiphertext = aesGcmCipher.doFinal(message);
 
             // Compute hash
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -176,12 +119,7 @@ public class RsaEncryptionClient extends BaseClient {
             // Encrypt symmetric key with RSA
             final byte[] symmetricKeyCiphertext = Exponentiation.modPow(new BigInteger(secretKey.getEncoded()), exponent, modulus).toByteArray();
 
-            logger.debug("Ciphertext - after encrypt: " + Arrays.toString(encrypted));
-            logger.debug("symm key   - after encrypt: " + Arrays.toString(secretKeySpec.getEncoded()));
-            logger.debug("iv         - after encrypt: " + Arrays.toString(iv));
-            logger.debug("salt       - after encrypt: " + Arrays.toString(salt));
-
-            return Parse.concatenate(symmetricKeyCiphertext, result, hash);
+            return Parse.concatenate(symmetricKeyCiphertext, messageCiphertext, hash);
         }
         catch (GeneralSecurityException e) {
             logger.error(e);
@@ -190,7 +128,7 @@ public class RsaEncryptionClient extends BaseClient {
 
     }
 
-    public byte[] decryptionStream() throws IOException, BelowThresholdException, ResourceUnavailableException, BadArgumentException, BadPaddingException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException {
+    public byte[] decryptionStream() throws IOException, BelowThresholdException, ResourceUnavailableException, BadArgumentException, BadPaddingException, NoSuchPaddingException, NoSuchAlgorithmException {
         logger.info("Starting RSA decryption with secret " + secretName);
 
         final byte[] ciphertextData = IOUtils.toByteArray(inputStream);
@@ -208,10 +146,7 @@ public class RsaEncryptionClient extends BaseClient {
             throw new BadPaddingException("Invalid ciphertext");
         }
 
-        // Retrieve values
         final BigInteger encryptedAesKey = new BigInteger(combined[0]);
-        final byte[] aesCiphertextData = combined[1];
-        final byte[] plaintextHash = combined[2];
 
         // Get partial decryption shares
         final List<SignatureResponse> decryptionShares = requestPartialRsaDecryptions(encryptedAesKey, rsaPublicParameters.getEpoch()).stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
@@ -234,34 +169,21 @@ public class RsaEncryptionClient extends BaseClient {
             }
         }
 
-//        BigInteger recoveredSymmetricKey = recoverPlaintext(encryptedAesKey, validatedDecryptionShares, rsaPublicParameters);
-        final byte[] recoveredSymmetricKey = recoverPlaintext(encryptedAesKey, validatedDecryptionShares, rsaPublicParameters).toByteArray();
-//        SecretKey secretKey = new SecretKeySpec(recoveredSymmetricKey, 0, recoveredSymmetricKey.length, "AES");
+        BigInteger recoveredPlaintext = recoverPlaintext(encryptedAesKey, validatedDecryptionShares, rsaPublicParameters);
+        final byte[] recoveredSymmetricKey = recoveredPlaintext.toByteArray();
+        SecretKey secretKey = new SecretKeySpec(recoveredSymmetricKey, 0, recoveredSymmetricKey.length, "AES");
 
-        byte[] saltDec = Arrays.copyOfRange(aesCiphertextData, 0, SALT_LENGTH/8);
-        byte[] ivDec = Arrays.copyOfRange(aesCiphertextData, SALT_LENGTH/8, SALT_LENGTH/8 + GCM_IV_LENGTH/8);
-        byte[] encryptedDataDec = Arrays.copyOfRange(aesCiphertextData, SALT_LENGTH/8 + GCM_IV_LENGTH/8, aesCiphertextData.length);
+//        ByteBuffer
 
-        logger.debug("Ciphertext - in decrypt: " + Arrays.toString(encryptedDataDec));
-        logger.debug("Symm key   - in decrypt: " + Arrays.toString(recoveredSymmetricKey));
-        logger.debug("iv         - in decrypt: " + Arrays.toString(ivDec));
-        logger.debug("salt       - in decrypt: " + Arrays.toString(saltDec));
+        // Decrypt using AES
+        Cipher aesGcmCipher = Cipher.getInstance("AES/GCM/NoPadding");
+//        aesGcmCipher.init(Cipher.DECRYPT_MODE, secretKey, );
 
-        System.out.println("Salting session key..."); // FIXME-thesis: think about if salting here is really useful - only in case if someone esl provides aes key, can this happen?
-        SecretKeyFactory secretKeyFactoryDec = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-        KeySpec keySpecDec = new PBEKeySpec(Arrays.toString(recoveredSymmetricKey).toCharArray(), saltDec, 65536, AES_KEY_SIZE);
-        SecretKeySpec secretKeySpecDec = new SecretKeySpec(secretKeyFactoryDec.generateSecret(keySpecDec).getEncoded(), "AES");
+//
+//        logger.info("==================================================================================");
+//        logger.info("Recovered plaintext: " + recoveredPlaintext);
 
-        System.out.println("Decrypting data using retrieved values...");
-        Cipher cipherDec = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec gcmParameterSpecDec = new GCMParameterSpec(GCM_TAG_LENGTH, ivDec);
-        cipherDec.init(Cipher.DECRYPT_MODE, secretKeySpecDec, gcmParameterSpecDec);
-
-//        byte[] recoveredPlaintext = cipherDec.doFinal(encryptedDataDec);
-
-        // Do hash verification
-
-        return cipherDec.doFinal(encryptedDataDec);
+        return recoveredPlaintext.toByteArray();
     }
 
     private List<Object> requestPartialRsaDecryptions(final BigInteger message, final long expectedEpoch) throws ResourceUnavailableException {
@@ -501,6 +423,103 @@ public class RsaEncryptionClient extends BaseClient {
             throw new RuntimeException(e);
         }
 
+    }
+
+    public static final int AES_KEY_SIZE = 256;
+    public static final int GCM_IV_LENGTH = 96;
+    public static final int GCM_TAG_LENGTH = 128;
+    public static final int SALT_LENGTH = 256;
+
+    public static void main(String[] args) {
+        System.out.println("Enc/Dec beginning");
+        final byte[] message = "trolololo lolo lolo loossosososooso".getBytes();
+        try {
+            System.out.println("Plaintext: " + Arrays.toString(message));
+
+            // Create arrays
+            byte[] iv = new byte[GCM_IV_LENGTH/8];
+            byte[] salt = new byte[SALT_LENGTH/8];
+            byte[] aesEncResult = null;
+
+            // Create a random source
+            SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+
+            // Initialise iv and salt
+            System.out.println("Initialising iv and salt...");
+            random.nextBytes(iv);
+            random.nextBytes(salt);
+
+            // Initialise random and generate session key
+            System.out.println("Generating session key...");
+            KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+            keyGenerator.init(AES_KEY_SIZE, random);
+            SecretKey secretKey = keyGenerator.generateKey();
+
+            // Salt session key
+            System.out.println("Salting session key...");
+            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            KeySpec keySpec = new PBEKeySpec(Arrays.toString(secretKey.getEncoded()).toCharArray(), salt, 65536, AES_KEY_SIZE);
+            SecretKeySpec secretKeySpec = new SecretKeySpec(secretKeyFactory.generateSecret(keySpec).getEncoded(), "AES");
+
+            // Encrypt data using AES
+            System.out.println("Encrypting data...");
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmParameterSpec);
+            byte[] encrypted = cipher.doFinal(message);
+
+            // Concatenate salt, iv and encryption result
+            System.out.println("Concatenating salt, iv and encrypted data to create a result of AES-GCM encryption...");
+            byte[] result = new byte[encrypted.length + salt.length + iv.length];
+            System.arraycopy(salt, 0, result, 0, salt.length);
+            System.arraycopy(iv, 0, result, salt.length, iv.length);
+            System.arraycopy(encrypted, 0, result, salt.length + iv.length, encrypted.length);
+
+            // Begin decryption
+            System.out.println("Beginning decryption...");
+
+            System.out.println("Retrieve all values and password...");
+            byte[] passwordDec = secretKey.getEncoded();
+            byte[] saltDec = Arrays.copyOfRange(result, 0, SALT_LENGTH/8);
+            byte[] ivDec = Arrays.copyOfRange(result, SALT_LENGTH/8, SALT_LENGTH/8 + GCM_IV_LENGTH/8);
+            byte[] encryptedDataDec = Arrays.copyOfRange(result, SALT_LENGTH/8 + GCM_IV_LENGTH/8, result.length);
+
+            System.out.println("Salting session key...");
+            SecretKeyFactory secretKeyFactoryDec = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            KeySpec keySpecDec = new PBEKeySpec(Arrays.toString(passwordDec).toCharArray(), saltDec, 65536, AES_KEY_SIZE);
+            SecretKeySpec secretKeySpecDec = new SecretKeySpec(secretKeyFactoryDec.generateSecret(keySpecDec).getEncoded(), "AES");
+
+            System.out.println("Decrypting data using retrieved values...");
+            Cipher cipherDec = Cipher.getInstance("AES/GCM/NoPadding");
+            GCMParameterSpec gcmParameterSpecDec = new GCMParameterSpec(GCM_TAG_LENGTH, ivDec);
+            cipherDec.init(Cipher.DECRYPT_MODE, secretKeySpecDec, gcmParameterSpecDec);
+
+            byte[] recoveredPlaintext = cipherDec.doFinal(encryptedDataDec);
+
+            System.out.println("Recovered plaintext: " + Arrays.toString(recoveredPlaintext));
+
+
+//            // Encrypt
+//            Cipher aesGcmCipher = Cipher.getInstance("AES/GCM/NoPadding");
+//            final byte[] nonce = new byte[GCM_IV_LENGTH/8];
+//            random.nextBytes(nonce);
+//            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, nonce);
+//            aesGcmCipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmParameterSpec);
+//            final byte[] messageCiphertext = aesGcmCipher.doFinal(message);
+//
+//            // Compute hash
+//            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+//            final byte[] hash = digest.digest(message);
+//
+//            // Encrypt symmetric key with RSA
+////            final byte[] symmetricKeyCiphertext = Exponentiation.modPow(new BigInteger(secretKey.getEncoded()), exponent, modulus).toByteArray();
+////
+////            return Parse.concatenate(symmetricKeyCiphertext, messageCiphertext, hash);
+        }
+        catch (GeneralSecurityException e) {
+            logger.error(e);
+            throw new RuntimeException(e);
+        }
     }
 
 }
