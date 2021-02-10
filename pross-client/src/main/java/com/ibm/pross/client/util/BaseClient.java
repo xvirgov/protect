@@ -248,28 +248,28 @@ public class BaseClient {
             });
         }
 
-		try {
-			// Once we have K successful responses we attempt to find a consistent
-			// configuration
-			// FIXME: There is a better way of doing this, map result to a counter, wait for
-			// counter to reach majority (or fail)
-			// if not enough remaining responses permit getting a majority
-			latch.await();
+        try {
+            // Once we have K successful responses we attempt to find a consistent
+            // configuration
+            // FIXME: There is a better way of doing this, map result to a counter, wait for
+            // counter to reach majority (or fail)
+            // if not enough remaining responses permit getting a majority
+            latch.await();
 
-			// Check that we have enough results to interpolate the share
-			if (failureCounter.get() <= maximumFailures) {
+            // Check that we have enough results to interpolate the share
+            if (failureCounter.get() <= maximumFailures) {
 
-				executor.shutdown();
+                executor.shutdown();
 
-				return (SimpleEntry<List<EcPoint>, Long>) getConsistentConfiguration(collectedResults,
-						reconstructionThreshold);
-			} else {
-				executor.shutdown();
-				throw new ResourceUnavailableException();
-			}
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e);
-		}
+                return (SimpleEntry<List<EcPoint>, Long>) getConsistentConfiguration(collectedResults,
+                        reconstructionThreshold);
+            } else {
+                executor.shutdown();
+                throw new ResourceUnavailableException();
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -327,7 +327,7 @@ public class BaseClient {
                 protected void parseJsonResult(final String json) throws Exception {
 
                     // Parse JSON
-                    logger.info("JSON is being parsed...");
+//                    logger.info("JSON is being parsed...");
 
                     final JSONParser parser = new JSONParser();
                     final Object obj = parser.parse(json);
@@ -348,7 +348,7 @@ public class BaseClient {
 
                     List<BigInteger> shareVerificationKeys = new ArrayList<>();
 
-                    for(int i = 1; i <= numShareholders; i++) {
+                    for (int i = 1; i <= numShareholders; i++) {
                         shareVerificationKeys.add(new BigInteger((String) jsonObject.get("share_verification_key_" + i)));
                     }
 
@@ -368,7 +368,7 @@ public class BaseClient {
 //						final BigInteger y2 = new BigInteger((String) verificationKey.get(1));
 //						verificationKeys.add(new EcPoint(x2, y2));
 //					}
-                    logger.info("reponder: " + responder + ", thisServer: " + thisServerId);
+//                    logger.info("reponder: " + responder + ", thisServer: " + thisServerId);
                     // Store parsed result
                     if ((responder == thisServerId)) {
 
@@ -396,11 +396,6 @@ public class BaseClient {
         }
 
         try {
-            // Once we have K successful responses we attempt to find a consistent
-            // configuration
-            // FIXME: There is a better way of doing this, map result to a counter, wait for
-            // counter to reach majority (or fail)
-            // if not enough remaining responses permit getting a majority
             latch.await();
 
             // Check that we have enough results to interpolate the share
@@ -409,17 +404,23 @@ public class BaseClient {
                 executor.shutdown();
                 // Use the config which was returned by more than threshold number of servers
 
-                logger.info("Collected parameters: ");
-                for (Map.Entry<RsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
+//                logger.info("Collected parameters: ");
+                int maxWait = 10;
+                while (rsaPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
+                    for (Map.Entry<RsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
 //                    logger.info(params.getValue());
 //                    logger.info(params.getKey());
-                    if (params.getValue() >= reconstructionThreshold) {
-                        logger.debug("Public configuration was determined by majority voting: " + params.getKey());
-                        return params.getKey();
+                        if (params.getValue() >= reconstructionThreshold) {
+//                        logger.debug("Public configuration was determined by majority voting: " + params.getKey());
+                            logger.info("Consistency level reached.");
+                            return params.getKey();
+                        }
                     }
+                    logger.info("Waiting for more servers to send config...");
+                    Thread.sleep(2000);
                 }
 
-                throw new BelowThresholdException("Insufficient consistency to permit recovery (below threshold)");
+                throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
 //                return (SimpleEntry<List<EcPoint>, Long>) getConsistentConfiguration(collectedResults,
 //                        reconstructionThreshold);
             } else {

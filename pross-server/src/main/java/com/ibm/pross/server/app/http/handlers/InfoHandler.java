@@ -88,7 +88,7 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
 //		}
 
         logger.debug("Retrieving local public RSA sharing information for secret " + secretName);
-        logger.debug("Sharing type: " + shareholder.getSharingType().toString());
+//        logger.debug("Sharing type: " + shareholder.getSharingType().toString());
 
         final int serverIndex = shareholder.getIndex();
 
@@ -350,7 +350,7 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
     public void authenticatedClientHandle(final HttpExchange exchange, final String username)
             throws IOException, UnauthorizedException, NotFoundException, BadRequestException {
 
-        logger.info("Server info request is being processed..");
+//        logger.info("Server info request is being processed..");
 
         // Extract secret name from request
         final String queryString = exchange.getRequestURI().getQuery();
@@ -369,7 +369,7 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
         final Boolean outputJson = Boolean
                 .parseBoolean(HttpRequestProcessor.getParameterValue(params, OUTPUT_FORMAT_FIELD));
 
-        logger.info("Providing info about secret " + secretName + " of cipher suite " + cipher);
+//        logger.info("Providing info about secret " + secretName + " of cipher suite " + cipher);
 
         // Perform authentication
         accessEnforcement.enforceAccess(username, secretName, REQUEST_PERMISSION);
@@ -389,7 +389,7 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
             epochNumber = shareholder.getEpoch();
         }
 
-        logger.debug("Epoch number: " + epochNumber);
+//        logger.debug("Epoch number: " + epochNumber);
 
         // Check epoch
         if ((epochNumber < 0) || (epochNumber > shareholder.getEpoch())) {
@@ -410,7 +410,7 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
 //            response = getSecretInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);
 //        }
 
-        logger.debug("Response created");
+//        logger.debug("Response created");
 
         if (response == null) {
             throw new BadRequestException();

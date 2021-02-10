@@ -8,7 +8,9 @@ import com.ibm.pross.common.config.KeyLoader;
 import com.ibm.pross.common.config.ServerConfiguration;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
 import com.ibm.pross.common.util.Exponentiation;
+import com.ibm.pross.common.util.crypto.rsa.OaepUtil;
 import com.ibm.pross.common.util.crypto.rsa.RsaUtil;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureResponse;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureShareProof;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
@@ -21,6 +23,10 @@ import com.ibm.pross.common.util.shamir.Polynomials;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.InvalidCipherTextException;
+import org.bouncycastle.crypto.encodings.OAEPEncoding;
+import org.bouncycastle.crypto.util.DigestFactory;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -50,10 +56,25 @@ import java.util.stream.Collectors;
 
 public class RsaEncryptionClient extends BaseClient {
 
+    public static final int AES_KEY_SIZE = 256;
+    public static final int GCM_IV_LENGTH = 96;
+    public static final int GCM_TAG_LENGTH = 128;
+    public static final int HASH_LENGTH = 256;
+
+    //    public byte[] pad(byte[] message, int length) {
+//        int messageLength = message.length;
+//        int seedLength = 32;
+//
+//        if (messageLength > length - (seedLength << 1) - 1) {
+//            throw new RuntimeException("Message too long for padding scheme.");
+//        }
+//        int zeroPad = length - messageLength - (seedLength << 1) - 1;
+//        byte[] dataBlock = new byte[length - seedLength];
+//
+//    }
+    private static final Logger logger = LogManager.getLogger(RsaEncryptionClient.class);
     private final String secretName;
     private final InputStream inputStream;
-
-    private static final Logger logger = LogManager.getLogger(RsaEncryptionClient.class);
 
     public RsaEncryptionClient(final ServerConfiguration serverConfiguration,
                                final List<X509Certificate> caCertificates, final KeyLoader serverKeys,
@@ -66,6 +87,17 @@ public class RsaEncryptionClient extends BaseClient {
         this.inputStream = inputStream;
     }
 
+    private static BigInteger hashToInteger(final byte[] input, final BigInteger modulus) {
+        try {
+            byte[] hashed = MessageDigest.getInstance(CommonConfiguration.HASH_ALGORITHM).digest(input);
+            return (new BigInteger(1, hashed)).mod(modulus);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+//    public static final int SALT_LENGTH = 256;
+
     public byte[] encryptStream() throws BelowThresholdException, ResourceUnavailableException, IOException {
         logger.info("Starting RSA encryption with secret " + secretName);
 
@@ -74,6 +106,7 @@ public class RsaEncryptionClient extends BaseClient {
 //        logger.info(rsaPublicParameters);
 
         final byte[] plaintextData = IOUtils.toByteArray(inputStream);
+
 
 //        logger.info("Encrypting message: " + Arrays.toString(plaintextData));
 //        BigInteger plaintext = new BigInteger(plaintextData);
@@ -98,11 +131,6 @@ public class RsaEncryptionClient extends BaseClient {
 //        }
 //        return ciphertext;
     }
-
-    public static final int AES_KEY_SIZE = 256;
-    public static final int GCM_IV_LENGTH = 96;
-    public static final int GCM_TAG_LENGTH = 128;
-    public static final int SALT_LENGTH = 256;
 
     private byte[] rsaAesEncrypt(final byte[] message, BigInteger exponent, BigInteger modulus) {
 
@@ -131,64 +159,220 @@ public class RsaEncryptionClient extends BaseClient {
 //            return Parse.concatenate(symmetricKeyCiphertext, messageCiphertext, hash);
 
             // Create arrays
-            byte[] iv = new byte[GCM_IV_LENGTH/8];
-            byte[] salt = new byte[SALT_LENGTH/8];
+            byte[] iv = new byte[GCM_IV_LENGTH / 8];
+//            byte[] salt = new byte[SALT_LENGTH/8];
             byte[] aesEncResult = null;
 
             // Create a random source
             SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
 
             // Initialise iv and salt
-            System.out.println("Initialising iv and salt...");
+            logger.info("Initialising iv...");
             random.nextBytes(iv);
-            random.nextBytes(salt);
+//            random.nextBytes(salt);
 
             // Initialise random and generate session key
-            System.out.println("Generating session key...");
+            logger.info("Generating session key...");
             KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
             keyGenerator.init(AES_KEY_SIZE, random);
             SecretKey secretKey = keyGenerator.generateKey();
 
+            logger.info("Generated AES key: " + Arrays.toString(secretKey.getEncoded()));
+
             // Salt session key
-            System.out.println("Salting session key...");
-            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            KeySpec keySpec = new PBEKeySpec(Arrays.toString(secretKey.getEncoded()).toCharArray(), salt, 65536, AES_KEY_SIZE);
-            SecretKeySpec secretKeySpec = new SecretKeySpec(secretKeyFactory.generateSecret(keySpec).getEncoded(), "AES");
+//            logger.info("Salting session key...");
+//            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+//            KeySpec keySpec = new PBEKeySpec(Arrays.toString(secretKey.getEncoded()).toCharArray(), salt, 65536, AES_KEY_SIZE);
+//            SecretKeySpec secretKeySpec = new SecretKeySpec(secretKeyFactory.generateSecret(keySpec).getEncoded(), "AES");
 
             // Encrypt data using AES
-            System.out.println("Encrypting data...");
+            logger.info("Encrypting data using AES-GCM...");
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmParameterSpec);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmParameterSpec);
             byte[] encrypted = cipher.doFinal(message);
+            logger.info("[DONE]");
 
             // Concatenate salt, iv and encryption result
-            System.out.println("Concatenating salt, iv and encrypted data to create a result of AES-GCM encryption...");
-            byte[] result = new byte[encrypted.length + salt.length + iv.length];
-            System.arraycopy(salt, 0, result, 0, salt.length);
-            System.arraycopy(iv, 0, result, salt.length, iv.length);
-            System.arraycopy(encrypted, 0, result, salt.length + iv.length, encrypted.length);
+            logger.info("Concatenating iv and encrypted data to create a result of AES-GCM encryption...");
+            byte[] result = new byte[encrypted.length + iv.length];
+//            System.arraycopy(salt, 0, result, 0, salt.length);
+            System.arraycopy(iv, 0, result, 0, iv.length);
+            System.arraycopy(encrypted, 0, result, iv.length, encrypted.length);
+            logger.info("[DONE]");
 
             // Compute hash
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             final byte[] hash = digest.digest(message);
 
-            // Encrypt symmetric key with RSA
-            final byte[] symmetricKeyCiphertext = Exponentiation.modPow(new BigInteger(secretKey.getEncoded()), exponent, modulus).toByteArray();
+            logger.info("Plaintext hash: " + Arrays.toString(hash));
 
-            logger.debug("Ciphertext - after encrypt: " + Arrays.toString(encrypted));
-            logger.debug("symm key   - after encrypt: " + Arrays.toString(secretKeySpec.getEncoded()));
-            logger.debug("iv         - after encrypt: " + Arrays.toString(iv));
-            logger.debug("salt       - after encrypt: " + Arrays.toString(salt));
+            byte[] paddedSecretKey = OaepUtil.pad(secretKey.getEncoded(), RsaSharing.DEFAULT_RSA_KEY_SIZE, HASH_LENGTH);
+
+            // Encrypt symmetric key with RSA
+            final byte[] symmetricKeyCiphertext = Exponentiation.modPow(new BigInteger(paddedSecretKey), exponent, modulus).toByteArray();
+
+//            logger.debug("Ciphertext - after encrypt: " + Arrays.toString(encrypted));
+//            logger.debug("symm key   - after encrypt: " + Arrays.toString(secretKeySpec.getEncoded()));
+//            logger.debug("iv         - after encrypt: " + Arrays.toString(iv));
+//            logger.debug("salt       - after encrypt: " + Arrays.toString(salt));
 
             return Parse.concatenate(symmetricKeyCiphertext, result, hash);
-        }
-        catch (GeneralSecurityException e) {
+        } catch (GeneralSecurityException e) {
             logger.error(e);
             throw new RuntimeException(e);
         }
 
     }
+
+//    /**
+//     * int to octet string.
+//     */
+//    private void ItoOSP(
+//            int i,
+//            byte[] sp) {
+//        sp[0] = (byte) (i >>> 24);
+//        sp[1] = (byte) (i >>> 16);
+//        sp[2] = (byte) (i >>> 8);
+//        sp[3] = (byte) (i >>> 0);
+//    }
+//
+//    /**
+//     * mask generator function, as described in PKCS1v2.
+//     */
+//    private byte[] maskGeneratorFunction1(
+//            byte[] Z,
+//            int zOff,
+//            int zLen,
+//            int length) {
+//        Digest mgf1Hash = DigestFactory.createSHA256();
+//        byte[] mask = new byte[length];
+//        byte[] hashBuf = new byte[mgf1Hash.getDigestSize()];
+//        byte[] C = new byte[4];
+//        int counter = 0;
+//
+//        mgf1Hash.reset();
+//
+//        while (counter < (length / hashBuf.length)) {
+//            ItoOSP(counter, C);
+//
+//            mgf1Hash.update(Z, zOff, zLen);
+//            mgf1Hash.update(C, 0, C.length);
+//            mgf1Hash.doFinal(hashBuf, 0);
+//
+//            System.arraycopy(hashBuf, 0, mask, counter * hashBuf.length, hashBuf.length);
+//
+//            counter++;
+//        }
+//
+//        if ((counter * hashBuf.length) < length) {
+//            ItoOSP(counter, C);
+//
+//            mgf1Hash.update(Z, zOff, zLen);
+//            mgf1Hash.update(C, 0, C.length);
+//            mgf1Hash.doFinal(hashBuf, 0);
+//
+//            System.arraycopy(hashBuf, 0, mask, counter * hashBuf.length, mask.length - (counter * hashBuf.length));
+//        }
+//
+//        return mask;
+//    }
+//
+//    // Based on OAEP implementation in bouncycastle
+//    public byte[] pad(byte[] message) throws NoSuchAlgorithmException {
+//        logger.info("Padding the message using OAEP...");
+//        int blockSize = RSA_MODULUS_SIZE / 8;
+//
+//        // Check if the message can be padded
+//        if (message.length > blockSize) {
+//            throw new RuntimeException("Message size is too large! Padding failed.");
+//        }
+//
+//        byte[] block = new byte[blockSize];
+//
+//        // Copy message into the block
+//        System.arraycopy(message, 0, block, block.length - message.length, message.length);
+//
+//        // Add sentinel
+//        block[block.length - message.length - 1] = 0x01;
+//
+//        // Block is already zeroed - no need to add the padding string
+//
+//        // Generate the seed
+//        SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+//        byte[] seed = new byte[HASH_LENGTH / 8];
+//        random.nextBytes(seed);
+//
+//        // Mask the message block
+//        byte[] mask = maskGeneratorFunction1(seed, 0, seed.length, block.length - HASH_LENGTH / 8);
+//
+//        for (int i = HASH_LENGTH / 8; i != block.length; i++) {
+//            block[i] ^= mask[i - HASH_LENGTH / 8];
+//        }
+//
+//        // Add in the seed
+//        System.arraycopy(seed, 0, block, 0, HASH_LENGTH / 8);
+//
+//        // Mask the seed
+//        mask = maskGeneratorFunction1(block, HASH_LENGTH / 8, block.length - HASH_LENGTH / 8, HASH_LENGTH / 8);
+//
+//        for (int i = 0; i != HASH_LENGTH / 8; i++) {
+//            block[i] ^= mask[i];
+//        }
+//
+//        logger.info("[DONE]");
+//        return block;
+//    }
+//
+//    public byte[] unpad(byte[] data) {
+//        logger.info("Extracting the message from the OAEP-padded block...");
+//
+//        int blockSize = RSA_MODULUS_SIZE / 8;
+//        byte[] block = new byte[blockSize];
+//
+//        // Remove any leading zeroes that might be a result of encryption process
+//        System.arraycopy(data, 0, block, block.length - data.length, data.length);
+//
+//        boolean shortData = (data.length < (HASH_LENGTH / 8) + 1);
+//
+//        // Unmask the seed
+//        byte[] mask = maskGeneratorFunction1(block, HASH_LENGTH / 8, block.length - HASH_LENGTH / 8, HASH_LENGTH / 8);
+//
+//        for (int i = 0; i != HASH_LENGTH/8; i++) {
+//            block[i] ^= mask[i];
+//        }
+//
+//        // Unmask the message
+//        mask = maskGeneratorFunction1(block, 0, HASH_LENGTH/8, block.length - HASH_LENGTH/8);
+//        for( int i = HASH_LENGTH/8; i != block.length; i++) {
+//            block[i] ^= mask[i - HASH_LENGTH/8];
+//        }
+//
+//        // Find the data block
+//        int start = block.length;
+//        for (int index = 2*HASH_LENGTH/8; index != block.length; index++) {
+//            if(block[index] != 0 & start == block.length) {
+//                start = index;
+//            }
+//        }
+//
+//        boolean dataStartWrong = (start > (block.length - 1) | block[start] != 1);
+//
+//        start++;
+//
+//        if ( shortData | dataStartWrong ) {
+//            throw new RuntimeException("Unpadding failed: wrong data");
+//        }
+//
+//        // Extract the data block
+//        byte[] output = new byte[block.length - start];
+//
+//        System.arraycopy(block, start, output, 0, output.length);
+//
+//        logger.info("[DONE]");
+//
+//        return output;
+//    }
 
     public byte[] decryptionStream() throws IOException, BelowThresholdException, ResourceUnavailableException, BadArgumentException, BadPaddingException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException {
         logger.info("Starting RSA decryption with secret " + secretName);
@@ -196,7 +380,7 @@ public class RsaEncryptionClient extends BaseClient {
         final byte[] ciphertextData = IOUtils.toByteArray(inputStream);
         BigInteger ciphertext = new BigInteger(ciphertextData);
 
-        logger.info("Decrypting message: " + ciphertext);
+//        logger.info("Decrypting message: " + ciphertext);
 
         RsaPublicParameters rsaPublicParameters = this.getRsaPublicParams(secretName);
 
@@ -209,12 +393,14 @@ public class RsaEncryptionClient extends BaseClient {
         }
 
         // Retrieve values
-        final BigInteger encryptedAesKey = new BigInteger(combined[0]);
+        BigInteger encryptedPaddedSecretKey = new BigInteger(combined[0]);
         final byte[] aesCiphertextData = combined[1];
         final byte[] plaintextHash = combined[2];
 
+//        BigInteger encryptedAesKey = new BigInteger(unpad(paddedSecretKey));
+
         // Get partial decryption shares
-        final List<SignatureResponse> decryptionShares = requestPartialRsaDecryptions(encryptedAesKey, rsaPublicParameters.getEpoch()).stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
+        final List<SignatureResponse> decryptionShares = requestPartialRsaDecryptions(encryptedPaddedSecretKey, rsaPublicParameters.getEpoch()).stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
 
         // Perform validation of decryption shares
         List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
@@ -222,11 +408,10 @@ public class RsaEncryptionClient extends BaseClient {
             BigInteger serverIndex = decryptionShare.getServerIndex();
 
             try {
-                if (this.validateDecryptionShare(encryptedAesKey, decryptionShare, rsaPublicParameters)) {
+                if (this.validateDecryptionShare(encryptedPaddedSecretKey, decryptionShare, rsaPublicParameters)) {
                     validatedDecryptionShares.add(decryptionShare);
                     logger.debug("Decryption share from server " + serverIndex + " passed validation");
-                }
-                else {
+                } else {
                     logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation");
                 }
             } catch (Exception exception) {
@@ -235,24 +420,29 @@ public class RsaEncryptionClient extends BaseClient {
         }
 
 //        BigInteger recoveredSymmetricKey = recoverPlaintext(encryptedAesKey, validatedDecryptionShares, rsaPublicParameters);
-        final byte[] recoveredSymmetricKey = recoverPlaintext(encryptedAesKey, validatedDecryptionShares, rsaPublicParameters).toByteArray();
+        final byte[] recoveredPaddedSymmetricKey = recoverPlaintext(encryptedPaddedSecretKey, validatedDecryptionShares, rsaPublicParameters).toByteArray();
+        final byte[] recoveredSymmetricKey = OaepUtil.unpad(recoveredPaddedSymmetricKey, RsaSharing.DEFAULT_RSA_KEY_SIZE, HASH_LENGTH);
 //        SecretKey secretKey = new SecretKeySpec(recoveredSymmetricKey, 0, recoveredSymmetricKey.length, "AES");
 
-        byte[] saltDec = Arrays.copyOfRange(aesCiphertextData, 0, SALT_LENGTH/8);
-        byte[] ivDec = Arrays.copyOfRange(aesCiphertextData, SALT_LENGTH/8, SALT_LENGTH/8 + GCM_IV_LENGTH/8);
-        byte[] encryptedDataDec = Arrays.copyOfRange(aesCiphertextData, SALT_LENGTH/8 + GCM_IV_LENGTH/8, aesCiphertextData.length);
+//        byte[] saltDec = Arrays.copyOfRange(aesCiphertextData, 0, SALT_LENGTH/8);
+        byte[] ivDec = Arrays.copyOfRange(aesCiphertextData, 0, GCM_IV_LENGTH / 8);
+        byte[] encryptedDataDec = Arrays.copyOfRange(aesCiphertextData, GCM_IV_LENGTH / 8, aesCiphertextData.length);
 
-        logger.debug("Ciphertext - in decrypt: " + Arrays.toString(encryptedDataDec));
-        logger.debug("Symm key   - in decrypt: " + Arrays.toString(recoveredSymmetricKey));
-        logger.debug("iv         - in decrypt: " + Arrays.toString(ivDec));
-        logger.debug("salt       - in decrypt: " + Arrays.toString(saltDec));
+//        logger.debug("Ciphertext - in decrypt: " + Arrays.toString(encryptedDataDec));
+//        logger.debug("Symm key   - in decrypt: " + Arrays.toString(recoveredSymmetricKey));
+//        logger.debug("iv         - in decrypt: " + Arrays.toString(ivDec));
+//        logger.debug("salt       - in decrypt: " + Arrays.toString(saltDec));
 
-        System.out.println("Salting session key..."); // FIXME-thesis: think about if salting here is really useful - only in case if someone esl provides aes key, can this happen?
-        SecretKeyFactory secretKeyFactoryDec = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-        KeySpec keySpecDec = new PBEKeySpec(Arrays.toString(recoveredSymmetricKey).toCharArray(), saltDec, 65536, AES_KEY_SIZE);
-        SecretKeySpec secretKeySpecDec = new SecretKeySpec(secretKeyFactoryDec.generateSecret(keySpecDec).getEncoded(), "AES");
+//        logger.info("Salting session key..."); // FIXME-thesis: think about if salting here is really useful - only in case if someone esl provides aes key, can this happen?
+//        SecretKeyFactory secretKeyFactoryDec = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+//        KeySpec keySpecDec = new PBEKeySpec(Arrays.toString(recoveredSymmetricKey).toCharArray(), saltDec, 65536, AES_KEY_SIZE);
+//        SecretKeySpec secretKeySpecDec = new SecretKeySpec(secretKeyFactoryDec.generateSecret(keySpecDec).getEncoded(), "AES");
 
-        System.out.println("Decrypting data using retrieved values...");
+        logger.info("Computed AES key: " + Arrays.toString(recoveredSymmetricKey));
+        SecretKey secretKeySpecDec = new SecretKeySpec(recoveredSymmetricKey, 0, recoveredSymmetricKey.length, "AES");
+
+
+        logger.info("Decrypting data using retrieved values...");
         Cipher cipherDec = Cipher.getInstance("AES/GCM/NoPadding");
         GCMParameterSpec gcmParameterSpecDec = new GCMParameterSpec(GCM_TAG_LENGTH, ivDec);
         cipherDec.init(Cipher.DECRYPT_MODE, secretKeySpecDec, gcmParameterSpecDec);
@@ -261,7 +451,16 @@ public class RsaEncryptionClient extends BaseClient {
 
         // Do hash verification
 
-        return cipherDec.doFinal(encryptedDataDec);
+        byte[] resultPlaintext = cipherDec.doFinal(encryptedDataDec);
+
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        final byte[] hash = digest.digest(resultPlaintext);
+
+        if (!Arrays.equals(hash, plaintextHash)) {
+            throw new RuntimeException("Hashes of plaintexts don't match!");
+        }
+
+        return resultPlaintext;
     }
 
     private List<Object> requestPartialRsaDecryptions(final BigInteger message, final long expectedEpoch) throws ResourceUnavailableException {
@@ -394,7 +593,6 @@ public class RsaEncryptionClient extends BaseClient {
 //                logger.info(verifiedResults);
 
 
-
                 executor.shutdown();
                 return verifiedResults;
 //                return interpolatedResult;
@@ -408,7 +606,7 @@ public class RsaEncryptionClient extends BaseClient {
     }
 
     private BigInteger recoverPlaintext(final BigInteger ciphertext,
-                                              final List<SignatureResponse> signatureResponses, final RsaPublicParameters rsaPublicParameters)
+                                        final List<SignatureResponse> signatureResponses, final RsaPublicParameters rsaPublicParameters)
             throws BadArgumentException {
 
         // Extract values from configuration
@@ -491,16 +689,6 @@ public class RsaEncryptionClient extends BaseClient {
         } else {
             return false;
         }
-    }
-
-    private static BigInteger hashToInteger(final byte[] input, final BigInteger modulus) {
-        try {
-            byte[] hashed = MessageDigest.getInstance(CommonConfiguration.HASH_ALGORITHM).digest(input);
-            return (new BigInteger(1, hashed)).mod(modulus);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-
     }
 
 }
