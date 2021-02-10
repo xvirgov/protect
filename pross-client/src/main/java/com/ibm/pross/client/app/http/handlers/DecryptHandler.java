@@ -68,7 +68,7 @@ public class DecryptHandler extends AuthenticatedClientRequestHandler {
     public void authenticatedClientHandle(final HttpExchange exchange, final String user) throws IOException,
             UnauthorizedException, NotFoundException, BadRequestException, ResourceUnavailableException, InternalServerException {
 
-        logger.info("Started decryption operation");
+//        logger.debug("Started decryption operation");
 
         // Extract secret name from request
         final URI requestUri = exchange.getRequestURI();
@@ -87,7 +87,7 @@ public class DecryptHandler extends AuthenticatedClientRequestHandler {
         // TODO check if operation is encryption or decryption
         // TODO check if secret exists
 //        logger.debug("ECIES operation \"" + cipher + "\" requested using a secret \"" + secretName + "\"");
-        logger.info("Decrypt operation parameters: " + cipher + ", " + secretName);
+        logger.debug("Decrypt operation parameters: " + cipher + ", " + secretName);
 
 //		InputStream inputStream = new InputStreamReader(exchange.getRequestBody());
 
@@ -107,10 +107,10 @@ public class DecryptHandler extends AuthenticatedClientRequestHandler {
 //			System.out.printf("%02x : %c \n",character, character);
 //			count++;
 //		}
-//		logger.info("Number of bytes: " + count);
+//		logger.debug("Number of bytes: " + count);
 
         if (cipher.equals(ECIES_CIPHER)) {
-        	logger.info("ECIES decryption using key " + secretName);
+        	logger.debug("ECIES decryption using key " + secretName);
 			EciesEncryptionClient eciesEncryptionClient = new EciesEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName, exchange.getRequestBody());
 
 			try (final OutputStream os = exchange.getResponseBody();) {
@@ -122,10 +122,10 @@ public class DecryptHandler extends AuthenticatedClientRequestHandler {
 			}
 		}
         else if (cipher.equals(RSA_CIPHER)) {
-			logger.info("RSA decryption using key " + secretName);
+			logger.debug("RSA decryption using key " + secretName);
 			RsaEncryptionClient rsaEncryptionClient = new RsaEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName, exchange.getRequestBody());
 
-			try (final OutputStream os = exchange.getResponseBody();) {
+			try (final OutputStream os = exchange.getResponseBody()) {
 				final byte[] binaryResponse = rsaEncryptionClient.decryptionStream();
 				exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
 				os.write(binaryResponse);
@@ -215,7 +215,7 @@ public class DecryptHandler extends AuthenticatedClientRequestHandler {
 //			success = doStoring(secretName,name,clientCertificate,clientPrivateKey);
 //			if (success) {
 //				response = "RSA shares deleted. \n";
-//				logger.info("Deletion complete");
+//				logger.debug("Deletion complete");
 //			} else {
 //				response = "RSA not deleted";
 //			}

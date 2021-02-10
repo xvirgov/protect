@@ -304,10 +304,7 @@ public class BaseClient {
 
         // Each task deposits its result into this map after verifying it is correct and
         // consistent
-        // TODO: Add verification via proofs
-//		final List<RsaPublicParameters> collectedResults = Collections.synchronizedList(new ArrayList<>());
 
-//		final Set<RsaPublicParameters> rsaPublicParametersSet = Collections.synchronizedSet(new HashSet<>());
         final Map<RsaPublicParameters, Integer> rsaPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
 
         // Create a partial result task for everyone except ourselves
@@ -325,20 +322,10 @@ public class BaseClient {
                     maximumFailures) {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
-
-                    // Parse JSON
-//                    logger.info("JSON is being parsed...");
-
                     final JSONParser parser = new JSONParser();
                     final Object obj = parser.parse(json);
                     final JSONObject jsonObject = (JSONObject) obj;
 
-//                    logger.info("----------------------------------------------");
-//                    logger.info(jsonObject.get("responder"));
-//                    logger.info(jsonObject.get("epoch"));
-//                    logger.info((String) jsonObject.get("public_key"));
-//                    logger.info(jsonObject.get("public_modulus"));
-//                    logger.info("----------------------------------------------");
 
                     final Long responder = Long.parseLong(jsonObject.get("responder").toString());
                     final long epoch = Long.parseLong(jsonObject.get("epoch").toString());
@@ -352,29 +339,7 @@ public class BaseClient {
                         shareVerificationKeys.add(new BigInteger((String) jsonObject.get("share_verification_key_" + i)));
                     }
 
-//                    logger.info("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-//                    logger.info(json);
-
-                    // TODO-thesis: retrieve also verification keys
-//					final List<BigInteger> verificationKeys = new ArrayList<>();
-
-//					final JSONArray publicKeyPoint = (JSONArray) jsonObject.get("public_key");
-//					final BigInteger x = new BigInteger(String.valueOf(publicKeyPoint));
-//					final BigInteger y = new BigInteger((String) publicKeyPoint.get(1));
-//					verificationKeys.add(new BigInteger(String.valueOf(publicKeyPoint));
-//					for (int i = 1; i <= numShareholders; i++) {
-//						final JSONArray verificationKey = (JSONArray) jsonObject.get("share_verification_key_" + i);
-//						final BigInteger x2 = new BigInteger((String) verificationKey.get(0));
-//						final BigInteger y2 = new BigInteger((String) verificationKey.get(1));
-//						verificationKeys.add(new EcPoint(x2, y2));
-//					}
-//                    logger.info("reponder: " + responder + ", thisServer: " + thisServerId);
-                    // Store parsed result
                     if ((responder == thisServerId)) {
-
-                        // Store result for later processing
-//						collectedResults.add(new SimpleEntry<List<EcPoint>, Long>(verificationKeys, epoch));
-//						rsaPublicParametersSet.add(new RsaPublicParameters(publicExponent, publicModulus, epoch));
 
                         RsaPublicParameters rsaPublicParameters = new RsaPublicParameters(publicExponent, publicModulus, verificationKey, shareVerificationKeys, epoch);
 
@@ -404,14 +369,10 @@ public class BaseClient {
                 executor.shutdown();
                 // Use the config which was returned by more than threshold number of servers
 
-//                logger.info("Collected parameters: ");
                 int maxWait = 10;
                 while (rsaPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
                     for (Map.Entry<RsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
-//                    logger.info(params.getValue());
-//                    logger.info(params.getKey());
                         if (params.getValue() >= reconstructionThreshold) {
-//                        logger.debug("Public configuration was determined by majority voting: " + params.getKey());
                             logger.info("Consistency level reached.");
                             return params.getKey();
                         }
@@ -421,8 +382,6 @@ public class BaseClient {
                 }
 
                 throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
-//                return (SimpleEntry<List<EcPoint>, Long>) getConsistentConfiguration(collectedResults,
-//                        reconstructionThreshold);
             } else {
                 logger.error("Number of failures exceeded the threshold");
                 executor.shutdown();
