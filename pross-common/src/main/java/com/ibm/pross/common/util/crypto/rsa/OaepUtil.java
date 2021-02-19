@@ -1,12 +1,15 @@
 package com.ibm.pross.common.util.crypto.rsa;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.util.DigestFactory;
 
+import java.math.BigInteger;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Arrays;
 
 // Based on OAEP implementation in bouncycastle
 
@@ -69,7 +72,8 @@ public class OaepUtil {
 
     public static byte[] pad(byte[] message, int rsaModulusSize, int hashSize) throws NoSuchAlgorithmException {
         logger.info("Padding the message using OAEP...");
-        int blockSize = rsaModulusSize / 8;
+        int blockSize = rsaModulusSize / 8 - 10;
+//        int blockSize = 64;
 
         // Check if the message can be padded
         if (message.length > blockSize) {
@@ -78,11 +82,17 @@ public class OaepUtil {
 
         byte[] block = new byte[blockSize];
 
+        byte[] tmp = new byte[blockSize];
+
+        System.out.println("Message (AES key): " + Arrays.toString(message));
+
         // Copy message into the block
         System.arraycopy(message, 0, block, block.length - message.length, message.length);
+        System.arraycopy(message, 0, tmp, tmp.length - message.length, message.length);
 
         // Add sentinel
         block[block.length - message.length - 1] = 0x01;
+        tmp[block.length - message.length - 1] = 0x01;
 
         // Block is already zeroed - no need to add the padding string
 
@@ -100,6 +110,11 @@ public class OaepUtil {
 
         // Add in the seed
         System.arraycopy(seed, 0, block, 0, hashSize / 8);
+        System.arraycopy(seed, 0, tmp, 0, hashSize / 8);
+
+        logger.info("Not encrypted padded message: " + new BigInteger(tmp).toString(2).length());
+        logger.info("Not encrypted padded message: " + new BigInteger(tmp));
+        logger.info("Not encrypted padded message: " + Hex.encodeHexString(tmp));
 
         // Mask the seed
         mask = maskGeneratorFunction1(block, hashSize / 8, block.length - hashSize / 8, hashSize / 8);
@@ -115,11 +130,18 @@ public class OaepUtil {
     public static byte[] unpad(byte[] data, int rsaModulusSize, int hashSize) {
         logger.info("Extracting the message from the OAEP-padded block...");
 
-        int blockSize = rsaModulusSize / 8;
+        int blockSize = rsaModulusSize / 8 - 10;
         byte[] block = new byte[blockSize];
 
         // Remove any leading zeroes that might be a result of encryption process
-        System.arraycopy(data, 0, block, block.length - data.length, data.length);
+        logger.info("Unpadding: " + Arrays.toString(data));
+        logger.info("Unpadding: " + new BigInteger(data));
+        int leadingZeroes = 0;
+        while (data[leadingZeroes] == 0 && data.length - leadingZeroes > blockSize) {
+            leadingZeroes++;
+        }
+        System.arraycopy(data, leadingZeroes, block, block.length - data.length + leadingZeroes, data.length - leadingZeroes);
+        logger.info("Unpadding - block: " + Arrays.toString(block));
 
         boolean shortData = (data.length < (hashSize / 8) + 1);
 
@@ -148,7 +170,12 @@ public class OaepUtil {
 
         start++;
 
+
+        logger.info(Arrays.toString(data));
+
         if ( shortData | dataStartWrong ) {
+            logger.info("shortData : " + shortData);
+            logger.info("dataStartWrong : " + dataStartWrong);
             throw new RuntimeException("Unpadding failed: wrong data");
         }
 

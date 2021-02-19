@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -39,6 +41,8 @@ import com.sun.net.httpserver.HttpExchange;
 @SuppressWarnings("restriction")
 public class SignHandler extends AuthenticatedClientRequestHandler {
 
+	private static final Logger logger = LogManager.getLogger(SignHandler.class);
+
 	public static final Permissions REQUEST_PERMISSION = Permissions.SIGN;
 
 	// Query names
@@ -60,6 +64,8 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 	@Override
 	public void authenticatedClientHandle(final HttpExchange exchange, final String username) throws IOException,
 			UnauthorizedException, NotFoundException, BadRequestException, ResourceUnavailableException {
+
+		logger.info("Performing partial signature/decryption...");
 
 		// Extract secret name from request
 		final String queryString = exchange.getRequestURI().getQuery();
@@ -158,6 +164,7 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		if ((shareholder.getSecretPublicKey() == null) || (share == null)) {
 			throw new NotFoundException();
 		} else {
+			logger.info("Signing with: " + shareholder.getShare1());
 			ServerPublicConfiguration publicConfig = new ServerPublicConfiguration(shareholder.getN(),
 					shareholder.getK(), rsaSharing.getPublicKey().getModulus(),
 					rsaSharing.getPublicKey().getPublicExponent(), rsaSharing.getV(), rsaSharing.getVerificationKeys());
