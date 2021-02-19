@@ -135,8 +135,6 @@ public class RsaKeyGeneratorClient extends BaseClient {
                     + "&e=" + exponent + "&n=" + modulus + "&v=" + v + allVerificationKeys.toString() + "&share="
                     + share;
 
-            logger.info("Share: " + share);
-
             // Create new task to get the partial exponentiation result from the server
             executor.submit(new PartialResultTask(this, serverId, linkUrl, successfulResults, latch, failureCounter,
                     maximumFailures) {
