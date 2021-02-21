@@ -1,7 +1,10 @@
 package com.ibm.pross.common.util.crypto.rsa.threshold.sign.client;
 
+import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.Primes;
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.GcdTriplet;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import junit.framework.TestCase;
 import org.junit.Test;
@@ -176,7 +179,7 @@ public class RsaProactiveSharingTest extends TestCase {
     }
 
     @Test
-    public void testEncDecProactiveRsa() throws InvalidKeySpecException, NoSuchAlgorithmException {
+    public void testEncDecProactiveRsa() throws InvalidKeySpecException, NoSuchAlgorithmException, BadArgumentException {
         RsaProactiveSharing rsaProactiveSharing = RsaProactiveSharing.generateSharing(numServers, threshold, r, tau);
 
         // Enc/Dec parameters
@@ -205,16 +208,58 @@ public class RsaProactiveSharingTest extends TestCase {
         }
 
         // Compute partial decryption shares
-        List<BigInteger> partialDecryptions = new ArrayList<>();
+        List<SecretShare> partialDecryptions = new ArrayList<>();
         for(int i = 0; i < numServers; i++) {
             BigInteger partialDecryption = ciphertext.modPow(L.multiply(privateKeyShares.get(i)), modulus);
-            partialDecryptions.add(partialDecryption);
+            partialDecryptions.add(new SecretShare(BigInteger.valueOf(i+1), partialDecryption));
 
             assertNotEquals(BigInteger.ZERO, partialDecryption);
         }
 
-        // Interpolate partial decryptions
+        Collections.shuffle(partialDecryptions);
 
-        // Compute plaintext
+        // Determine coordinates for decryption
+        List<BigInteger> xCoords = new ArrayList<>();
+        for(int i = 0; i < threshold; i++) {
+            xCoords.add(partialDecryptions.get(i).getX());
+        }
+
+        // Interpolate partial decryptions
+        BigInteger preFactor = ciphertext.modPow(L.pow(3).multiply(d_pub), modulus);
+        BigInteger gamma = BigInteger.ONE;
+        for(int i = 0; i < threshold; i++) {
+            final BigInteger decryptionShareCurrentIndex = partialDecryptions.get(i).getX();
+            final BigInteger decryptionShareValue = partialDecryptions.get(i).getY();
+            final BigInteger lambda_0j = Polynomials.interpolateNoModulus(xCoords, L, BigInteger.ZERO, decryptionShareCurrentIndex);
+            gamma = gamma.multiply(decryptionShareValue.modPow(lambda_0j, modulus));
+        }
+        gamma = preFactor.multiply(gamma).mod(modulus);
+
+        System.out.println("Gamma");
+        System.out.println(gamma);
+        System.out.println("Check");
+        System.out.println(ciphertext.modPow(L.pow(3).multiply(rsaProactiveSharing.getPrivateKey().getPrivateExponent()), modulus));
+
+        // gamma = c^{L^{3}.d}
+        assertEquals(ciphertext.modPow(L.pow(3).multiply(rsaProactiveSharing.getPrivateKey().getPrivateExponent()), modulus), gamma);
+
+        // Use EEA to compute plaintext
+        final BigInteger lPow = L.pow(3);
+        final GcdTriplet gcdTriplet = GcdTriplet.extendedGreatestCommonDivisor(lPow, publicExponent);
+        final BigInteger a = gcdTriplet.getX();
+        final BigInteger b = gcdTriplet.getY();
+
+        BigInteger recovered = gamma.modPow(a, modulus).multiply(ciphertext.modPow(b, modulus)).mod(modulus);
+
+        // gcd(L^3, e) = 1
+        assertEquals(BigInteger.ONE, gcdTriplet.getG());
+
+        // Plaintext is same as recovered plaintext
+        assertEquals(plaintext, recovered);
+    }
+
+    @Test
+    public void testProactiveUpdate() {
+        
     }
 }

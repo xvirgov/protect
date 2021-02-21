@@ -328,4 +328,24 @@ public class Polynomials {
 
 		return numerator.divide(denominator);
 	}
+
+	// For proactive RSA
+	public static BigInteger interpolateNoModulus(final List<BigInteger> xCoords, final BigInteger delta, final BigInteger i, final BigInteger j) throws BadArgumentException  {
+		BigInteger numerator = delta;
+		BigInteger denominator = BigInteger.ONE;
+
+		for (int k = 0; k < xCoords.size(); k++) {
+			BigInteger jPrime = xCoords.get(k);
+			if (!jPrime.equals(j)) {
+				numerator = numerator.multiply(i.subtract(jPrime));
+				denominator = denominator.multiply(j.subtract(jPrime));
+			}
+		}
+
+		if (!(numerator.mod(denominator.abs()).equals(BigInteger.ZERO))) {
+			throw new BadArgumentException("Denominator does not evenly divide numerator, use a different delta!");
+		}
+
+		return numerator.divide(denominator);
+	}
 }
