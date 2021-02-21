@@ -11,7 +11,6 @@ import com.ibm.pross.common.util.shamir.ShamirShare;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
 import java.math.BigInteger;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -39,7 +38,7 @@ public class RsaProactiveSharing {
     private final int tau;
     private final int tauHat;
     private final BigInteger bigR;
-    private final BigInteger RPrime;
+    private final BigInteger coeffR;
 
     // The generated key
     private final RSAPublicKey publicKey;
@@ -67,7 +66,7 @@ public class RsaProactiveSharing {
     /////////////////////////////////////////////////////////////////////////
 
     public RsaProactiveSharing(BigInteger pPrime, BigInteger qPrime,
-                               int n, int t, final BigInteger r, final int tau, int tauHat, BigInteger R, BigInteger RPrime,
+                               int n, int t, final BigInteger r, final int tau, int tauHat, BigInteger R, BigInteger coeffR,
                                RSAPublicKey publicKey, RSAPrivateKey privateKey, ShamirShare[] shares,
                                List<SecretShare> additiveShares, BigInteger d_pub, BigInteger g,
 							   List<List<SecretShare>> shamirAdditiveShares, List<List<SecretShare>> feldmanAdditiveVerificationValues,
@@ -85,7 +84,7 @@ public class RsaProactiveSharing {
         this.tau = tau;
         this.tauHat = tauHat;
         this.bigR = R;
-        this.RPrime = RPrime;
+        this.coeffR = coeffR;
 
         this.publicKey = publicKey;
         this.privateKey = privateKey;
@@ -172,8 +171,8 @@ public class RsaProactiveSharing {
 		BigInteger L = Polynomials.factorial(BigInteger.valueOf(numServers));
         // tauHat = tau + 2 + log r
         int tauHat = BigInteger.valueOf(tau).add(BigInteger.valueOf(2)).add(BigInteger.valueOf(r.bitLength())).intValue();
-        // RPrime = t.L^{2}.R.2^{tauHat}
-        BigInteger RPrime = BigInteger.valueOf(threshold).multiply(L.pow(2)).multiply(R).multiply(BigInteger.valueOf(2).pow(tauHat));
+        // coeffR = t.L^{2}.R.2^{tauHat}
+        BigInteger coeffR = BigInteger.valueOf(threshold).multiply(L.pow(2)).multiply(R).multiply(BigInteger.valueOf(2).pow(tauHat));
 
 		List<List<SecretShare>> shamirAdditiveShares = new ArrayList<>();
 		List<List<SecretShare>> feldmanAdditiveVerificationValues = new ArrayList<>();
@@ -182,7 +181,7 @@ public class RsaProactiveSharing {
         for (int i = 0; i < numServers; i++) {
 
         	logger.info("Generating shamir shares and verification keys for additive share d_" + (i+1) );
-			List<BigInteger> coefficients = RandomNumberGenerator.generateRandomArray(BigInteger.valueOf(threshold), RPrime);
+			List<BigInteger> coefficients = RandomNumberGenerator.generateRandomArray(BigInteger.valueOf(threshold), coeffR);
 			coefficients.set(0, additiveShares.get(i).getY().multiply(L));
 
 			// Create shamir shares
@@ -243,7 +242,7 @@ public class RsaProactiveSharing {
 
         //////////////////////////////////////////////////////////////////////////////////////////////
 
-        return new RsaProactiveSharing(qPrime, pPrime, numServers, threshold, r, tau, tauHat, R, RPrime, publicKey, privateKey, shares,
+        return new RsaProactiveSharing(qPrime, pPrime, numServers, threshold, r, tau, tauHat, R, coeffR, publicKey, privateKey, shares,
 				additiveShares, d_pub, g, shamirAdditiveShares, feldmanAdditiveVerificationValues, additiveVerificationKeys, v, verificationKeys);
     }
 
@@ -279,8 +278,8 @@ public class RsaProactiveSharing {
         return bigR;
     }
 
-    public BigInteger getRPrime() {
-        return RPrime;
+    public BigInteger getCoeffR() {
+        return coeffR;
     }
 
     public RSAPublicKey getPublicKey() {

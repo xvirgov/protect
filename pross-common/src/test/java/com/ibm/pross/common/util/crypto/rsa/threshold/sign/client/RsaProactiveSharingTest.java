@@ -2,6 +2,7 @@ package com.ibm.pross.common.util.crypto.rsa.threshold.sign.client;
 
 import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.Primes;
+import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.GcdTriplet;
@@ -209,9 +210,9 @@ public class RsaProactiveSharingTest extends TestCase {
 
         // Compute partial decryption shares
         List<SecretShare> partialDecryptions = new ArrayList<>();
-        for(int i = 0; i < numServers; i++) {
+        for (int i = 0; i < numServers; i++) {
             BigInteger partialDecryption = ciphertext.modPow(L.multiply(privateKeyShares.get(i)), modulus);
-            partialDecryptions.add(new SecretShare(BigInteger.valueOf(i+1), partialDecryption));
+            partialDecryptions.add(new SecretShare(BigInteger.valueOf(i + 1), partialDecryption));
 
             assertNotEquals(BigInteger.ZERO, partialDecryption);
         }
@@ -220,14 +221,14 @@ public class RsaProactiveSharingTest extends TestCase {
 
         // Determine coordinates for decryption
         List<BigInteger> xCoords = new ArrayList<>();
-        for(int i = 0; i < threshold; i++) {
+        for (int i = 0; i < threshold; i++) {
             xCoords.add(partialDecryptions.get(i).getX());
         }
 
         // Interpolate partial decryptions
         BigInteger preFactor = ciphertext.modPow(L.pow(3).multiply(d_pub), modulus);
         BigInteger gamma = BigInteger.ONE;
-        for(int i = 0; i < threshold; i++) {
+        for (int i = 0; i < threshold; i++) {
             final BigInteger decryptionShareCurrentIndex = partialDecryptions.get(i).getX();
             final BigInteger decryptionShareValue = partialDecryptions.get(i).getY();
             final BigInteger lambda_0j = Polynomials.interpolateNoModulus(xCoords, L, BigInteger.ZERO, decryptionShareCurrentIndex);
@@ -259,7 +260,66 @@ public class RsaProactiveSharingTest extends TestCase {
     }
 
     @Test
-    public void testProactiveUpdate() {
-        
+    public void testProactiveUpdate() throws InvalidKeySpecException, NoSuchAlgorithmException {
+        RsaProactiveSharing rsaProactiveSharing = RsaProactiveSharing.generateSharing(numServers, threshold, r, tau);
+
+        // Original secret
+        final BigInteger original_d = rsaProactiveSharing.getPrivateKey().getPrivateExponent();
+        final BigInteger original_d_pub = rsaProactiveSharing.getD_pub();
+        final List<SecretShare> originalAdditiveShares = rsaProactiveSharing.getAdditiveShares();
+
+        // Constant parameters
+        final BigInteger modulus = rsaProactiveSharing.getPublicKey().getModulus();
+        final int tau = rsaProactiveSharing.getTau();
+
+        /* Check that the sum of all original additive shares and public remainder equals to the secret exponent */
+        BigInteger sum = BigInteger.ZERO;
+        for (SecretShare secretShare : originalAdditiveShares) {
+            sum = sum.add(secretShare.getY());
+        }
+        assertEquals(original_d, original_d_pub.add(sum));
+
+        /* Refresh additive shares **/
+        BigInteger rPrime = rsaProactiveSharing.getBigR().divide(BigInteger.valueOf(numServers));
+        assertEquals(rPrime, (r.add(BigInteger.ONE)).multiply(modulus).multiply(BigInteger.valueOf(2).pow(tau + 1)));
+
+        List<List<SecretShare>> additiveSharesOfAdditiveShares = new ArrayList<>(); // sent privately
+        List<SecretShare> publicRemainders = new ArrayList<>(); // broadcasted to everyone
+
+        /* Each agent A_i splits the additive secret share */
+        for (int i = 0; i < numServers; i++) {
+
+            List<SecretShare> additiveSharesOfAdditiveShare = new ArrayList<>();
+            for (int j = 0; j < numServers; j++) {
+                additiveSharesOfAdditiveShare.add(new SecretShare(BigInteger.valueOf(j + 1), RandomNumberGenerator.generateRandomInteger(rPrime.multiply(BigInteger.valueOf(2)))));
+            }
+            BigInteger d_i_pub = originalAdditiveShares.get(i).getY().subtract(additiveSharesOfAdditiveShare.stream().map(SecretShare::getY).reduce(BigInteger::add).get());
+
+            additiveSharesOfAdditiveShares.add(additiveSharesOfAdditiveShare);
+            publicRemainders.add(new SecretShare(BigInteger.valueOf(i + 1), d_i_pub));
+        }
+
+        /* Compute new d_pub (same for all agents) */
+        BigInteger new_d_pub = original_d_pub.add(publicRemainders.stream().map(SecretShare::getY).reduce(BigInteger::add).get());
+
+        List<SecretShare> newAdditiveShares = new ArrayList<>();
+        /* Each agent A_j sums all received additive shares of original additive shares */
+        for (int i = 0; i < numServers; i++) {
+            BigInteger accumulator = BigInteger.ZERO;
+            for (int j = 0; j < numServers; j++) {
+                accumulator = accumulator.add(additiveSharesOfAdditiveShares.get(j).get(i).getY());
+            }
+            newAdditiveShares.add(new SecretShare(BigInteger.valueOf(i + 1), accumulator));
+        }
+
+        /* Check that new additive shares are not equal to old additive share (only with negligible probability) */
+        assertNotEquals(original_d_pub, new_d_pub);
+        for (int i = 0; i < numServers; i++) {
+            assertNotEquals(originalAdditiveShares.get(i).getY(), newAdditiveShares.get(i).getY());
+        }
+
+        /* Check that the sum of all refreshed additive shares and new public remainder equals to the secret exponent */
+        BigInteger new_d = new_d_pub.add(newAdditiveShares.stream().map(SecretShare::getY).reduce(BigInteger::add).get());
+        assertEquals(original_d, new_d);
     }
 }
