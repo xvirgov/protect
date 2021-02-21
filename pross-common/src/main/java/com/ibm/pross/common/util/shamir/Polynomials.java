@@ -14,6 +14,7 @@ import java.util.List;
 import com.ibm.pross.common.DerivationResult;
 import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.Exponentiation;
+import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
@@ -45,6 +46,17 @@ public class Polynomials {
 			exponent = exponent.add(BigInteger.ONE);
 		}
 		return new ShamirShare(x, y.mod(m));
+	}
+
+	public static SecretShare evaluatePolynomial(final List<BigInteger> coefficients, final BigInteger x, final BigInteger m) {
+		BigInteger y = BigInteger.ZERO;
+		BigInteger exponent = BigInteger.ZERO;
+		for (int i = 0; i < coefficients.size(); i++) {
+			BigInteger xTerm = x.modPow(exponent, m);
+			y = y.add(coefficients.get(i).multiply(xTerm));
+			exponent = exponent.add(BigInteger.ONE);
+		}
+		return new SecretShare(x, y);
 	}
 
 	/**
@@ -109,6 +121,37 @@ public class Polynomials {
 			final BigInteger product = share.getY().multiply(L_ij).mod(r);
 
 			sum = sum.add(product).mod(r);
+		}
+
+		return sum;
+	}
+
+	public static BigInteger interpolateComplete(final List<SecretShare> shareList, final int threshold,
+												 final int x, BigInteger modulus) {
+		if (shareList.size() < threshold) {
+			throw new IllegalArgumentException("Fewer than a threshold number of results provided!");
+		}
+
+		// Determine coordinates
+		final BigInteger[] xCoords = new BigInteger[threshold];
+		for (int i = 0; i < threshold; i++) {
+			xCoords[i] = shareList.get(i).getX();
+		}
+
+		// Position to solve for
+		final BigInteger xPosition = BigInteger.valueOf(x);
+
+		// Interpolate polynomial
+		BigInteger sum = BigInteger.ZERO;
+		for (int i = 0; i < threshold; i++) {
+			final SecretShare share = shareList.get(i);
+
+			final BigInteger j = share.getX();
+			final BigInteger L_ij = Polynomials.interpolatePartial(xCoords, xPosition, j, modulus);
+
+			final BigInteger product = share.getY().multiply(L_ij);
+
+			sum = sum.add(product).mod(modulus);
 		}
 
 		return sum;

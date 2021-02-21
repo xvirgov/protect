@@ -7,9 +7,12 @@
 package com.ibm.pross.common.util.shamir;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.RandomNumberGenerator;
+import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 
@@ -70,6 +73,15 @@ public class Shamir {
 		final EcPoint[] feldmanValues = new EcPoint[coefficients.length];
 		for (int i = 0; i < coefficients.length; i++) {
 			feldmanValues[i] = curve.multiply(G, coefficients[i]);
+		}
+		return feldmanValues;
+	}
+
+	public static List<SecretShare> generateFeldmanValues(final List<BigInteger> coefficients, final BigInteger generator, final BigInteger modulus) {
+		final List<SecretShare> feldmanValues = new ArrayList<>();
+		for (int i = 0; i < coefficients.size(); i++) {
+			BigInteger value = generator.modPow(coefficients.get(i), modulus);
+			feldmanValues.add(new SecretShare(BigInteger.valueOf(i + 1), value));
 		}
 		return feldmanValues;
 	}

@@ -1,5 +1,6 @@
 package com.ibm.pross.common.util.crypto.rsa.threshold.sign.client;
 
+import com.ibm.pross.common.util.Primes;
 import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import junit.framework.TestCase;
@@ -9,15 +10,17 @@ import java.math.BigInteger;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertNotEquals;
 
 public class RsaProactiveSharingTest extends TestCase {
 
-    private int numServers = 5;
-    private int threshold = 3;
-    private BigInteger r = BigInteger.valueOf(2).pow(10);
-    private int tau = 80;
+    private final int numServers = 5;
+    private final int threshold = 3;
+    private final BigInteger r = BigInteger.valueOf(2).pow(10);
+    private final int tau = 80;
 
 
     @Test
@@ -31,6 +34,24 @@ public class RsaProactiveSharingTest extends TestCase {
         assertEquals(numServers, rsaProactiveSharing.getShares().length);
         assertEquals(numServers, rsaProactiveSharing.getVerificationKeys().length);
         assertNotEquals(rsaProactiveSharing.getV(), BigInteger.ZERO);
+
+        // n = (2p'+1) . (2q'+1)
+        BigInteger p = rsaProactiveSharing.getpPrime().multiply(BigInteger.valueOf(2)).add(BigInteger.valueOf(1));
+        BigInteger q = rsaProactiveSharing.getqPrime().multiply(BigInteger.valueOf(2)).add(BigInteger.valueOf(1));
+        assertEquals(rsaProactiveSharing.getPublicKey().getModulus(), p.multiply(q));
+    }
+
+    @Test
+    public void testRsaKeyProperties() throws InvalidKeySpecException, NoSuchAlgorithmException {
+        RsaProactiveSharing rsaProactiveSharing = RsaProactiveSharing.generateSharing(numServers, threshold, r, tau);
+
+        // e.d = 1 (mod phi(n))
+        BigInteger p = rsaProactiveSharing.getpPrime().multiply(BigInteger.valueOf(2)).add(BigInteger.valueOf(1));
+        BigInteger q = rsaProactiveSharing.getqPrime().multiply(BigInteger.valueOf(2)).add(BigInteger.valueOf(1));
+        BigInteger totient = p.subtract(BigInteger.valueOf(1)).multiply(q.subtract(BigInteger.valueOf(1)));
+        assertEquals(BigInteger.ONE, rsaProactiveSharing.getPublicKey().getPublicExponent()
+                .multiply(rsaProactiveSharing.getPrivateKey().getPrivateExponent())
+                .mod(totient));
     }
 
     @Test
@@ -54,5 +75,146 @@ public class RsaProactiveSharingTest extends TestCase {
             sum = sum.add(secretShare.getY());
         }
         assertEquals(rsaProactiveSharing.getPrivateKey().getPrivateExponent(), rsaProactiveSharing.getD_pub().add(sum));
+
+        // g^{pPrime.qPrime} = 1 (mod n)
+        assertNotEquals(BigInteger.ONE, rsaProactiveSharing.getG());
+        BigInteger m = rsaProactiveSharing.getpPrime().multiply(rsaProactiveSharing.getqPrime());
+        assertEquals(BigInteger.ONE, rsaProactiveSharing.getG().modPow(m, rsaProactiveSharing.getPublicKey().getModulus()));
+
+        List<SecretShare> additiveShares = rsaProactiveSharing.getAdditiveShares();
+        List<SecretShare> additiveVerificationKeys = rsaProactiveSharing.getAdditiveVerificationKeys();
+
+        assertEquals(numServers, additiveShares.size());
+        assertEquals(numServers, additiveVerificationKeys.size());
+
+        // g^{d_i} = w_i
+        for (int i = 0; i < additiveVerificationKeys.size(); i++) {
+            BigInteger calculatedVerification = rsaProactiveSharing.getG().modPow(additiveShares.get(i).getY(), rsaProactiveSharing.getPublicKey().getModulus());
+            assertEquals(calculatedVerification, additiveVerificationKeys.get(i).getY());
+        }
+    }
+
+    @Test
+    public void testFeldmanSharingReconstruction() throws InvalidKeySpecException, NoSuchAlgorithmException {
+        RsaProactiveSharing rsaProactiveSharing = RsaProactiveSharing.generateSharing(numServers, threshold, r, tau);
+
+        List<List<SecretShare>> shamirAdditiveShares = rsaProactiveSharing.getShamirAdditiveShares();
+        List<List<SecretShare>> feldmanAdditiveVerificationValues = rsaProactiveSharing.getFeldmanAdditiveVerificationValues();
+
+        // Check sizes
+        assertEquals(numServers, shamirAdditiveShares.size());
+        assertEquals(numServers, feldmanAdditiveVerificationValues.size());
+
+        for (int i = 0; i < numServers; i++) {
+            assertEquals(numServers, shamirAdditiveShares.get(0).size());
+            assertEquals(threshold, feldmanAdditiveVerificationValues.get(0).size());
+        }
+
+        BigInteger L = Polynomials.factorial(BigInteger.valueOf(numServers));
+
+        // Random prime larger than the shared secret -> Ls
+        BigInteger randPrime = Primes.generatePrime(rsaProactiveSharing.getBigR().multiply(L).bitLength() + 1);
+
+        // For each additive share...
+        List<SecretShare> additiveShares = rsaProactiveSharing.getAdditiveShares();
+        for (int i = 0; i < numServers; i++) {
+            List<SecretShare> shamirShares = shamirAdditiveShares.get(i);
+            Collections.shuffle(shamirShares);
+
+            // Interpolate at different points, secret matches for position 0 only
+            for (int j = 0; j < numServers; j++) {
+                BigInteger result = Polynomials.interpolateComplete(shamirShares, threshold, j, randPrime);
+                if (j == 0) {
+                    assertEquals(additiveShares.get(i).getY(), result.divide(L));
+                } else {
+                    assertNotEquals(additiveShares.get(i).getY(), result.divide(L));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testFeldmanSharingVerificationValues() throws InvalidKeySpecException, NoSuchAlgorithmException {
+        RsaProactiveSharing rsaProactiveSharing = RsaProactiveSharing.generateSharing(numServers, threshold, r, tau);
+
+        List<List<SecretShare>> shamirAdditiveShares = rsaProactiveSharing.getShamirAdditiveShares();
+        List<List<SecretShare>> feldmanAdditiveVerificationValues = rsaProactiveSharing.getFeldmanAdditiveVerificationValues();
+
+        // Check sizes
+        assertEquals(numServers, shamirAdditiveShares.size());
+        assertEquals(numServers, feldmanAdditiveVerificationValues.size());
+
+        for (int i = 0; i < numServers; i++) {
+            assertEquals(numServers, shamirAdditiveShares.get(0).size());
+            assertEquals(threshold, feldmanAdditiveVerificationValues.get(0).size());
+        }
+
+        // For each additive share...
+        for (int i = 0; i < numServers; i++) {
+            List<SecretShare> feldmanValues = rsaProactiveSharing.getFeldmanAdditiveVerificationValues().get(i);
+            List<SecretShare> shamirShares = rsaProactiveSharing.getShamirAdditiveShares().get(i);
+            BigInteger generator = rsaProactiveSharing.getG();
+            BigInteger modulus = rsaProactiveSharing.getPublicKey().getModulus();
+
+            // For each polynomial share of additive share...
+            for (int j = 0; j < numServers; j++) {
+                SecretShare share = shamirShares.get(j);
+
+                // expect = g^{s_{i}}
+                BigInteger expect = generator.modPow(share.getY(), modulus);
+
+                // result = prod_{k=0}^{t} (b_{k})^{i^{k}}
+                BigInteger result = BigInteger.ONE;
+                for (int k = 0; k < threshold; k++) {
+                    BigInteger part = feldmanValues.get(k).getY().modPow(share.getX().pow(k), modulus);
+                    result = result.multiply(part).mod(modulus);
+                }
+
+                assertEquals(expect, result);
+            }
+        }
+    }
+
+    @Test
+    public void testEncDecProactiveRsa() throws InvalidKeySpecException, NoSuchAlgorithmException {
+        RsaProactiveSharing rsaProactiveSharing = RsaProactiveSharing.generateSharing(numServers, threshold, r, tau);
+
+        // Enc/Dec parameters
+        BigInteger publicExponent = rsaProactiveSharing.getPublicKey().getPublicExponent();
+        BigInteger modulus = rsaProactiveSharing.getPublicKey().getModulus();
+        BigInteger d_pub = rsaProactiveSharing.getD_pub();
+        BigInteger L = Polynomials.factorial(BigInteger.valueOf(numServers));
+
+        // Plaintext
+        BigInteger plaintext = BigInteger.valueOf(420);
+
+        // Encryption
+        BigInteger ciphertext = plaintext.modPow(publicExponent, modulus);
+
+        // Compute private key shares
+        List<BigInteger> privateKeyShares = new ArrayList<>();
+        List<List<SecretShare>> shamirAdditiveShares = rsaProactiveSharing.getShamirAdditiveShares();
+        for (int i = 0; i < numServers; i++) {
+            BigInteger accumulator = BigInteger.ZERO;
+            for (int j = 0; j < numServers; j++) {
+                accumulator = accumulator.add(shamirAdditiveShares.get(j).get(i).getY());
+            }
+            privateKeyShares.add(accumulator);
+
+            assertNotEquals(BigInteger.ZERO, accumulator);
+        }
+
+        // Compute partial decryption shares
+        List<BigInteger> partialDecryptions = new ArrayList<>();
+        for(int i = 0; i < numServers; i++) {
+            BigInteger partialDecryption = ciphertext.modPow(L.multiply(privateKeyShares.get(i)), modulus);
+            partialDecryptions.add(partialDecryption);
+
+            assertNotEquals(BigInteger.ZERO, partialDecryption);
+        }
+
+        // Interpolate partial decryptions
+
+        // Compute plaintext
     }
 }

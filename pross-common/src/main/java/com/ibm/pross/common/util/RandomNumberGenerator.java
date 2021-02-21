@@ -8,6 +8,8 @@ package com.ibm.pross.common.util;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Implements methods for securely generating random numbers and bytes
@@ -99,6 +101,14 @@ public class RandomNumberGenerator {
 		BigInteger list[] = new BigInteger[size];
 		for (int i = 0; i < list.length; i++) {
 			list[i] = generateRandomInteger(max);
+		}
+		return list;
+	}
+
+	public static List<BigInteger> generateRandomArray(BigInteger size, BigInteger max) {
+		List<BigInteger> list = new ArrayList<>();
+		for (BigInteger i = BigInteger.ZERO; i.compareTo(size) < 0; i = i.add(BigInteger.ONE)) {
+			list.add(generateRandomInteger(max));
 		}
 		return list;
 	}
