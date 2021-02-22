@@ -38,7 +38,7 @@ public class ReconfigurationTest {
 		 * ReconfigureRequest request = new ReconfigureRequest(id);
 		 * request.setProperty("f","1");
 		 * 
-		 * logger.info("Going to send a reconf!!!");
+		 * logger.debug("Going to send a reconf!!!");
 		 * 
 		 * byte[] reply = proxy.invoke(TOMUtil.getBytes(request),
 		 * ReconfigurationManager.TOM_RECONFIG_REQUEST, false);
@@ -55,7 +55,7 @@ public class ReconfigurationTest {
 
 		View v = r.getView();
 
-		logger.info("New view f: " + v.getF());
+		logger.debug("New view f: " + v.getF());
 
 		rec.close();
 	}

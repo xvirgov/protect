@@ -29,7 +29,7 @@ public class BFTMapClient {
 
 	public static void main(String[] args) {
 		if (args.length < 1) {
-			logger.info("Usage: java BFTMapClient <process id>");
+			logger.debug("Usage: java BFTMapClient <process id>");
 			System.exit(-1);
 		}
 
@@ -42,7 +42,7 @@ public class BFTMapClient {
 			createTable(bftMap, tableName);
 		} catch (Exception e1) {
 			e1.printStackTrace();
-			logger.info(
+			logger.debug(
 					"Problems: Inserting a new value into the table(" + tableName + "): " + e1.getLocalizedMessage());
 			System.exit(1);
 		}
@@ -52,13 +52,13 @@ public class BFTMapClient {
 			try {
 				boolean result = insertValue(bftMap, tableName, ops);
 				if (!result) {
-					// logger.info("Problems: Inserting a new value into the
+					// logger.debug("Problems: Inserting a new value into the
 					// table("+tableName+")");
 					// System.exit(1);
 				}
 
 				if (ops % 100 == 0)
-					logger.info("ops sent: " + ops);
+					logger.debug("ops sent: " + ops);
 				ops++;
 				// Thread.sleep(10);
 			} catch (Exception e) {
@@ -71,10 +71,10 @@ public class BFTMapClient {
 		boolean tableExists;
 
 		tableExists = bftMap.containsKey(nameTable);
-		logger.info("tableExists:" + tableExists);
+		logger.debug("tableExists:" + tableExists);
 		if (tableExists == false)
 			bftMap.put(nameTable, new TreeMap<String, byte[]>());
-		logger.info("Created the table. Maybe");
+		logger.debug("Created the table. Maybe");
 
 		return tableExists;
 	}
@@ -87,7 +87,7 @@ public class BFTMapClient {
 		valueBytes = new byte[VALUE_SIZE];
 		rand.nextBytes(valueBytes);
 		byte[] resultBytes = bftMap.putEntry(nameTable, key, valueBytes);
-		// logger.info("resultBytes" + resultBytes);
+		// logger.debug("resultBytes" + resultBytes);
 		if (resultBytes == null)
 			return false;
 		return true;

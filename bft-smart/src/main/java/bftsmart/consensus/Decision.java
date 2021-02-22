@@ -144,7 +144,7 @@ public class Decision {
 	private void waitForPropose() {
 		while (decisionEpoch == null && decisionEpoch.deserializedPropValue == null) {
 			try {
-				logger.info("waiting for propose for consensus" + cid);
+				logger.debug("waiting for propose for consensus" + cid);
 				Thread.sleep(1);
 			} catch (InterruptedException ie) {
 			}

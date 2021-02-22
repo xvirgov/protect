@@ -399,7 +399,7 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
 
         // Create response
         String response = null;
-        if (cipher.equalsIgnoreCase(CIPHER_FIELD_RSA)) {
+        if (cipher != null && cipher.equalsIgnoreCase(CIPHER_FIELD_RSA)) {
             response = getRSAPublicInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);
         }
         else {

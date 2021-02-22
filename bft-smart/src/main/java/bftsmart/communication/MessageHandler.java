@@ -122,13 +122,13 @@ public class MessageHandler {
 				if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC))
 					acceptor.deliver(consMsg);
 				else {
-					logger.info("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
-					logger.info("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
+					logger.debug("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
+					logger.debug("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
 				}
 			} else {
-				logger.info(
+				logger.debug(
 						"(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
-				logger.info(
+				logger.debug(
 						"(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
 			}
 
@@ -155,7 +155,7 @@ public class MessageHandler {
 						break;
 					}
 
-					logger.info("(MessageHandler.processData) LC_MSG received: type " + type + ", regency "
+					logger.debug("(MessageHandler.processData) LC_MSG received: type " + type + ", regency "
 							+ lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
 					if (lcMsg.TRIGGER_LC_LOCALLY)
 						tomLayer.requestsTimer.run_lc_protocol();
@@ -170,7 +170,7 @@ public class MessageHandler {
 					/** This is Joao's code, to handle state transfer */
 				} else if (sm instanceof SMMessage) {
 					SMMessage smsg = (SMMessage) sm;
-					// logger.info("(MessageHandler.processData) SM_MSG received: type " +
+					// logger.debug("(MessageHandler.processData) SM_MSG received: type " +
 					// smsg.getType() + ", regency " + smsg.getRegency() + ", (replica " +
 					// smsg.getSender() + ")");
 					switch (smsg.getType()) {
@@ -192,10 +192,10 @@ public class MessageHandler {
 					}
 					/******************************************************************/
 				} else {
-					logger.info("UNKNOWN MESSAGE TYPE: " + sm);
+					logger.debug("UNKNOWN MESSAGE TYPE: " + sm);
 				}
 			} else {
-				logger.info(
+				logger.debug(
 						"(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
 			}
 		}

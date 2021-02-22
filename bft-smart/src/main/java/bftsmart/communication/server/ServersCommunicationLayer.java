@@ -165,7 +165,7 @@ public class ServersCommunicationLayer extends Thread {
 					sm.authenticated = true;
 					inQueue.put(sm);
 				} else {
-					// logger.info("Going to send message to: "+i);
+					// logger.debug("Going to send message to: "+i);
 					// ******* EDUARDO BEGIN **************//
 					// connections[i].send(data);
 					getConnection(i).send(data, useMAC);
@@ -179,7 +179,7 @@ public class ServersCommunicationLayer extends Thread {
 
 	public void shutdown() {
 
-		logger.info("Shutting down replica sockets");
+		logger.debug("Shutting down replica sockets");
 
 		doWork = false;
 
@@ -219,7 +219,7 @@ public class ServersCommunicationLayer extends Thread {
 		while (doWork) {
 			try {
 
-				// logger.info("Waiting for server connections");
+				// logger.debug("Waiting for server connections");
 
 				Socket newSocket = serverSocket.accept();
 
@@ -249,17 +249,17 @@ public class ServersCommunicationLayer extends Thread {
 			logger.error(ex);
 		}
 
-		logger.info("ServerCommunicationLayer stopped.");
+		logger.debug("ServerCommunicationLayer stopped.");
 	}
 
 	// ******* EDUARDO BEGIN **************//
 	private void establishConnection(Socket newSocket, int remoteId) throws IOException {
 		if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
 			connectionsLock.lock();
-			// logger.info("Vai se conectar com: "+remoteId);
+			// logger.debug("Vai se conectar com: "+remoteId);
 			if (this.connections.get(remoteId) == null) { // This must never happen!!!
 				// first time that this connection is being established
-				// logger.info("THIS DOES NOT HAPPEN....."+remoteId);
+				// logger.debug("THIS DOES NOT HAPPEN....."+remoteId);
 				this.connections.put(remoteId, new ServerConnection(controller, newSocket, remoteId, inQueue, replica));
 			} else {
 				// reconnection
@@ -268,7 +268,7 @@ public class ServersCommunicationLayer extends Thread {
 			connectionsLock.unlock();
 
 		} else {
-			// logger.info("Closing connection of: "+remoteId);
+			// logger.debug("Closing connection of: "+remoteId);
 			newSocket.close();
 		}
 	}

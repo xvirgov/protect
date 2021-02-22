@@ -125,26 +125,26 @@ public class LatencyServer extends DefaultRecoverable {
 		}
 
 		if (iterations % interval == 0) {
-			logger.info("--- Measurements after " + iterations + " ops (" + interval + " samples) ---");
-			logger.info("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("--- Measurements after " + iterations + " ops (" + interval + " samples) ---");
+			logger.debug("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) totalLatency.getDP(false) / 1000 + ") us ");
 			totalLatency.reset();
-			logger.info("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) consensusLatency.getDP(false) / 1000 + ") us ");
 			consensusLatency.reset();
-			logger.info("Pre-consensus latency = " + preConsLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Pre-consensus latency = " + preConsLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) preConsLatency.getDP(false) / 1000 + ") us ");
 			preConsLatency.reset();
-			logger.info("Pos-consensus latency = " + posConsLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Pos-consensus latency = " + posConsLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) posConsLatency.getDP(false) / 1000 + ") us ");
 			posConsLatency.reset();
-			logger.info("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) proposeLatency.getDP(false) / 1000 + ") us ");
 			proposeLatency.reset();
-			logger.info("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) writeLatency.getDP(false) / 1000 + ") us ");
 			writeLatency.reset();
-			logger.info("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) acceptLatency.getDP(false) / 1000 + ") us ");
 			acceptLatency.reset();
 		}
@@ -154,7 +154,7 @@ public class LatencyServer extends DefaultRecoverable {
 
 	public static void main(String[] args) {
 		if (args.length < 3) {
-			logger.info("Use: java ...LatencyServer <processId> <measurement interval> <reply size>");
+			logger.debug("Use: java ...LatencyServer <processId> <measurement interval> <reply size>");
 			System.exit(-1);
 		}
 

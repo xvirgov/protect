@@ -30,7 +30,7 @@ public class BFTMapClientCloudFIT {
 
 	public static void main(String[] args) throws NumberFormatException {
 		if (args.length < 3) {
-			logger.info("Usage: java KVClients <number clients> <process id base> <time for running (sec)>");
+			logger.debug("Usage: java KVClients <number clients> <process id base> <time for running (sec)>");
 			System.exit(-1);
 		}
 
@@ -56,7 +56,7 @@ public class BFTMapClientCloudFIT {
 		} catch (InterruptedException e) {
 		}
 
-		logger.info("Stop running...");
+		logger.debug("Stop running...");
 
 		// stop and wait for the threads
 		for (int i = 0; i < list.length; i++) {
@@ -67,7 +67,7 @@ public class BFTMapClientCloudFIT {
 			}
 		}
 
-		logger.info("Test ended...exit!");
+		logger.debug("Test ended...exit!");
 		System.exit(0);
 	}
 
@@ -78,7 +78,7 @@ public class BFTMapClientCloudFIT {
 			fh.setFormatter(new SimpleFormatter());
 
 		} catch (IOException e) {
-			logger.info("PROBLEMS]: " + e.getMessage());
+			logger.debug("PROBLEMS]: " + e.getMessage());
 			System.exit(-1);
 		}
 	}
@@ -108,7 +108,7 @@ class KVClientInstance extends Thread {
 		try {
 			createTable(bftMap, tableName);
 		} catch (Exception e1) {
-			logger.info(
+			logger.debug(
 					"Problems: Inserting a new value into the table(" + tableName + "): " + e1.getLocalizedMessage());
 			System.exit(1);
 		}
@@ -118,24 +118,24 @@ class KVClientInstance extends Thread {
 
 				boolean result = insertValue(bftMap, tableName);
 				if (!result) {
-					logger.info("Problems: Inserting a new value into the table(" + tableName + ")");
+					logger.debug("Problems: Inserting a new value into the table(" + tableName + ")");
 					System.exit(1);
 				}
 
 			} catch (InterruptedException e) {
-				logger.info("Client id[" + id + "]: it was interrupted");
+				logger.debug("Client id[" + id + "]: it was interrupted");
 				run = false;
 			} catch (Exception e) {
 				bftMap = new BFTMap(id);
 				try {
 					createTable(bftMap, tableName);
 				} catch (Exception e1) {
-					logger.info("Client id[" + id + "]: problems");
+					logger.debug("Client id[" + id + "]: problems");
 				}
 			}
 		}
 
-		logger.info("Client id[" + id + "] operations: " + inc);
+		logger.debug("Client id[" + id + "] operations: " + inc);
 		return;
 	}
 

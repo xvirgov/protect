@@ -81,7 +81,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         this.rl = rl;
         this.signatureSize = signatureLength;
         this.useMAC = useMAC;
-        logger.info("new NettyTOMMessageDecoder!!, isClient=" + isClient);
+        logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);
     }
 
     @Override
@@ -94,7 +94,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
 
         int dataLength = buffer.getInt(buffer.readerIndex());
 
-        //logger.info("Receiving message with "+dataLength+" bytes.");
+        //logger.debug("Receiving message with "+dataLength+" bytes.");
 
         // Wait until the whole data is available.
         if (buffer.readableBytes() < dataLength + 4) {
@@ -155,7 +155,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                 //verify MAC
                 if (useMAC) {
                     if (!verifyMAC(sm.getSender(), data, digest)) {
-                        logger.info("MAC error: message discarded");
+                        logger.debug("MAC error: message discarded");
                         return;
                     }
                 }
@@ -166,14 +166,14 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     rl.readLock().unlock();
                     if (useMAC) {
                         if (!verifyMAC(sm.getSender(), data, digest)) {
-                            logger.info("MAC error: message discarded");
+                            logger.debug("MAC error: message discarded");
                             return;
                         }
                     }
                 } else {
                     //creates MAC/publick key stuff if it's the first message received from the client
-                    logger.info("Creating MAC/public key stuff, first message from client" + sm.getSender());
-                    logger.info("sessionTable size=" + sessionTable.size());
+                    logger.debug("Creating MAC/public key stuff, first message from client" + sm.getSender());
+                    logger.debug("sessionTable size=" + sessionTable.size());
 
                     rl.readLock().unlock();
                     
@@ -189,20 +189,20 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     NettyClientServerSession cs = new NettyClientServerSession(context.channel(), macSend, macReceive, sm.getSender());
                                        
                     rl.writeLock().lock();
-//                    logger.info("PUT INTO SESSIONTABLE - [client id]:"+sm.getSender()+" [channel]: "+cs.getChannel());
+//                    logger.debug("PUT INTO SESSIONTABLE - [client id]:"+sm.getSender()+" [channel]: "+cs.getChannel());
                     sessionTable.put(sm.getSender(), cs);
-                    logger.info("#active clients " + sessionTable.size());
+                    logger.debug("#active clients " + sessionTable.size());
                     rl.writeLock().unlock();
                     if (useMAC && !verifyMAC(sm.getSender(), data, digest)) {
-                        logger.info("MAC error: message discarded");
+                        logger.debug("MAC error: message discarded");
                         return;
                     }
                 }
             }
-            logger.info("Decoded reply from " + sm.getSender() + " with sequence number " + sm.getSequence());
+            logger.debug("Decoded reply from " + sm.getSender() + " with sequence number " + sm.getSequence());
             list.add(sm);
         } catch (Exception ex) {
-            logger.info("Impossible to decode message: "+
+            logger.debug("Impossible to decode message: "+
                     ex.getMessage());
             ex.printStackTrace();
         }

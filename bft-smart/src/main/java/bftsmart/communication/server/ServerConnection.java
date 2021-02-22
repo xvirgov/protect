@@ -106,7 +106,7 @@ public class ServerConnection {
 						.writeInt(this.controller.getStaticConf().getProcessId());
 
 			} catch (IOException e) {
-				logger.info("Error connecting to: " + host + ":" + port + " - "+ e.getMessage());
+				logger.debug("Error connecting to: " + host + ":" + port + " - "+ e.getMessage());
 			}
 		}
 		// else I have to wait a connection from the remote server
@@ -116,7 +116,7 @@ public class ServerConnection {
 				socketOutStream = new DataOutputStream(this.socket.getOutputStream());
 				socketInStream = new DataInputStream(this.socket.getInputStream());
 			} catch (IOException ex) {
-				logger.info("Error creating connection to " + remoteId);
+				logger.debug("Error creating connection to " + remoteId);
 				ex.printStackTrace();
 			}
 		}
@@ -150,7 +150,7 @@ public class ServerConnection {
 	 * Stop message sending and reception.
 	 */
 	public void shutdown() {
-		logger.info("SHUTDOWN for " + remoteId);
+		logger.debug("SHUTDOWN for " + remoteId);
 
 		doWork = false;
 		closeSocket();
@@ -163,12 +163,12 @@ public class ServerConnection {
 		if (useSenderThread) {
 			// only enqueue messages if there queue is not full
 			if (!useMAC) {
-				logger.info("(ServerConnection.send) Not sending defaultMAC " + System.identityHashCode(data));
+				logger.debug("(ServerConnection.send) Not sending defaultMAC " + System.identityHashCode(data));
 				noMACs.add(System.identityHashCode(data));
 			}
 
 			if (!outQueue.offer(data)) {
-				logger.info("(ServerConnection.send) out queue for " + remoteId + " full (message discarded).");
+				logger.debug("(ServerConnection.send) out queue for " + remoteId + " full (message discarded).");
 			}
 		} else {
 			sendLock.lock();
@@ -302,7 +302,7 @@ public class ServerConnection {
 				ex.printStackTrace();
 			} catch (IOException ex) {
 
-				logger.info("Impossible to reconnect to replica " + remoteId);
+				logger.debug("Impossible to reconnect to replica " + remoteId);
 				// ex.printStackTrace();
 			}
 
@@ -390,7 +390,7 @@ public class ServerConnection {
 
 			if (!TOMUtil.verifySignature(remoteRSAPubkey, remote_Bytes, remote_Signature)) {
 
-				logger.info(remoteId + " sent an invalid signature!");
+				logger.debug(remoteId + " sent an invalid signature!");
 				shutdown();
 				return;
 			}
@@ -400,7 +400,7 @@ public class ServerConnection {
 			// Create secret key
 			BigInteger secretKey = remoteDHPubKey.modPow(DHPrivKey, controller.getStaticConf().getDHP());
 
-			logger.info("-- Diffie-Hellman complete with " + remoteId);
+			logger.debug("-- Diffie-Hellman complete with " + remoteId);
 
 			SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
 			PBEKeySpec spec = new PBEKeySpec(secretKey.toString().toCharArray());
@@ -424,9 +424,9 @@ public class ServerConnection {
 				socketOutStream.flush();
 				socket.close();
 			} catch (IOException ex) {
-				logger.info("Error closing socket to " + remoteId);
+				logger.debug("Error closing socket to " + remoteId);
 			} catch (NullPointerException npe) {
-				logger.info("Socket already closed");
+				logger.debug("Socket already closed");
 			}
 
 			socket = null;
@@ -471,13 +471,13 @@ public class ServerConnection {
 					// sendBytes(data, noMACs.contains(System.identityHashCode(data)));
 					int ref = System.identityHashCode(data);
 					boolean sendMAC = !noMACs.remove(ref);
-					logger.info(
+					logger.debug(
 							"(ServerConnection.run) " + (sendMAC ? "Sending" : "Not sending") + " MAC for data " + ref);
 					sendBytes(data, sendMAC);
 				}
 			}
 
-			logger.info("Sender for " + remoteId + " stopped!");
+			logger.debug("Sender for " + remoteId + " stopped!");
 		}
 	}
 
@@ -532,21 +532,21 @@ public class ServerConnection {
 
 							if (sm.getSender() == remoteId) {
 								if (!inQueue.offer(sm)) {
-									logger.info("(ReceiverThread.run) in queue full (message from " + remoteId
+									logger.debug("(ReceiverThread.run) in queue full (message from " + remoteId
 											+ " discarded).");
-									logger.info("(ReceiverThread.run) in queue full (message from " + remoteId
+									logger.debug("(ReceiverThread.run) in queue full (message from " + remoteId
 											+ " discarded).");
 								}
 							}
 						} else {
 							// TODO: violation of authentication... we should do something
-							logger.info("WARNING: Violation of authentication in message received from " + remoteId);
+							logger.debug("WARNING: Violation of authentication in message received from " + remoteId);
 						}
 					} catch (ClassNotFoundException ex) {
 						// invalid message sent, just ignore;
 					} catch (IOException ex) {
 						if (doWork) {
-							logger.info("Closing socket and reconnecting");
+							logger.debug("Closing socket and reconnecting");
 							closeSocket();
 							waitAndConnect();
 						}
@@ -604,7 +604,7 @@ public class ServerConnection {
 						byte hasMAC = socketInStream.readByte();
 						if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
 
-							logger.info("TTP CON USEMAC");
+							logger.debug("TTP CON USEMAC");
 							read = 0;
 							do {
 								read += socketInStream.read(receivedMac, read, macSize - read);
@@ -618,19 +618,19 @@ public class ServerConnection {
 									.readObject());
 
 							if (sm.getSender() == remoteId) {
-								// logger.info("Mensagem recebia de: "+remoteId);
+								// logger.debug("Mensagem recebia de: "+remoteId);
 								/*
-								 * if (!inQueue.offer(sm)) { logger.info
+								 * if (!inQueue.offer(sm)) { logger.debug
 								 * println("(ReceiverThread.run) in queue full (message from " + remoteId +
 								 * " discarded).");
-								 * logger.info("(ReceiverThread.run) in queue full (message from " +
+								 * logger.debug("(ReceiverThread.run) in queue full (message from " +
 								 * remoteId + " discarded)."); }
 								 */
 								this.replica.joinMsgReceived((VMMessage) sm);
 							}
 						} else {
 							// TODO: violation of authentication... we should do something
-							logger.info("WARNING: Violation of authentication in message received from " + remoteId);
+							logger.debug("WARNING: Violation of authentication in message received from " + remoteId);
 						}
 					} catch (ClassNotFoundException ex) {
 						ex.printStackTrace();

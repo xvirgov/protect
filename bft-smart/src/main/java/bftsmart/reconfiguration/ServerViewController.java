@@ -61,10 +61,10 @@ public class ServerViewController extends ViewController {
 		super(procId, configHome);
 		View cv = getViewStore().readView();
 		if (cv == null) {
-			logger.info("-- Creating current view from configuration file");
+			logger.debug("-- Creating current view from configuration file");
 			reconfigureTo(new View(0, getStaticConf().getInitialView(), getStaticConf().getF(), getInitAdddresses()));
 		} else {
-			logger.info("-- Using view stored on disk");
+			logger.debug("-- Using view stored on disk");
 			reconfigureTo(cv);
 		}
 
@@ -228,9 +228,9 @@ public class ServerViewController extends ViewController {
 
 		View newV = new View(currentView.getId() + 1, nextV, f, addresses);
 
-		logger.info("new view: " + newV);
-		logger.info("installed on CID: " + cid);
-		logger.info("lastJoinSet: " + jSet);
+		logger.debug("new view: " + newV);
+		logger.debug("installed on CID: " + cid);
+		logger.debug("lastJoinSet: " + jSet);
 
 		// TODO:Remove all information stored about each process in rSet
 		// processes execute the leave!!!
@@ -239,7 +239,7 @@ public class ServerViewController extends ViewController {
 		if (forceLC) {
 
 			// TODO: Reactive it and make it work
-			logger.info("Shortening LC timeout");
+			logger.debug("Shortening LC timeout");
 			tomLayer.requestsTimer.stopTimer();
 			tomLayer.requestsTimer.setShortTimeout(3000);
 			tomLayer.requestsTimer.startTimer();

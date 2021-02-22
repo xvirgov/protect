@@ -100,7 +100,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				replies = appExecuteBatch(commands, msgCtx);
 				stateLock.unlock();
 			}
-			logger.info(
+			logger.debug(
 					"(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + cid);
 			saveCommands(commands, msgCtx);
 		} else {
@@ -140,14 +140,14 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			}
 
 			if (cid % globalCheckpointPeriod == replicaCkpIndex && lastCkpCID < cid) {
-				logger.info("(DurabilityCoordinator.executeBatch) Performing checkpoint for consensus " + cid);
+				logger.debug("(DurabilityCoordinator.executeBatch) Performing checkpoint for consensus " + cid);
 				stateLock.lock();
 				byte[] snapshot = getSnapshot();
 				stateLock.unlock();
 				saveState(snapshot, cid);
 				lastCkpCID = cid;
 			} else {
-				logger.info(
+				logger.debug(
 						"(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus "
 								+ cid);
 				saveCommands(firstHalf, firstHalfMsgCtx);
@@ -157,7 +157,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 
 			// execute the second half if it exists
 			if (secondHalf.length > 0) {
-				// logger.info("----THERE IS A SECOND HALF----");
+				// logger.debug("----THERE IS A SECOND HALF----");
 				cid = msgCtx[msgCtx.length - 1].getConsensusId();
 				if (!noop) {
 
@@ -166,7 +166,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 					stateLock.unlock();
 
 				}
-				logger.info(
+				logger.debug(
 						"(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus "
 								+ cid);
 				saveCommands(secondHalf, secondHalfMsgCtx);
@@ -238,7 +238,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				break;
 			index++;
 		}
-		logger.info("--- Checkpoint is in position " + index);
+		logger.debug("--- Checkpoint is in position " + index);
 		return index;
 	}
 
@@ -259,21 +259,21 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			int lastCheckpointCID = state.getCheckpointCID();
 			lastCID = state.getLastCID();
 
-			logger.info("(DurabilityCoordinator.setState) I'm going to update myself from CID "
+			logger.debug("(DurabilityCoordinator.setState) I'm going to update myself from CID "
 					+ lastCheckpointCID + " to CID " + lastCID);
 
 			stateLock.lock();
 			if (state.getSerializedState() != null) {
-				logger.info("The state is not null. Will install it");
+				logger.debug("The state is not null. Will install it");
 				log.update(state);
 				installSnapshot(state.getSerializedState());
 			}
 
-			logger.info("--- Installing log from " + (lastCheckpointCID + 1) + " to " + lastCID);
+			logger.debug("--- Installing log from " + (lastCheckpointCID + 1) + " to " + lastCID);
 
 			for (int cid = lastCheckpointCID + 1; cid <= lastCID; cid++) {
 				try {
-					logger.info(
+					logger.debug(
 							"(DurabilityCoordinator.setState) interpreting and verifying batched requests for CID "
 									+ cid);
 					CommandsInfo cmdInfo = state.getMessageBatch(cid);
@@ -290,7 +290,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				}
 
 			}
-			logger.info("--- Installed");
+			logger.debug("--- Installed");
 			stateLock.unlock();
 
 		}
@@ -309,14 +309,14 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	private void saveState(byte[] snapshot, int lastCID) {
 		logLock.lock();
 
-		logger.info("(TOMLayer.saveState) Saving state of CID " + lastCID);
+		logger.debug("(TOMLayer.saveState) Saving state of CID " + lastCID);
 
 		log.newCheckpoint(snapshot, computeHash(snapshot), lastCID);
 		log.setLastCID(-1);
 		log.setLastCheckpointCID(lastCID);
 
 		logLock.unlock();
-		logger.info("(TOMLayer.saveState) Finished saving state of CID " + lastCID);
+		logger.debug("(TOMLayer.saveState) Finished saving state of CID " + lastCID);
 	}
 
 	/**
@@ -331,8 +331,8 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			return;
 
 		if (commands.length != msgCtx.length) {
-			logger.info("----SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
-			logger.info("----COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
+			logger.debug("----SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
+			logger.debug("----COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
 		}
 
 		logLock.lock();
@@ -347,14 +347,14 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				log.addMessageBatch(batch, batchMsgCtx, cid);
 				log.setLastCID(cid, globalCheckpointPeriod, checkpointPortion);
 				// if(batchStart > 0)
-				// logger.info("Last batch: " + commands.length + "," + batchStart + "-"
+				// logger.debug("Last batch: " + commands.length + "," + batchStart + "-"
 				// + i + "," + batch.length);
 			} else {
 				if (msgCtx[i].getConsensusId() > cid) { // saves commands when the CID changes or when it is the last
 														// batch
 					byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
 					MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
-					// logger.info("THERE IS MORE THAN ONE CID in this batch." +
+					// logger.debug("THERE IS MORE THAN ONE CID in this batch." +
 					// commands.length + "," + batchStart + "-" + i + "," + batch.length);
 					log.addMessageBatch(batch, batchMsgCtx, cid);
 					log.setLastCID(cid, globalCheckpointPeriod, checkpointPortion);
@@ -390,11 +390,11 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				log = new DurableStateLog(replicaId, null, null, isToLog, syncLog, syncCkp);
 				CSTState storedState = log.loadDurableState();
 				if (storedState.getLastCID() > -1) {
-					logger.info("LAST CID RECOVERED FROM LOG: " + storedState.getLastCID());
+					logger.debug("LAST CID RECOVERED FROM LOG: " + storedState.getLastCID());
 					setState(storedState);
 					getStateManager().setLastCID(storedState.getLastCID());
 				} else {
-					logger.info("REPLICA IS IN INITIAL STATE");
+					logger.debug("REPLICA IS IN INITIAL STATE");
 				}
 			}
 			getStateManager().askCurrentConsensusId();
@@ -434,7 +434,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	public byte[] getCurrentStateHash() {
 		byte[] currentState = getSnapshot();
 		byte[] currentStateHash = TOMUtil.computeHash(currentState);
-		logger.info(
+		logger.debug(
 				"--- State size: " + currentState.length + " Current state Hash: " + Arrays.toString(currentStateHash));
 		return currentStateHash;
 	}

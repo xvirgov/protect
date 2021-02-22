@@ -347,7 +347,7 @@ public class Consensus {
 			decisionEpoch = epoch.getTimestamp();
 			decision.setDecisionEpoch(epoch);
 			if (deliver) {
-				logger.info("(Consensus.decided) Delivering decision from consensus " + getId()
+				logger.debug("(Consensus.decided) Delivering decision from consensus " + getId()
 						+ " to the TOMLayer/DeliveryThread");
 				manager.getTOMLayer().decided(decision);
 			}

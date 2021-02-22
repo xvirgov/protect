@@ -41,7 +41,7 @@ public class ThroughputLatencyClient {
 
 	public static void main(String[] args) throws IOException {
 		if (args.length < 7) {
-			logger.info(
+			logger.debug(
 					"Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <interval (ms)> <read only?> <verbose?>");
 			System.exit(-1);
 		}
@@ -64,7 +64,7 @@ public class ThroughputLatencyClient {
 				logger.error(ex);
 			}
 
-			logger.info("Launching client " + (initId + i));
+			logger.debug("Launching client " + (initId + i));
 			clients[i] = new ThroughputLatencyClient.Client(initId + i, numberOfOps, requestSize, interval, readOnly,
 					verbose);
 		}
@@ -88,7 +88,7 @@ public class ThroughputLatencyClient {
 
 		exec.shutdown();
 
-		logger.info("All clients done.");
+		logger.debug("All clients done.");
 	}
 
 	static class Client extends Thread {
@@ -117,13 +117,13 @@ public class ThroughputLatencyClient {
 
 		public void run() {
 
-			logger.info("Warm up...");
+			logger.debug("Warm up...");
 
 			int req = 0;
 
 			for (int i = 0; i < numberOfOps / 2; i++, req++) {
 				if (verbose)
-					logger.info("Sending req " + req + "...");
+					logger.debug("Sending req " + req + "...");
 
 				if (readOnly)
 					proxy.invokeUnordered(request);
@@ -131,10 +131,10 @@ public class ThroughputLatencyClient {
 					proxy.invokeOrdered(request);
 
 				if (verbose)
-					logger.info(" sent!");
+					logger.debug(" sent!");
 
 				if (verbose && (req % 1000 == 0))
-					logger.info(this.id + " // " + req + " operations sent!");
+					logger.debug(this.id + " // " + req + " operations sent!");
 
 				if (interval > 0) {
 					try {
@@ -147,12 +147,12 @@ public class ThroughputLatencyClient {
 
 			Storage st = new Storage(numberOfOps / 2);
 
-			logger.info("Executing experiment for " + numberOfOps / 2 + " ops");
+			logger.debug("Executing experiment for " + numberOfOps / 2 + " ops");
 
 			for (int i = 0; i < numberOfOps / 2; i++, req++) {
 				long last_send_instant = System.nanoTime();
 				if (verbose)
-					logger.info(this.id + " // Sending req " + req + "...");
+					logger.debug(this.id + " // Sending req " + req + "...");
 
 				if (readOnly)
 					proxy.invokeUnordered(request);
@@ -160,7 +160,7 @@ public class ThroughputLatencyClient {
 					proxy.invokeOrdered(request);
 
 				if (verbose)
-					logger.info(this.id + " // sent!");
+					logger.debug(this.id + " // sent!");
 				st.store(System.nanoTime() - last_send_instant);
 
 				if (interval > 0) {
@@ -172,19 +172,19 @@ public class ThroughputLatencyClient {
 				}
 
 				if (verbose && (req % 1000 == 0))
-					logger.info(this.id + " // " + req + " operations sent!");
+					logger.debug(this.id + " // " + req + " operations sent!");
 			}
 
 			if (id == initId) {
-				logger.info(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = "
+				logger.debug(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = "
 						+ st.getAverage(true) / 1000 + " us ");
-				logger.info(this.id + " // Standard desviation for " + numberOfOps / 2 + " executions (-10%) = "
+				logger.debug(this.id + " // Standard desviation for " + numberOfOps / 2 + " executions (-10%) = "
 						+ st.getDP(true) / 1000 + " us ");
-				logger.info(this.id + " // Average time for " + numberOfOps / 2 + " executions (all samples) = "
+				logger.debug(this.id + " // Average time for " + numberOfOps / 2 + " executions (all samples) = "
 						+ st.getAverage(false) / 1000 + " us ");
-				logger.info(this.id + " // Standard desviation for " + numberOfOps / 2
+				logger.debug(this.id + " // Standard desviation for " + numberOfOps / 2
 						+ " executions (all samples) = " + st.getDP(false) / 1000 + " us ");
-				logger.info(this.id + " // Maximum time for " + numberOfOps / 2 + " executions (all samples) = "
+				logger.debug(this.id + " // Maximum time for " + numberOfOps / 2 + " executions (all samples) = "
 						+ st.getMax(false) / 1000 + " us ");
 			}
 

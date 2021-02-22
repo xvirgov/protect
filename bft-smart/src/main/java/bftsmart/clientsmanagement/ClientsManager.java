@@ -64,7 +64,7 @@ public class ClientsManager {
 		ClientData clientData = clientsData.get(clientId);
 
 		if (clientData == null) {
-			logger.info("(ClientsManager.getClientData) Creating new client data, client id=" + clientId);
+			logger.debug("(ClientsManager.getClientData) Creating new client data, client id=" + clientId);
 
 			// ******* EDUARDO BEGIN **************//
 			clientData = new ClientData(clientId,
@@ -236,15 +236,15 @@ public class ClientsManager {
 		int clientId = request.getSender();
 		boolean accounted = false;
 
-		// logger.info("(ClientsManager.requestReceived) getting info about client
+		// logger.debug("(ClientsManager.requestReceived) getting info about client
 		// "+clientId);
 		ClientData clientData = getClientData(clientId);
 
-		// logger.info("(ClientsManager.requestReceived) wait for lock for client
+		// logger.debug("(ClientsManager.requestReceived) wait for lock for client
 		// "+clientData.getClientId());
 		clientData.clientLock.lock();
 		/******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-		// logger.info("(ClientsManager.requestReceived) lock for client
+		// logger.debug("(ClientsManager.requestReceived) lock for client
 		// "+clientData.getClientId()+" acquired");
 
 		/* ################################################ */
@@ -306,7 +306,7 @@ public class ClientsManager {
 				if (reply != null && cs != null) {
 
 					if (reply.recvFromClient && fromClient) {
-						logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: "
+						logger.debug("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: "
 								+ reply.getSequence() + ", session: " + reply.getSession() + "]");
 						cs.send(new int[] { request.getSender() }, reply);
 
@@ -338,11 +338,11 @@ public class ClientsManager {
 	 */
 	public void requestsOrdered(TOMMessage[] requests) {
 		clientsLock.lock();
-		logger.info("(ClientsManager.requestOrdered) Updating client manager");
+		logger.debug("(ClientsManager.requestOrdered) Updating client manager");
 		for (TOMMessage request : requests) {
 			requestOrdered(request);
 		}
-		logger.info("(ClientsManager.requestOrdered) Finished updating client manager");
+		logger.debug("(ClientsManager.requestOrdered) Finished updating client manager");
 		clientsLock.unlock();
 	}
 
@@ -364,7 +364,7 @@ public class ClientsManager {
 		clientData.clientLock.lock();
 		/******* BEGIN CLIENTDATA CRITICAL SECTION ******/
 		if (!clientData.removeOrderedRequest(request)) {
-			logger.info("(ClientsManager.requestOrdered) Request " + request + " does not exist in pending requests");
+			logger.debug("(ClientsManager.requestOrdered) Request " + request + " does not exist in pending requests");
 		}
 		clientData.setLastMessageExecuted(request.getSequence());
 
@@ -380,6 +380,6 @@ public class ClientsManager {
 		clientsLock.lock();
 		clientsData.clear();
 		clientsLock.unlock();
-		logger.info("ClientsManager cleared.");
+		logger.debug("ClientsManager cleared.");
 	}
 }

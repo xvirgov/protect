@@ -140,37 +140,37 @@ public final class ThroughputLatencyServer extends DefaultRecoverable {
 		float tp = -1;
 		if (iterations % interval == 0) {
 			if (context)
-				logger.info("--- (Context)  iterations: " + iterations + " // regency: " + msgCtx.getRegency()
+				logger.debug("--- (Context)  iterations: " + iterations + " // regency: " + msgCtx.getRegency()
 						+ " // consensus: " + msgCtx.getConsensusId() + " ---");
 
-			logger.info("--- Measurements after " + iterations + " ops (" + interval + " samples) ---");
+			logger.debug("--- Measurements after " + iterations + " ops (" + interval + " samples) ---");
 
 			tp = (float) (interval * 1000 / (float) (System.currentTimeMillis() - throughputMeasurementStartTime));
 
 			if (tp > maxTp)
 				maxTp = tp;
 
-			logger.info("Throughput = " + tp + " operations/sec (Maximum observed: " + maxTp + " ops/sec)");
+			logger.debug("Throughput = " + tp + " operations/sec (Maximum observed: " + maxTp + " ops/sec)");
 
-			logger.info("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) totalLatency.getDP(false) / 1000 + ") us ");
 			totalLatency.reset();
-			logger.info("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) consensusLatency.getDP(false) / 1000 + ") us ");
 			consensusLatency.reset();
-			logger.info("Pre-consensus latency = " + preConsLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Pre-consensus latency = " + preConsLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) preConsLatency.getDP(false) / 1000 + ") us ");
 			preConsLatency.reset();
-			logger.info("Pos-consensus latency = " + posConsLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Pos-consensus latency = " + posConsLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) posConsLatency.getDP(false) / 1000 + ") us ");
 			posConsLatency.reset();
-			logger.info("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) proposeLatency.getDP(false) / 1000 + ") us ");
 			proposeLatency.reset();
-			logger.info("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) writeLatency.getDP(false) / 1000 + ") us ");
 			writeLatency.reset();
-			logger.info("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "
+			logger.debug("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "
 					+ (long) acceptLatency.getDP(false) / 1000 + ") us ");
 			acceptLatency.reset();
 
@@ -182,7 +182,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable {
 
 	public static void main(String[] args) {
 		if (args.length < 5) {
-			logger.info(
+			logger.debug(
 					"Usage: ... ThroughputLatencyServer <processId> <measurement interval> <reply size> <state size> <context?>");
 			System.exit(-1);
 		}

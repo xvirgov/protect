@@ -60,43 +60,43 @@ public class CommandsInfo implements Serializable {
 			CommandsInfo ci = (CommandsInfo) obj;
 
 			if ((this.commands != null && ci.commands == null) || (this.commands == null && ci.commands != null)) {
-				// logger.info("[CommandsInfo] returing FALSE!1");
+				// logger.debug("[CommandsInfo] returing FALSE!1");
 				return false;
 			}
 
 			if (this.commands != null && ci.commands != null) {
 
 				if (this.commands.length != ci.commands.length) {
-					// logger.info("[CommandsInfo] returing FALSE!2");
+					// logger.debug("[CommandsInfo] returing FALSE!2");
 					return false;
 				}
 
 				for (int i = 0; i < this.commands.length; i++) {
 
 					if (this.commands[i] == null && ci.commands[i] != null) {
-						// logger.info("[CommandsInfo] returing FALSE!3");
+						// logger.debug("[CommandsInfo] returing FALSE!3");
 						return false;
 					}
 
 					if (this.commands[i] != null && ci.commands[i] == null) {
-						// logger.info("[CommandsInfo] returing FALSE!4");
+						// logger.debug("[CommandsInfo] returing FALSE!4");
 						return false;
 					}
 
 					if (!(this.commands[i] == null && ci.commands[i] == null)
 							&& (!Arrays.equals(this.commands[i], ci.commands[i]))) {
-						// logger.info("[CommandsInfo] returing FALSE!5" + (this.commands[i] ==
+						// logger.debug("[CommandsInfo] returing FALSE!5" + (this.commands[i] ==
 						// null) + " " + (ci.commands[i] == null));
 						return false;
 					}
 				}
 			}
-			// logger.info("[CommandsInfo] returnig........");
-			// logger.info((this.epoch == ci.epoch) + " " + (this.leader ==
+			// logger.debug("[CommandsInfo] returnig........");
+			// logger.debug((this.epoch == ci.epoch) + " " + (this.leader ==
 			// ci.leader));
 			return true;
 		}
-		// logger.info("[CommandsInfo] returing FALSE!");
+		// logger.debug("[CommandsInfo] returing FALSE!");
 		return false;
 	}
 

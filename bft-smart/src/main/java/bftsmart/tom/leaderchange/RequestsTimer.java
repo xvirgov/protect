@@ -164,7 +164,7 @@ public class RequestsTimer {
 
 		long t = (shortTimeout > -1 ? shortTimeout : timeout);
 
-		// logger.info("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO
+		// logger.debug("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO
 		// TIMEOUT");
 
 		LinkedList<TOMMessage> pendingRequests = new LinkedList<TOMMessage>();
@@ -195,7 +195,7 @@ public class RequestsTimer {
 			}
 
 			if (!pendingRequests.isEmpty()) {
-				logger.info("Timeout for messages: " + pendingRequests);
+				logger.debug("Timeout for messages: " + pendingRequests);
 				// Logger.debug = true;
 				// tomLayer.requestTimeout(pendingRequests);
 				// if (reconfManager.getStaticConf().getProcessId() == 4) Logger.debug = true;
@@ -248,7 +248,7 @@ public class RequestsTimer {
 	public void shutdown() {
 		timer.cancel();
 		stopAllSTOPs();
-		logger.info("RequestsTimer stopped.");
+		logger.debug("RequestsTimer stopped.");
 	}
 
 	class RequestTimerTask extends TimerTask {
@@ -283,7 +283,7 @@ public class RequestsTimer {
 		 */
 		public void run() {
 
-			logger.info("(SendStopTask.run) Re-transmitting STOP message to install regency " + stop.getReg());
+			logger.debug("(SendStopTask.run) Re-transmitting STOP message to install regency " + stop.getReg());
 			communication.send(controller.getCurrentViewOtherAcceptors(), this.stop);
 
 			setSTOP(stop.getReg(), stop); // repeat

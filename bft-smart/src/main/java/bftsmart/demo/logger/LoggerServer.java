@@ -56,7 +56,7 @@ public final class LoggerServer extends DefaultSingleRecoverable {
 	public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
 		iterations++;
 
-		logger.info("(" + iterations + ") Counter message value: " + this.message);
+		logger.debug("(" + iterations + ") Counter message value: " + this.message);
 		return this.message.getBytes(StandardCharsets.UTF_8);
 	}
 
@@ -68,8 +68,8 @@ public final class LoggerServer extends DefaultSingleRecoverable {
 
 		String message = new String(command, StandardCharsets.UTF_8);
 
-		logger.info("(" + iterations + ") Message was added. Current value = " + message);
-		logger.info("      Current state: " + crc32.getValue());
+		logger.debug("(" + iterations + ") Message was added. Current value = " + message);
+		logger.debug("      Current state: " + crc32.getValue());
 
 		this.message = message;
 
@@ -79,7 +79,7 @@ public final class LoggerServer extends DefaultSingleRecoverable {
 
 	public static void main(String[] args) {
 		if (args.length < 1) {
-			logger.info("Use: java CounterServer <processId>");
+			logger.debug("Use: java CounterServer <processId>");
 			System.exit(-1);
 		}
 		new LoggerServer(Integer.parseInt(args[0]));
@@ -88,7 +88,7 @@ public final class LoggerServer extends DefaultSingleRecoverable {
     @Override
     public void installSnapshot(byte[] state) {
         try {
-            logger.info("setState called");
+            logger.debug("setState called");
             ByteArrayInputStream bis = new ByteArrayInputStream(state);
             ObjectInput in = new ObjectInputStream(bis);
             
@@ -112,7 +112,7 @@ public final class LoggerServer extends DefaultSingleRecoverable {
     @Override
     public byte[] getSnapshot() {
         try {
-            logger.info("getState called");
+            logger.debug("getState called");
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutput out = new ObjectOutputStream(bos);
             out.writeInt((int)crc32.getValue());

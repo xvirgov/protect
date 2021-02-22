@@ -54,7 +54,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     @Override
     public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {         
         iterations++;
-        logger.info("(" + iterations + ") Counter current value: " + counter);
+        logger.debug("(" + iterations + ") Counter current value: " + counter);
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
@@ -72,7 +72,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
             counter += increment;
             
-            logger.info("(" + iterations + ") Counter was incremented. Current value = " + counter);
+            logger.debug("(" + iterations + ") Counter was incremented. Current value = " + counter);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
@@ -85,7 +85,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
 
     public static void main(String[] args){
         if(args.length < 1) {
-            logger.info("Use: java CounterServer <processId>");
+            logger.debug("Use: java CounterServer <processId>");
             System.exit(-1);
         }      
         new CounterServer(Integer.parseInt(args[0]));
@@ -94,7 +94,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     @Override
     public void installSnapshot(byte[] state) {
         try {
-            logger.info("setState called");
+            logger.debug("setState called");
             ByteArrayInputStream bis = new ByteArrayInputStream(state);
             ObjectInput in = new ObjectInputStream(bis);
             counter = in.readInt();
@@ -109,7 +109,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     @Override
     public byte[] getSnapshot() {
         try {
-            logger.info("getState called");
+            logger.debug("getState called");
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutput out = new ObjectOutputStream(bos);
             out.writeInt(counter);

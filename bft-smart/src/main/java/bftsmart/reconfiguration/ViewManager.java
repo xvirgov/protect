@@ -111,7 +111,7 @@ public class ViewManager {
 		connect();
 		ReconfigureReply r = rec.execute();
 		View v = r.getView();
-		logger.info("New view f: " + v.getF());
+		logger.debug("New view f: " + v.getF());
 
 		VMMessage msg = new VMMessage(id, r);
 
@@ -138,7 +138,7 @@ public class ViewManager {
 		byte[] data = bOut.toByteArray();
 
 		for (Integer i : targets) {
-			// br.ufsc.das.tom.util.logger.info("(ServersCommunicationLayer.send) Sending
+			// br.ufsc.das.tom.util.logger.debug("(ServersCommunicationLayer.send) Sending
 			// msg to replica "+i);
 			try {
 				if (i.intValue() != id) {
@@ -149,7 +149,7 @@ public class ViewManager {
 				System.err.println(ex);
 			}
 		}
-		// br.ufsc.das.tom.util.logger.info("(ServersCommunicationLayer.send)
+		// br.ufsc.das.tom.util.logger.debug("(ServersCommunicationLayer.send)
 		// Finished sending messages to replicas");
 	}
 

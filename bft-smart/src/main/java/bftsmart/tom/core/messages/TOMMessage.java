@@ -323,7 +323,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		try {
 			m.rExternal(dis);
 		} catch (Exception e) {
-			logger.info("error on bytesToMessage " + e);
+			logger.debug("error on bytesToMessage " + e);
 			return null;
 		}
 

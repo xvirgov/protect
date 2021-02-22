@@ -87,7 +87,7 @@ public final class DeliveryThread extends Thread {
 	public void delivery(Decision dec) {
 		if (!containsGoodReconfig(dec)) {
 
-			logger.info("(DeliveryThread.delivery) Decision from consensus " + dec.getConsensusId()
+			logger.debug("(DeliveryThread.delivery) Decision from consensus " + dec.getConsensusId()
 					+ " does not contain good reconfiguration");
 			// set this decision as the last one from this replica
 			tomLayer.setLastExec(dec.getConsensusId());
@@ -105,7 +105,7 @@ public final class DeliveryThread extends Thread {
 
 			notEmptyQueue.signalAll();
 			decidedLock.unlock();
-			logger.info("(DeliveryThread.delivery) Consensus " + dec.getConsensusId() + " finished. Decided size="
+			logger.debug("(DeliveryThread.delivery) Consensus " + dec.getConsensusId() + " finished. Decided size="
 					+ decided.size());
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
@@ -151,7 +151,7 @@ public final class DeliveryThread extends Thread {
 		int lastCID = recoverer.setState(state);
 
 		// set this decision as the last one from this replica
-		logger.info("Setting last CID to " + lastCID);
+		logger.debug("Setting last CID to " + lastCID);
 		tomLayer.setLastExec(lastCID);
 
 		// define the last stable consensus... the stable consensus can
@@ -165,10 +165,10 @@ public final class DeliveryThread extends Thread {
 		// stateManager.setWaiting(-1);
 		tomLayer.setNoExec();
 
-		logger.info("Current decided size: " + decided.size());
+		logger.debug("Current decided size: " + decided.size());
 		decided.clear();
 
-		logger.info("(DeliveryThread.update) All finished up to " + lastCID);
+		logger.debug("(DeliveryThread.update) All finished up to " + lastCID);
 	}
 
 	/**
@@ -181,11 +181,11 @@ public final class DeliveryThread extends Thread {
 			/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
 			deliverLock();
 			while (tomLayer.isRetrievingState()) {
-				logger.info("-- Retrieving State");
+				logger.debug("-- Retrieving State");
 				canDeliver.awaitUninterruptibly();
 
 				if (tomLayer.getLastExec() == -1)
-					logger.info("-- Ready to process operations");
+					logger.debug("-- Ready to process operations");
 			}
 			try {
 				ArrayList<Decision> decisions = new ArrayList<Decision>();
@@ -273,7 +273,7 @@ public final class DeliveryThread extends Thread {
 			deliverUnlock();
 			/******************************************************************/
 		}
-		logger.info("DeliveryThread stopped.");
+		logger.debug("DeliveryThread stopped.");
 	}
 
 	private TOMMessage[] extractMessagesFromDecision(Decision dec) {
@@ -283,14 +283,14 @@ public final class DeliveryThread extends Thread {
 			// this may happen if this batch proposal was not verified
 			// TODO: this condition is possible?
 
-			logger.info("(DeliveryThread.run) interpreting and verifying batched requests.");
+			logger.debug("(DeliveryThread.run) interpreting and verifying batched requests.");
 
 			// obtain an array of requests from the decisions obtained
 			BatchReader batchReader = new BatchReader(dec.getValue(),
 					controller.getStaticConf().getUseSignatures() == 1);
 			requests = batchReader.deserialiseRequests(controller);
 		} else {
-			logger.info("(DeliveryThread.run) using cached requests from the propose.");
+			logger.debug("(DeliveryThread.run) using cached requests from the propose.");
 		}
 
 		return requests;
@@ -334,7 +334,7 @@ public final class DeliveryThread extends Thread {
 	public void shutdown() {
 		this.doWork = false;
 
-		logger.info("Shutting down delivery thread");
+		logger.debug("Shutting down delivery thread");
 
 		decidedLock.lock();
 		notEmptyQueue.signalAll();

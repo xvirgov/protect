@@ -115,14 +115,14 @@ public class ServerCommunicationSystem extends Thread {
 		while (doWork) {
 			try {
 				if (count % 1000 == 0 && count > 0) {
-					logger.info("(ServerCommunicationSystem.run) After " + count + " messages, inQueue size="
+					logger.debug("(ServerCommunicationSystem.run) After " + count + " messages, inQueue size="
 							+ inQueue.size());
 				}
 
 				SystemMessage sm = inQueue.poll(MESSAGE_WAIT_TIME, TimeUnit.MILLISECONDS);
 
 				if (sm != null) {
-					logger.info("<-------receiving---------- " + sm);
+					logger.debug("<-------receiving---------- " + sm);
 					messageHandler.processData(sm);
 					count++;
 				} else {
@@ -132,7 +132,7 @@ public class ServerCommunicationSystem extends Thread {
 				e.printStackTrace(System.err);
 			}
 		}
-		logger.info("ServerCommunicationSystem stopped.");
+		logger.debug("ServerCommunicationSystem stopped.");
 	}
 
 	/**
@@ -148,7 +148,7 @@ public class ServerCommunicationSystem extends Thread {
 		if (sm instanceof TOMMessage) {
 			clientsConn.send(targets, (TOMMessage) sm, false);
 		} else {
-			logger.info("--------sending----------> " + sm);
+			logger.debug("--------sending----------> " + sm);
 			serversConn.send(targets, sm, true);
 		}
 	}
@@ -168,7 +168,7 @@ public class ServerCommunicationSystem extends Thread {
 
 	public void shutdown() {
 
-		logger.info("Shutting down communication layer");
+		logger.debug("Shutting down communication layer");
 
 		this.doWork = false;
 		clientsConn.shutdown();

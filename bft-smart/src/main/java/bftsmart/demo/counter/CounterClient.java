@@ -37,9 +37,9 @@ public class CounterClient {
 
 	public static void main(String[] args) throws IOException {
 		if (args.length < 2) {
-			logger.info("Usage: java ... CounterClient <process id> <increment> [<number of operations>]");
-			logger.info("       if <increment> equals 0 the request will be read-only");
-			logger.info("       default <number of operations> equals 1000");
+			logger.debug("Usage: java ... CounterClient <process id> <increment> [<number of operations>]");
+			logger.debug("       if <increment> equals 0 the request will be read-only");
+			logger.debug("       default <number of operations> equals 1000");
 			System.exit(-1);
 		}
 
@@ -55,15 +55,15 @@ public class CounterClient {
 				ByteArrayOutputStream out = new ByteArrayOutputStream(4);
 				new DataOutputStream(out).writeInt(inc);
 
-				logger.info("Invocation " + i);
+				logger.debug("Invocation " + i);
 				byte[] reply = (inc == 0) ? counterProxy.invokeUnordered(out.toByteArray())
 						: counterProxy.invokeOrdered(out.toByteArray()); // magic happens here
 
 				if (reply != null) {
 					int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
-					logger.info(", returned value: " + newValue);
+					logger.debug(", returned value: " + newValue);
 				} else {
-					logger.info(", ERROR! Exiting.");
+					logger.debug(", ERROR! Exiting.");
 					break;
 				}
 			}

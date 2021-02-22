@@ -33,7 +33,7 @@ public class BFTMapInteractiveClient {
 
 	public static void main(String[] args) throws IOException {
 		if (args.length < 1) {
-			logger.info("Usage: java BFTMapInteractiveClient <process id>");
+			logger.debug("Usage: java BFTMapInteractiveClient <process id>");
 			System.exit(-1);
 		}
 
@@ -44,14 +44,14 @@ public class BFTMapInteractiveClient {
 
 		while (true) {
 
-			logger.info("select a command : 1. CREATE A NEW TABLE OF TABLES");
-			logger.info("select a command : 2. REMOVE AN EXISTING TABLE");
-			logger.info("select a command : 3. GET THE SIZE OF THE TABLE OF TABLES");
-			logger.info("select a command : 4. PUT VALUES INTO A TABLE");
-			logger.info("select a command : 5. GET VALUES FROM A TABLE");
-			logger.info("select a command : 6. GET THE SIZE OF A TABLE");
-			logger.info("select a command : 7. REMOVE AN EXISTING TABLE");
-			logger.info("select a command : 11. EXIT");
+			logger.debug("select a command : 1. CREATE A NEW TABLE OF TABLES");
+			logger.debug("select a command : 2. REMOVE AN EXISTING TABLE");
+			logger.debug("select a command : 3. GET THE SIZE OF THE TABLE OF TABLES");
+			logger.debug("select a command : 4. PUT VALUES INTO A TABLE");
+			logger.debug("select a command : 5. GET VALUES FROM A TABLE");
+			logger.debug("select a command : 6. GET THE SIZE OF A TABLE");
+			logger.debug("select a command : 7. REMOVE AN EXISTING TABLE");
+			logger.debug("select a command : 11. EXIT");
 
 			int cmd = sc.nextInt();
 
@@ -72,28 +72,28 @@ public class BFTMapInteractiveClient {
 
 			case BFTMapRequestType.SIZE_TABLE:
 				// obtain the size of the table of tables.
-				logger.info("Computing the size of the table");
+				logger.debug("Computing the size of the table");
 				int size = bftMap.size();
-				logger.info("The size of the table of tables is: " + size);
+				logger.debug("The size of the table of tables is: " + size);
 				break;
 
 			case BFTMapRequestType.TAB_REMOVE:
 				// Remove the table entry
 				tableExists = false;
 				tableName = null;
-				logger.info("Removing table");
+				logger.debug("Removing table");
 				tableName = console.readLine("Enter the valid table name you want to remove: ");
 				tableExists = bftMap.containsKey(tableName);
 				if (tableExists) {
 					bftMap.remove(tableName);
-					logger.info("Table removed");
+					logger.debug("Table removed");
 				} else
-					logger.info("Table not found");
+					logger.debug("Table not found");
 				break;
 
 			// operations on the hashmap
 			case BFTMapRequestType.PUT:
-				logger.info("Execute put function");
+				logger.debug("Execute put function");
 				tableExists = false;
 				tableName = null;
 				size = -1;
@@ -109,11 +109,11 @@ public class BFTMapInteractiveClient {
 					byte[] byteArray = value.getBytes();
 					resultBytes = bftMap.putEntry(tableName, key, byteArray);
 				} else
-					logger.info("Table not found");
+					logger.debug("Table not found");
 				break;
 
 			case BFTMapRequestType.GET:
-				logger.info("Execute get function");
+				logger.debug("Execute get function");
 				tableExists = false;
 				boolean keyExists = false;
 				tableName = null;
@@ -127,15 +127,15 @@ public class BFTMapInteractiveClient {
 					keyExists = bftMap.containsKey1(tableName, key);
 					if (keyExists) {
 						resultBytes = bftMap.getEntry(tableName, key);
-						logger.info("The value received from GET is: " + new String(resultBytes));
+						logger.debug("The value received from GET is: " + new String(resultBytes));
 					} else
-						logger.info("Key not found");
+						logger.debug("Key not found");
 				} else
-					logger.info("Table not found");
+					logger.debug("Table not found");
 				break;
 
 			case BFTMapRequestType.SIZE:
-				logger.info("Execute get function");
+				logger.debug("Execute get function");
 				tableExists = false;
 				tableName = null;
 				size = -1;
@@ -144,13 +144,13 @@ public class BFTMapInteractiveClient {
 				tableExists = bftMap.containsKey(tableName);
 				if (tableExists) {
 					size = bftMap.size1(tableName);
-					logger.info("The size is: " + size);
+					logger.debug("The size is: " + size);
 				} else {
-					logger.info("Table not found");
+					logger.debug("Table not found");
 				}
 				break;
 			case BFTMapRequestType.REMOVE:
-				logger.info("Execute get function");
+				logger.debug("Execute get function");
 				tableExists = false;
 				keyExists = false;
 				tableName = null;
@@ -162,11 +162,11 @@ public class BFTMapInteractiveClient {
 					keyExists = bftMap.containsKey1(tableName, key);
 					if (keyExists) {
 						byte[] result2 = bftMap.removeEntry(tableName, key);
-						logger.info("The previous value was : " + new String(result2));
+						logger.debug("The previous value was : " + new String(result2));
 					} else
-						logger.info("Key not found");
+						logger.debug("Key not found");
 				} else
-					logger.info("Table not found");
+					logger.debug("Table not found");
 				break;
 			case BFTMapRequestType.EXIT:
 				System.exit(-1);

@@ -123,7 +123,7 @@ public class AsynchServiceProxy extends ServiceProxy {
 	 */
 	@Override
 	public void replyReceived(TOMMessage reply) {
-		logger.info("Asynchronously received reply from " + reply.getSender() + " with sequence number "
+		logger.debug("Asynchronously received reply from " + reply.getSender() + " with sequence number "
 				+ reply.getSequence() + " and operation ID " + reply.getOperationId());
 
 		try {
@@ -141,7 +141,7 @@ public class AsynchServiceProxy extends ServiceProxy {
 					// && (reply.getOperationId() == requestContext.getOperationId())
 					&& (reply.getReqType().compareTo(requestContext.getRequestType())) == 0) {
 
-				logger.info("Deliverying message from " + reply.getSender() + " with sequence number "
+				logger.debug("Deliverying message from " + reply.getSender() + " with sequence number "
 						+ reply.getSequence() + " and operation ID " + reply.getOperationId() + " to the listener");
 
 				ReplyListener replyListener = requestContext.getReplyListener();
@@ -223,7 +223,7 @@ public class AsynchServiceProxy extends ServiceProxy {
 	 */
 	private int invokeAsynch(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType) {
 
-		logger.info("Asynchronously sending request to " + Arrays.toString(targets));
+		logger.debug("Asynchronously sending request to " + Arrays.toString(targets));
 
 		RequestContext requestContext = null;
 
@@ -233,7 +233,7 @@ public class AsynchServiceProxy extends ServiceProxy {
 				System.currentTimeMillis(), replyListener, request);
 
 		try {
-			logger.info("Storing request context for " + requestContext.getOperationId());
+			logger.debug("Storing request context for " + requestContext.getOperationId());
 			requestsContext.put(requestContext.getOperationId(), requestContext);
 			requestsReplies.put(requestContext.getOperationId(),
 					new TOMMessage[super.getViewManager().getCurrentViewN()]);

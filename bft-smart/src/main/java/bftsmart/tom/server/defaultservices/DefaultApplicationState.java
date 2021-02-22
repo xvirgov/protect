@@ -230,32 +230,32 @@ public class DefaultApplicationState implements ApplicationState {
 
 			if ((this.messageBatches != null && tState.messageBatches == null)
 					|| (this.messageBatches == null && tState.messageBatches != null)) {
-				// logger.info("[DefaultApplicationState] returing FALSE1!");
+				// logger.debug("[DefaultApplicationState] returing FALSE1!");
 				return false;
 			}
 
 			if (this.messageBatches != null && tState.messageBatches != null) {
 
 				if (this.messageBatches.length != tState.messageBatches.length) {
-					// logger.info("[DefaultApplicationState] returing FALSE2!");
+					// logger.debug("[DefaultApplicationState] returing FALSE2!");
 					return false;
 				}
 
 				for (int i = 0; i < this.messageBatches.length; i++) {
 
 					if (this.messageBatches[i] == null && tState.messageBatches[i] != null) {
-						// logger.info("[DefaultApplicationState] returing FALSE3!");
+						// logger.debug("[DefaultApplicationState] returing FALSE3!");
 						return false;
 					}
 
 					if (this.messageBatches[i] != null && tState.messageBatches[i] == null) {
-						// logger.info("[DefaultApplicationState] returing FALSE4!");
+						// logger.debug("[DefaultApplicationState] returing FALSE4!");
 						return false;
 					}
 
 					if (!(this.messageBatches[i] == null && tState.messageBatches[i] == null)
 							&& (!this.messageBatches[i].equals(tState.messageBatches[i]))) {
-						// logger.info("[DefaultApplicationState] returing FALSE5!" +
+						// logger.debug("[DefaultApplicationState] returing FALSE5!" +
 						// (this.messageBatches[i] == null) + " " + (tState.messageBatches[i] == null));
 						return false;
 					}
@@ -265,7 +265,7 @@ public class DefaultApplicationState implements ApplicationState {
 					&& tState.lastCheckpointCID == this.lastCheckpointCID && tState.lastCID == this.lastCID
 					&& tState.hasState == this.hasState);
 		}
-		// logger.info("[DefaultApplicationState] returing FALSE!");
+		// logger.debug("[DefaultApplicationState] returing FALSE!");
 		return false;
 	}
 

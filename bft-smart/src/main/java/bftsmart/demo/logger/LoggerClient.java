@@ -48,9 +48,9 @@ public class LoggerClient {
 
 	public static void main(String[] args) throws IOException {
 		if (args.length < 2) {
-			logger.info("Usage: java ... CounterClient <process id> <increment> [<number of operations>]");
-			logger.info("       if <increment> equals 0 the request will be read-only");
-			logger.info("       default <number of operations> equals 1000");
+			logger.debug("Usage: java ... CounterClient <process id> <increment> [<number of operations>]");
+			logger.debug("       if <increment> equals 0 the request will be read-only");
+			logger.debug("       default <number of operations> equals 1000");
 			System.exit(-1);
 		}
 
@@ -67,14 +67,14 @@ public class LoggerClient {
 
 				String msg = generateString(strLen);
 				
-				logger.info("Invocation " + i + ", message = " + msg);
+				logger.debug("Invocation " + i + ", message = " + msg);
 				byte[] reply = counterProxy.invokeOrdered(msg.getBytes(StandardCharsets.UTF_8)); // magic happens here
 
 				if (reply != null) {
 					String newValue = new String(reply, StandardCharsets.UTF_8);
-					logger.info(", returned value: " + newValue);
+					logger.debug(", returned value: " + newValue);
 				} else {
-					logger.info(", ERROR! Exiting.");
+					logger.debug(", ERROR! Exiting.");
 					break;
 				}
 			}

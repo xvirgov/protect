@@ -56,7 +56,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 
 	public static void main(String[] args) {
 		if (args.length < 1) {
-			logger.info("Use: java BFTMapServer <processId>");
+			logger.debug("Use: java BFTMapServer <processId>");
 			System.exit(-1);
 		}
 		new BFTMapServer(Integer.parseInt(args[0]));
@@ -76,10 +76,10 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				String key = new DataInputStream(in).readUTF();
 				String value = new DataInputStream(in).readUTF();
 				byte[] valueBytes = value.getBytes();
-				logger.info("Key received: " + key);
+				logger.debug("Key received: " + key);
 				byte[] ret = tableMap.addData(tableName, key, valueBytes);
 				if (ret == null) {
-					// logger.info("Return is null, so there was no data before");
+					// logger.debug("Return is null, so there was no data before");
 					ret = new byte[0];
 				}
 				reply = valueBytes;
@@ -87,10 +87,10 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			case BFTMapRequestType.REMOVE:
 				tableName = new DataInputStream(in).readUTF();
 				key = new DataInputStream(in).readUTF();
-				// logger.info("Key received: " + key);
+				// logger.debug("Key received: " + key);
 				valueBytes = tableMap.removeEntry(tableName, key);
 				value = new String(valueBytes);
-				logger.info("Value removed is : " + value);
+				logger.debug("Value removed is : " + value);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBytes(value);
 				reply = out.toByteArray();
@@ -127,7 +127,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 
 			case BFTMapRequestType.SIZE_TABLE:
 				int size1 = tableMap.getNumOfTables();
-				// logger.info("Size " + size1);
+				// logger.debug("Size " + size1);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeInt(size1);
 				reply = out.toByteArray();
@@ -135,12 +135,12 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				break;
 			case BFTMapRequestType.GET:
 				tableName = new DataInputStream(in).readUTF();
-				logger.info("tablename: " + tableName);
+				logger.debug("tablename: " + tableName);
 				key = new DataInputStream(in).readUTF();
-				// logger.info("Key received: " + key);
+				// logger.debug("Key received: " + key);
 				valueBytes = tableMap.getEntry(tableName, key);
 				value = new String(valueBytes);
-				logger.info("The value to be get is: " + value);
+				logger.debug("The value to be get is: " + value);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBytes(value);
 				reply = out.toByteArray();
@@ -157,7 +157,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			case BFTMapRequestType.CHECK:
 				tableName = new DataInputStream(in).readUTF();
 				key = new DataInputStream(in).readUTF();
-				// logger.info("Table Key received: " + key);
+				// logger.debug("Table Key received: " + key);
 				valueBytes = tableMap.getEntry(tableName, key);
 				boolean entryExists = valueBytes != null;
 				out = new ByteArrayOutputStream();
@@ -167,10 +167,10 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				break;
 			case BFTMapRequestType.TAB_CREATE_CHECK:
 				tableName = new DataInputStream(in).readUTF();
-				// logger.info("Table of Table Key received: " + tableName);
+				// logger.debug("Table of Table Key received: " + tableName);
 				table = tableMap.getTable(tableName);
 				boolean tableExists = (table != null);
-				logger.info("Table exists: " + tableExists);
+				logger.debug("Table exists: " + tableExists);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBoolean(tableExists);
 				reply = out.toByteArray();
@@ -195,7 +195,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			switch (cmd) {
 			case BFTMapRequestType.SIZE_TABLE:
 				int size1 = tableMap.getNumOfTables();
-				// logger.info("Size " + size1);
+				// logger.debug("Size " + size1);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeInt(size1);
 				reply = out.toByteArray();
@@ -203,12 +203,12 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				break;
 			case BFTMapRequestType.GET:
 				String tableName = new DataInputStream(in).readUTF();
-				logger.info("tablename: " + tableName);
+				logger.debug("tablename: " + tableName);
 				String key = new DataInputStream(in).readUTF();
-				// logger.info("Key received: " + key);
+				// logger.debug("Key received: " + key);
 				byte[] valueBytes = tableMap.getEntry(tableName, key);
 				String value = new String(valueBytes);
-				logger.info("The value to be get is: " + value);
+				logger.debug("The value to be get is: " + value);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBytes(value);
 				reply = out.toByteArray();
@@ -217,7 +217,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			case BFTMapRequestType.SIZE:
 				String tableName2 = new DataInputStream(in).readUTF();
 				int size = tableMap.getSize(tableName2);
-				// logger.info("Size " + size);
+				// logger.debug("Size " + size);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeInt(size);
 				reply = out.toByteArray();
@@ -226,7 +226,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 			case BFTMapRequestType.CHECK:
 				tableName = new DataInputStream(in).readUTF();
 				key = new DataInputStream(in).readUTF();
-				// logger.info("Table Key received: " + key);
+				// logger.debug("Table Key received: " + key);
 				valueBytes = tableMap.getEntry(tableName, key);
 				boolean entryExists = valueBytes != null;
 				out = new ByteArrayOutputStream();
@@ -236,10 +236,10 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 				break;
 			case BFTMapRequestType.TAB_CREATE_CHECK:
 				tableName = new DataInputStream(in).readUTF();
-				// logger.info("Table of Table Key received: " + tableName);
+				// logger.debug("Table of Table Key received: " + tableName);
 				Map<String, byte[]> table = tableMap.getTable(tableName);
 				boolean tableExists = (table != null);
-				logger.info("Table exists: " + tableExists);
+				logger.debug("Table exists: " + tableExists);
 				out = new ByteArrayOutputStream();
 				new DataOutputStream(out).writeBoolean(tableExists);
 				reply = out.toByteArray();

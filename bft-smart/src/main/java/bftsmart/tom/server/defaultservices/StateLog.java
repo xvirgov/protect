@@ -231,7 +231,7 @@ public class StateLog {
 	 */
 	public DefaultApplicationState getApplicationState(int cid, boolean setState) {
 
-		logger.info("--- CID requested: " + cid + ". Last checkpoint: " + lastCheckpointCID + ". Last CID: "
+		logger.debug("--- CID requested: " + cid + ". Last checkpoint: " + lastCheckpointCID + ". Last CID: "
 				+ this.lastCID);
 		CommandsInfo[] batches = null;
 
@@ -239,7 +239,7 @@ public class StateLog {
 
 		if (cid >= lastCheckpointCID && cid <= this.lastCID) {
 
-			logger.info("--- Constructing ApplicationState up until CID " + cid);
+			logger.debug("--- Constructing ApplicationState up until CID " + cid);
 
 			int size = cid - lastCheckpointCID;
 

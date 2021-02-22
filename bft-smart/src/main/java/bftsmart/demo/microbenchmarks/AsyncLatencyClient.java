@@ -46,7 +46,7 @@ public class AsyncLatencyClient {
 
 	public static void main(String[] args) throws IOException {
 		if (args.length < 7) {
-			logger.info(
+			logger.debug(
 					"Usage: java ...AsyncLatencyClient <initial client id> <number of clients> <number of operations> <request size> <interval (ms)> <read only?> <verbose?>");
 			System.exit(-1);
 		}
@@ -68,7 +68,7 @@ public class AsyncLatencyClient {
 				ex.printStackTrace();
 			}
 
-			logger.info("Launching client " + (initId + i));
+			logger.debug("Launching client " + (initId + i));
 			clients[i] = new AsyncLatencyClient.Client(initId + i, numberOfOps, requestSize, interval, readOnly,
 					verbose);
 		}
@@ -92,7 +92,7 @@ public class AsyncLatencyClient {
 
 		exec.shutdown();
 
-		logger.info("All clients done.");
+		logger.debug("All clients done.");
 
 	}
 
@@ -126,7 +126,7 @@ public class AsyncLatencyClient {
 				Storage st = new Storage(this.numberOfOps / 2);
 
 				if (this.verbose)
-					logger.info("Executing experiment for " + this.numberOfOps + " ops");
+					logger.debug("Executing experiment for " + this.numberOfOps + " ops");
 
 				for (int i = 0; i < this.numberOfOps; i++) {
 
@@ -139,7 +139,7 @@ public class AsyncLatencyClient {
 						public void reset() {
 
 							if (verbose)
-								logger.info(
+								logger.debug(
 										"[RequestContext] The proxy is re-issuing the request to the replicas");
 							replies = 0;
 						}
@@ -152,7 +152,7 @@ public class AsyncLatencyClient {
 							builder.append("[TOMMessage reply] sender id: " + reply.getSender() + " Hash content: "
 									+ Arrays.toString(reply.getContent()));
 							if (verbose)
-								logger.info(builder.toString());
+								logger.debug(builder.toString());
 
 							replies++;
 
@@ -161,7 +161,7 @@ public class AsyncLatencyClient {
 
 							if (replies >= q) {
 								if (verbose)
-									logger.info(
+									logger.debug(
 											"[RequestContext] clean request context id: " + context.getReqId());
 								serviceProxy.cleanAsynchRequest(context.getOperationId());
 							}
@@ -175,21 +175,21 @@ public class AsyncLatencyClient {
 					}
 
 					if (this.verbose)
-						logger.info("Sending " + (i + 1) + "th op");
+						logger.debug("Sending " + (i + 1) + "th op");
 				}
 
 				Thread.sleep(100);// wait 100ms to receive the last replies
 
 				if (this.id == initId) {
-					logger.info(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = "
+					logger.debug(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = "
 							+ st.getAverage(true) / 1000 + " us ");
-					logger.info(this.id + " // Standard desviation for " + numberOfOps / 2
+					logger.debug(this.id + " // Standard desviation for " + numberOfOps / 2
 							+ " executions (-10%) = " + st.getDP(true) / 1000 + " us ");
-					logger.info(this.id + " // Average time for " + numberOfOps / 2
+					logger.debug(this.id + " // Average time for " + numberOfOps / 2
 							+ " executions (all samples) = " + st.getAverage(false) / 1000 + " us ");
-					logger.info(this.id + " // Standard desviation for " + numberOfOps / 2
+					logger.debug(this.id + " // Standard desviation for " + numberOfOps / 2
 							+ " executions (all samples) = " + st.getDP(false) / 1000 + " us ");
-					logger.info(this.id + " // Maximum time for " + numberOfOps / 2
+					logger.debug(this.id + " // Maximum time for " + numberOfOps / 2
 							+ " executions (all samples) = " + st.getMax(false) / 1000 + " us ");
 				}
 

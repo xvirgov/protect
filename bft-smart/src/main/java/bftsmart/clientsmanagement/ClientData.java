@@ -62,7 +62,7 @@ public class ClientData {
 		if (publicKey != null) {
 			try {
 				this.publicKey = publicKey;
-				logger.info("Signature verifier initialized for client " + clientId);
+				logger.debug("Signature verifier initialized for client " + clientId);
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
