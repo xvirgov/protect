@@ -94,6 +94,23 @@ public class Polynomials {
 		return numerator.multiply(invDenominator).mod(modulo);
 	}
 
+	public static BigInteger interpolatePartialNoModulo(final BigInteger[] xCoords, final BigInteger i, final BigInteger j,
+												final BigInteger modulo) {
+		BigInteger numerator = BigInteger.ONE;
+		BigInteger denominator = BigInteger.ONE;
+
+		for (int k = 0; k < xCoords.length; k++) {
+			BigInteger jPrime = xCoords[k];
+			if (!jPrime.equals(j)) {
+				numerator = numerator.multiply(i.subtract(jPrime));
+				denominator = denominator.multiply(j.subtract(jPrime));
+			}
+		}
+
+		final BigInteger invDenominator = denominator.modInverse(modulo);
+		return numerator.multiply(invDenominator);
+	}
+
 	public static BigInteger interpolateComplete(final Collection<ShamirShare> shares, final int threshold,
 			final int x) {
 		if (shares.size() < threshold) {
@@ -126,7 +143,7 @@ public class Polynomials {
 		return sum;
 	}
 
-	public static BigInteger interpolateComplete(final List<SecretShare> shareList, final int threshold,
+	public static BigInteger interpolateComplete(final List<SecretShare> shareList, final int numServers, final int threshold,
 												 final int x, BigInteger modulus) {
 		if (shareList.size() < threshold) {
 			throw new IllegalArgumentException("Fewer than a threshold number of results provided!");
@@ -154,7 +171,7 @@ public class Polynomials {
 			sum = sum.add(product).mod(modulus);
 		}
 
-		return sum;
+		return sum.mod(modulus);
 	}
 
 	/**

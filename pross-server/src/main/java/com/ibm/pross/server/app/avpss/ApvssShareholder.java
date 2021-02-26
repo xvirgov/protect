@@ -26,6 +26,7 @@ import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.crypto.paillier.PaillierCipher;
 import com.ibm.pross.common.util.crypto.paillier.PaillierPrivateKey;
 import com.ibm.pross.common.util.crypto.paillier.PaillierPublicKey;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
 import com.ibm.pross.common.util.crypto.zkp.splitting.ZeroKnowledgeProof;
 import com.ibm.pross.common.util.crypto.zkp.splitting.ZeroKnowledgeProver;
@@ -51,7 +52,7 @@ import org.apache.logging.log4j.Logger;
 public class ApvssShareholder {
 
 	public enum SharingType {
-		PEDERSEN_DKG, FELDMAN_DKG, STORED, RSA_STORED;
+		PEDERSEN_DKG, FELDMAN_DKG, STORED, RSA_STORED, RSA_PROACTIVE_STORED;
 	}
 
 	// Group Constants
@@ -108,6 +109,8 @@ public class ApvssShareholder {
 
 	// Used to hold an initial share of a secret (to supported stored secrets)
 	private volatile BigInteger storedShareOfSecret = null;
+
+	private RsaProactiveSharing rsaProactiveSharing;
 
 	private static final Logger logger = LogManager.getLogger(ApvssShareholder.class);
 
@@ -996,10 +999,27 @@ public class ApvssShareholder {
 		//}
 	}
 
+	public void setProactiveRsaSecret(RsaProactiveSharing rsaSharing) {
+		this.sharingType = SharingType.RSA_PROACTIVE_STORED;
+		SharingState state = this.getCurrentSharing();
+		state.setCreationTime(new Date());
+		this.rsaProactiveSharing = rsaSharing;
+//		state.setShare1(new ShamirShare(BigInteger.valueOf(index), shareValue));
+//		state.setRsaSharing(rsaSharing);
+//		state.getSharePublicKeys()[0] = new EcPoint(rsaSharing.getPublicKey().getPublicExponent(), rsaSharing.getPublicKey().getModulus()); // Using EcPoints is a hack
+		//for (int i = 0; i < this.n; i++ ) {
+		//	state.getSharePublicKeys()[0] = new EcPoint(BigInteger.valueOf(i+1), rsaSharing.getVerificationKeys()[i]); // Using EcPoints is a hack
+		//}
+	}
+
 	public RsaSharing getRsaSharing() {
 		return this.getCurrentSharing().getRsaSharing();
 	}
-	
+
+	public RsaProactiveSharing getRsaProactiveSharing() {
+		return rsaProactiveSharing;
+	}
+
 	// TODO: Catch all instances of casting (check instance of) or catch
 	// ClassCastException
 

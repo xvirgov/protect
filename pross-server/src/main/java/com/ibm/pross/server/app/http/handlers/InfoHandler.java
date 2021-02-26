@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import com.ibm.pross.common.util.SecretShare;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -64,6 +65,7 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
     public static final String OUTPUT_FORMAT_FIELD = "json";
     // Query value
     public static final String CIPHER_FIELD_RSA = "rsa";
+    public static final String CIPHER_FIELD_PROACTIVE_RSA = "proactive-rsa";
     public static final String CIPHER_FIELD_EC = "ec";
     private static final Logger logger = LogManager.getLogger(InfoHandler.class);
     // Fields
@@ -132,6 +134,87 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
 //                verificationPoint.add(verificationKeys.get(i - 1));
                 obj.put("share_verification_key_" + i, verificationKeys.get(i - 1));
             }
+
+
+            return obj.toJSONString() + "\n";
+        }
+
+        return null; // TODO-thesis add support to show RSA secrets on the website
+    }
+
+    private static String getProactiveRSAPublicInfo(final ApvssShareholder shareholder, final String secretName,
+                                           final Long epochNumber, final ServerConfiguration serverConfig, final boolean outputJson) throws BadRequestException {
+
+        // Prevent invalid epochs from being accessed // TODO-thesis move this before getting the secrets
+//		if ((epochNumber < 0) || (epochNumber > shareholder.getEpoch())) {
+//			throw new BadRequestException();
+//		}
+
+        logger.info("Retrieving local public RSA sharing information for secret " + secretName);
+//        logger.debug("Sharing type: " + shareholder.getSharingType().toString());
+
+        final int serverIndex = shareholder.getIndex();
+
+        if (outputJson) {
+            // Just return the epoch, and public key
+
+            // Return the result in json
+            final JSONObject obj = new JSONObject();
+            obj.put("responder", Integer.valueOf(serverIndex).toString());
+            obj.put("epoch", Long.valueOf(shareholder.getEpoch()).toString());
+
+//			final JSONArray publicKeyPoint = new JSONArray();
+//			publicKeyPoint.add(shareholder.getSecretPublicKey().getX().toString());
+//			publicKeyPoint.add(shareholder.getSecretPublicKey().getY().toString());
+//			obj.put("public_key", publicKeyPoint);
+//
+//			for (int i = 1; i <= shareholder.getN(); i++) {
+//				final JSONArray verificationPoint = new JSONArray();
+//				verificationPoint.add(shareholder.getSharePublicKey(i).getX().toString());
+//				verificationPoint.add(shareholder.getSharePublicKey(i).getY().toString());
+//				obj.put("share_verification_key_" + i, verificationPoint);
+//			}
+
+            obj.put("public_key", shareholder.getRsaProactiveSharing().getPublicKey().getPublicExponent().toString());
+            obj.put("public_modulus", shareholder.getRsaProactiveSharing().getPublicKey().getModulus().toString());
+
+
+            obj.put("d_pub", shareholder.getRsaProactiveSharing().getD_pub().toString());
+            obj.put("g", shareholder.getRsaProactiveSharing().getG().toString());
+
+            List<SecretShare> additiveVerificationKeys = shareholder.getRsaProactiveSharing().getAdditiveVerificationKeys();
+            JSONArray additiveVerificationKeysArray = new JSONArray();
+            additiveVerificationKeysArray.addAll(additiveVerificationKeys.stream().map(SecretShare::getY).map(BigInteger::toString).collect(Collectors.toList()));
+            obj.put("additiveVerificationKeys", additiveVerificationKeysArray);
+
+            List<List<SecretShare>> feldmanVerificationValues = shareholder.getRsaProactiveSharing().getFeldmanAdditiveVerificationValues();
+            for(int i = 0; i < shareholder.getN(); i++) {
+                JSONArray agentsFeldmanVerificationValuesArray = new JSONArray();
+
+                agentsFeldmanVerificationValuesArray.addAll(feldmanVerificationValues.get(i).stream().map(SecretShare::getY).map(BigInteger::toString).collect(Collectors.toList()));
+                obj.put("b_" + (i+1), agentsFeldmanVerificationValuesArray);
+            }
+
+            logger.info("{DONE}");
+
+//            logger.info(shareholder.getRsaSharing());
+//            obj.put("v", shareholder.getRsaSharing().getV().toString());
+//			obj.put("public_exponent", shareholder.getRsaSharing().getVerificationKeys().
+//			);
+
+//            logger.info("---------------------------------------------------------------------------------");
+//            logger.info(shareholder.getRsaSharing().getVerificationKeys());
+//            logger.info("---------------------------------------------------------------------------------");
+
+//            List<String> verificationKeys = Arrays.stream(shareholder.getRsaSharing().getVerificationKeys())
+//                    .map(BigInteger::toString).collect(Collectors.toList());
+//
+//            logger.info("HERE");
+//            for (int i = 1; i <= shareholder.getN(); i++) {
+////                final JSONArray verificationPoint = new JSONArray();
+////                verificationPoint.add(verificationKeys.get(i - 1));
+//                obj.put("share_verification_key_" + i, verificationKeys.get(i - 1));
+//            }
 
 
             return obj.toJSONString() + "\n";
@@ -350,7 +433,7 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
     public void authenticatedClientHandle(final HttpExchange exchange, final String username)
             throws IOException, UnauthorizedException, NotFoundException, BadRequestException {
 
-//        logger.info("Server info request is being processed..");
+        logger.info("Server info request is being processed..");
 
         // Extract secret name from request
         final String queryString = exchange.getRequestURI().getQuery();
@@ -401,6 +484,10 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
         String response = null;
         if (cipher != null && cipher.equalsIgnoreCase(CIPHER_FIELD_RSA)) {
             response = getRSAPublicInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);
+        }
+        else if (cipher != null && cipher.equalsIgnoreCase(CIPHER_FIELD_PROACTIVE_RSA)) {
+            logger.info("Getting proactive RSA public info...");
+            response = getProactiveRSAPublicInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);
         }
         else {
             response = getSecretInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);

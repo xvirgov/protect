@@ -112,11 +112,14 @@ public class OaepUtil {
         }
 
         logger.info("[DONE]");
+
+        logger.info("BBBBBBBBBBBBBBBBBBBBBBBBBBBBEFORE encryption: " + Arrays.toString(block));
         return block;
     }
 
     public static byte[] unpad(byte[] data, int rsaModulusSize, int hashSize) {
         logger.info("Extracting the message from the OAEP-padded block...");
+        logger.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAFTER decryption: " + Arrays.toString(data));
 
         int blockSize = rsaModulusSize / 8 - 10;
         byte[] block = new byte[blockSize];

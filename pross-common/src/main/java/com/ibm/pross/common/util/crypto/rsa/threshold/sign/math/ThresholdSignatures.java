@@ -9,6 +9,8 @@ import java.util.List;
 import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.RandomNumberGenerator;
+import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureResponse;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureShareProof;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
@@ -78,6 +80,48 @@ public class ThresholdSignatures {
 		final SignatureShareProof signatureShareProof = new SignatureShareProof(c, z);
 
 		return new SignatureResponse(index, signatureShare, signatureShareProof);
+	}
+
+	public static SignatureResponse produceProactiveSignatureResponse(final BigInteger inputMessage,
+																	  final RsaProactiveSharing rsaProactiveSharing,
+																	  final BigInteger L, BigInteger index) {
+
+		// Extract public configuration and share
+//		final ServerPublicConfiguration publicConfig = serverConfig.getServerPublicConfiguration();
+//		final ShamirShare share = serverConfig.getShare();
+
+		// Compute signature share
+//		final BigInteger n = publicConfig.getN();
+//		final int serverCount = publicConfig.getServerCount();
+//		final BigInteger delta = Polynomials.factorial(BigInteger.valueOf(serverCount));
+//		final BigInteger secretShare = share.getY();
+//		final BigInteger exponent = TWO.multiply(delta).multiply(secretShare);
+//		final BigInteger signatureShare = Exponentiation.modPow(inputMessage, exponent, n);
+
+		logger.info("produceProactiveSignatureResponse");
+
+		final BigInteger sumSecret = rsaProactiveSharing.getShamirAdditiveSharesOfAgent().stream().map(SecretShare::getY).reduce(BigInteger::add).get();
+		final BigInteger signatureShare = inputMessage.modPow(L.multiply(sumSecret), rsaProactiveSharing.getPublicKey().getModulus());
+
+		logger.info("[produceProactiveSignatureResponse]");
+
+		// Compute verification proof // TODO
+//		final BigInteger v = publicConfig.getV();
+//		final BigInteger index = share.getX();
+//		final BigInteger vk = publicConfig.getVerificationKeys()[index.intValue() - 1];
+//		final BigInteger mToFourD = Exponentiation.modPow(inputMessage, BigInteger.valueOf(4).multiply(delta), n);
+//		final BigInteger r = RandomNumberGenerator.generateRandomInteger(n.bitLength() + 2 * HASH_LEN);
+//		final BigInteger vPrime = Exponentiation.modPow(v, r, n);
+//		final BigInteger xPrime = Exponentiation.modPow(mToFourD, r, n);
+//		final BigInteger shareSquared = Exponentiation.modPow(signatureShare, TWO, n);
+//
+//		final byte[] verificationString = Parse.concatenate(v, mToFourD, vk, shareSquared, vPrime, xPrime);
+//		final BigInteger c = hashToInteger(verificationString, TWO.pow(HASH_LEN));
+//		final BigInteger z = secretShare.multiply(c).add(r);
+//		final SignatureShareProof signatureShareProof = new SignatureShareProof(c, z);
+
+//		return new SignatureResponse(index, signatureShare, signatureShareProof);
+		return new SignatureResponse(index, signatureShare, null);
 	}
 
 	/**

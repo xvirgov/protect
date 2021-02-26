@@ -2,6 +2,7 @@ package com.ibm.pross.client.app.http.handlers;
 
 import com.ibm.pross.client.app.http.HttpRequestProcessor;
 import com.ibm.pross.client.app.permissions.AppPermissions;
+import com.ibm.pross.client.generation.ProactiveRsaKeyGeneratorClient;
 import com.ibm.pross.client.generation.RsaKeyGeneratorClient;
 import com.ibm.pross.common.config.KeyLoader;
 import com.ibm.pross.common.config.ServerConfiguration;
@@ -20,6 +21,7 @@ import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -30,9 +32,10 @@ public class GenerateKeysHandler extends AuthenticatedClientRequestHandler {
     public static final String KEY_GENERATION_TYPE = "type";
     public static final String CIPHER = "cipher";
     public static final String SECRET_NAME_FIELD = "secretName";
-    public static final String USER_FIELD = "userName";
+    public static final String PROACTIVE = "proactive";
     // Query values
     public static final String CIPHER_RSA = "rsa";
+    public static final String CIPHER_PROACTIVE_RSA = "proactive-rsa";
     private static final Logger logger = LogManager.getLogger(GenerateKeysHandler.class);
     //Path names
     public static String CLIENT_DIRECTORY = "client";
@@ -83,6 +86,7 @@ public class GenerateKeysHandler extends AuthenticatedClientRequestHandler {
 //        final String keyGenerationType = Objects.requireNonNull(HttpRequestProcessor.getParameterValue(params, KEY_GENERATION_TYPE)).toLowerCase();
         final String cipher = Objects.requireNonNull(HttpRequestProcessor.getParameterValue(params, CIPHER)).toLowerCase();
         final String secretName = Objects.requireNonNull(HttpRequestProcessor.getParameterValue(params, SECRET_NAME_FIELD)).toLowerCase();
+//        final String proactive = HttpRequestProcessor.getParameterValue(params, PROACTIVE);
 
         logger.debug(cipher + "-key generation requested for secret : " + secretName);
 
@@ -114,12 +118,16 @@ public class GenerateKeysHandler extends AuthenticatedClientRequestHandler {
 //		logger.info("clientCertificate: " + clientCertificate);
 //		logger.info("clientTlsKey: " + clientTlsKey);
 
-        RsaKeyGeneratorClient rsaKeyGeneratorClient = new RsaKeyGeneratorClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName);
-
         boolean generationStatus = false;
         try {
-            if (cipher.equals(CIPHER_RSA))
+            if (cipher.equals(CIPHER_RSA)) {
+                RsaKeyGeneratorClient rsaKeyGeneratorClient = new RsaKeyGeneratorClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName);
                 generationStatus = rsaKeyGeneratorClient.generateRsaKeys();
+
+            } else if (cipher.equals(CIPHER_PROACTIVE_RSA)) {
+                ProactiveRsaKeyGeneratorClient rsaKeyGeneratorClient = new ProactiveRsaKeyGeneratorClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName);
+                generationStatus = rsaKeyGeneratorClient.generateRsaKeys();
+            }
 //            if (cipher.equals(CIPHER_PAILLIER))
 //            	aaa
 

@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
+import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
+import com.ibm.pross.common.util.shamir.Polynomials;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONArray;
@@ -96,10 +99,95 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		final BigInteger m = new BigInteger(message);
 
 		// Ensure the secret is of the supported type
-		if (!SharingType.RSA_STORED.equals(shareholder.getSharingType())) {
+		if (!SharingType.RSA_STORED.equals(shareholder.getSharingType()) && !SharingType.RSA_PROACTIVE_STORED.equals(shareholder.getSharingType())) {
 			throw new BadRequestException();
 		}
 
+		String response;
+		if(shareholder.getSharingType().equals(SharingType.RSA_STORED)) {
+			response = createRsaResponse(shareholder, m);
+		}
+		else if (shareholder.getSharingType().equals(SharingType.RSA_PROACTIVE_STORED)){
+			response = createProactiveRsaResponse(shareholder, m);
+		}
+		else {
+			throw new BadRequestException();
+		}
+//		// Get RSA parameters
+//		final RsaSharing rsaSharing = shareholder.getRsaSharing();
+//
+//		// Do processing
+//		final long startTime = System.nanoTime();
+//		final SignatureResponse signatureResponse = doSigning(shareholder, m, rsaSharing);
+//		final long endTime = System.nanoTime();
+//
+//		// Compute processing time
+//		final long processingTimeUs = (endTime - startTime) / 1_000;
+//
+//		// Create response
+//		final int serverIndex = shareholder.getIndex();
+//		final long epoch = shareholder.getEpoch();
+//
+//		// Return the result in json
+//		final JSONObject obj = new JSONObject();
+//		obj.put("responder", new Integer(serverIndex));
+//		obj.put("epoch", new Long(epoch));
+//
+//		obj.put("share", signatureResponse.getSignatureShare().toString());
+//
+//		JSONArray shareProof = new JSONArray();
+//		shareProof.add(signatureResponse.getSignatureShareProof().getC().toString());
+//		shareProof.add(signatureResponse.getSignatureShareProof().getZ().toString());
+//		obj.put("share_proof", shareProof);
+//
+//		// public exponenet e
+//		obj.put("e", rsaSharing.getPublicKey().getPublicExponent().toString());
+//
+//		// modulus
+//		obj.put("n", rsaSharing.getPublicKey().getModulus().toString());
+//
+//		// V
+//		obj.put("v", rsaSharing.getV().toString());
+//
+//		// Verification keys
+//		JSONArray verificationKeys = new JSONArray();
+//		for (final BigInteger vi : rsaSharing.getVerificationKeys()) {
+//			verificationKeys.add(vi.toString());
+//		}
+//		obj.put("verification_keys", verificationKeys);
+//
+//		obj.put("compute_time_us", new Long(processingTimeUs));
+
+//		String response = obj.toJSONString() + "\n";
+
+
+		final byte[] binaryResponse = response.getBytes(StandardCharsets.UTF_8);
+
+		// Write headers
+		exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
+
+		// Write response
+		try (final OutputStream os = exchange.getResponseBody();) {
+			os.write(binaryResponse);
+		}
+	}
+
+	private SignatureResponse doSigning(final ApvssShareholder shareholder, final BigInteger m,
+			final RsaSharing rsaSharing) throws NotFoundException {
+		final ShamirShare share = shareholder.getShare1();
+		if ((shareholder.getSecretPublicKey() == null) || (share == null)) {
+			throw new NotFoundException();
+		} else {
+			logger.info("Signing with: " + shareholder.getShare1());
+			ServerPublicConfiguration publicConfig = new ServerPublicConfiguration(shareholder.getN(),
+					shareholder.getK(), rsaSharing.getPublicKey().getModulus(),
+					rsaSharing.getPublicKey().getPublicExponent(), rsaSharing.getV(), rsaSharing.getVerificationKeys());
+			RsaShareConfiguration config = new RsaShareConfiguration(publicConfig, shareholder.getShare1());
+			return ThresholdSignatures.produceSignatureResponse(m, config);
+		}
+	}
+
+	private String createRsaResponse(ApvssShareholder shareholder, BigInteger m) throws NotFoundException {
 		// Get RSA parameters
 		final RsaSharing rsaSharing = shareholder.getRsaSharing();
 
@@ -145,33 +233,102 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 
 		obj.put("compute_time_us", new Long(processingTimeUs));
 
-		String response = obj.toJSONString() + "\n";
-
-		final byte[] binaryResponse = response.getBytes(StandardCharsets.UTF_8);
-
-		// Write headers
-		exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
-
-		// Write response
-		try (final OutputStream os = exchange.getResponseBody();) {
-			os.write(binaryResponse);
-		}
+		return obj.toJSONString() + "\n";
 	}
 
-	private SignatureResponse doSigning(final ApvssShareholder shareholder, final BigInteger m,
-			final RsaSharing rsaSharing) throws NotFoundException {
-		final ShamirShare share = shareholder.getShare1();
-		if ((shareholder.getSecretPublicKey() == null) || (share == null)) {
-			throw new NotFoundException();
-		} else {
-			logger.info("Signing with: " + shareholder.getShare1());
-			ServerPublicConfiguration publicConfig = new ServerPublicConfiguration(shareholder.getN(),
-					shareholder.getK(), rsaSharing.getPublicKey().getModulus(),
-					rsaSharing.getPublicKey().getPublicExponent(), rsaSharing.getV(), rsaSharing.getVerificationKeys());
-			RsaShareConfiguration config = new RsaShareConfiguration(publicConfig, shareholder.getShare1());
-			return ThresholdSignatures.produceSignatureResponse(m, config);
-		}
+	// TODO-thesis: return SignatureResponse
+	private SignatureResponse doProactiveSigning(final ApvssShareholder shareholder, final BigInteger m,
+										final RsaProactiveSharing rsaSharing) throws NotFoundException {
+		logger.info("doProactiveSigning");
 
+//		List<SecretShare> agentsSecretShares = shareholder.getRsaProactiveSharing().getShamirAdditiveSharesOfAgent();
+//		BigInteger sumSecret = agentsSecretShares.stream().map(SecretShare::getY).reduce(BigInteger::add).get();
+		BigInteger L = Polynomials.factorial(BigInteger.valueOf(shareholder.getN()));
+
+		// TODO-thesis: do verification
+//		ServerPublicConfiguration publicConfig = new ServerPublicConfiguration(shareholder.getN(),
+//					shareholder.getK(), rsaSharing.getPublicKey().getModulus(),
+//					rsaSharing.getPublicKey().getPublicExponent(), rsaSharing.getV(), rsaSharing.getVerificationKeys());
+//			RsaShareConfiguration config = new RsaShareConfiguration(publicConfig, shareholder.getShare1());
+
+
+		return ThresholdSignatures.produceProactiveSignatureResponse(m, shareholder.getRsaProactiveSharing(), L, BigInteger.valueOf(shareholder.getIndex()));
+
+//		return m.modPow(L.multiply(sumSecret), shareholder.getRsaProactiveSharing().getPublicKey().getModulus());
+
+
+		//		final ShamirShare share = shareholder.getShare1();
+//		if ((shareholder.getSecretPublicKey() == null) || (share == null)) {
+//			throw new NotFoundException();
+//		} else {
+//			logger.info("Signing with: " + shareholder.getShare1());
+//			ServerPublicConfiguration publicConfig = new ServerPublicConfiguration(shareholder.getN(),
+//					shareholder.getK(), rsaSharing.getPublicKey().getModulus(),
+//					rsaSharing.getPublicKey().getPublicExponent(), rsaSharing.getV(), rsaSharing.getVerificationKeys());
+//			RsaShareConfiguration config = new RsaShareConfiguration(publicConfig, shareholder.getShare1());
+//			return ThresholdSignatures.produceSignatureResponse(m, config);
+//		}
+
+//		logger.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+//		logger.info(shareholder.getRsaProactiveSharing().getShamirAdditiveSharesOfAgent());
+
+//		return null;
+	}
+
+	private String createProactiveRsaResponse(ApvssShareholder shareholder, BigInteger m) throws NotFoundException {
+		// Get RSA parameters
+		final RsaProactiveSharing rsaSharing = shareholder.getRsaProactiveSharing();
+//		final RsaSharing rsaSharing = null;
+
+		logger.info("Creating partial decryption for proactive rsa");
+
+		// Do processing
+		final long startTime = System.nanoTime();
+		final SignatureResponse signatureResponse = doProactiveSigning(shareholder, m, rsaSharing);
+		final long endTime = System.nanoTime();
+
+		logger.info("Parial dec: " + signatureResponse.getSignatureShare().toString());
+
+		// Compute processing time
+		final long processingTimeUs = (endTime - startTime) / 1_000;
+
+		// Create response
+		final int serverIndex = shareholder.getIndex();
+		final long epoch = shareholder.getEpoch();
+
+		// Return the result in json
+		final JSONObject obj = new JSONObject();
+		obj.put("responder", new Integer(serverIndex));
+		obj.put("epoch", new Long(epoch));
+
+		obj.put("share", signatureResponse.getSignatureShare().toString());
+
+//		JSONArray shareProof = new JSONArray();
+//		shareProof.add(signatureResponse.getSignatureShareProof().getC().toString());
+//		shareProof.add(signatureResponse.getSignatureShareProof().getZ().toString());
+//		obj.put("share_proof", shareProof);
+
+		// public exponenet e
+		obj.put("e", rsaSharing.getPublicKey().getPublicExponent().toString());
+
+		// modulus
+		obj.put("n", rsaSharing.getPublicKey().getModulus().toString());
+
+//		// V
+//		obj.put("v", rsaSharing.getV().toString());
+
+		// Verification keys
+//		JSONArray verificationKeys = new JSONArray();
+//		for (final BigInteger vi : rsaSharing.getVerificationKeys()) {
+//			verificationKeys.add(vi.toString());
+//		}
+//		obj.put("verification_keys", verificationKeys);
+
+		obj.put("compute_time_us", new Long(processingTimeUs));
+
+		logger.info(obj);
+
+		return obj.toJSONString() + "\n";
 	}
 
 }

@@ -27,6 +27,9 @@ import java.util.List;
 public class RsaProactiveSharing {
 
     public static final int DEFAULT_RSA_KEY_SIZE = 1024;
+    public static final int DEFAULT_TAU = 80;
+    public static final BigInteger DEFAULT_PARAMETER_R = BigInteger.valueOf(2).pow(10);
+
     private static final Logger logger = LogManager.getLogger(RsaProactiveSharing.class);
     private final BigInteger pPrime;
     private final BigInteger qPrime;
@@ -46,12 +49,15 @@ public class RsaProactiveSharing {
 
     // Additive shares
     private final List<SecretShare> additiveShares;
+    private BigInteger additiveShareOfAgent; // private to agent
     private final BigInteger d_pub;
     private final BigInteger g;
     private final List<SecretShare> additiveVerificationKeys;
 
     // Feldman-Z_N-VSS
     private final List<List<SecretShare>> shamirAdditiveShares; // dimension: nxn
+    private List<SecretShare> shamirAdditiveSharesOfAgent;
+    private final List<SecretShare> shamirAdditiveSharesSummed; // dimension: n
     private final List<List<SecretShare>> feldmanAdditiveVerificationValues; // dimension: nxt
 
     /////////////////////////////////////////////////////////////////////////
@@ -69,7 +75,7 @@ public class RsaProactiveSharing {
                                int n, int t, final BigInteger r, final int tau, int tauHat, BigInteger R, BigInteger coeffR,
                                RSAPublicKey publicKey, RSAPrivateKey privateKey, ShamirShare[] shares,
                                List<SecretShare> additiveShares, BigInteger d_pub, BigInteger g,
-							   List<List<SecretShare>> shamirAdditiveShares, List<List<SecretShare>> feldmanAdditiveVerificationValues,
+							   List<List<SecretShare>> shamirAdditiveShares, List<SecretShare> shamirAdditiveSharesSummed, List<List<SecretShare>> feldmanAdditiveVerificationValues,
 							   List<SecretShare> additiveVerificationKeys,
                                BigInteger v, BigInteger[] verificationKeys) {
         super();
@@ -98,10 +104,15 @@ public class RsaProactiveSharing {
         this.additiveVerificationKeys = additiveVerificationKeys;
 
         this.shamirAdditiveShares = shamirAdditiveShares;
+        this.shamirAdditiveSharesSummed = shamirAdditiveSharesSummed;
         this.feldmanAdditiveVerificationValues = feldmanAdditiveVerificationValues;
 
         this.v = v;
         this.verificationKeys = verificationKeys;
+    }
+
+    public static RsaProactiveSharing generateSharing(final int n, final int t) throws InvalidKeySpecException, NoSuchAlgorithmException {
+        return generateSharing(DEFAULT_RSA_KEY_SIZE, n, t, DEFAULT_PARAMETER_R, DEFAULT_TAU);
     }
 
     public static RsaProactiveSharing generateSharing(final int n, final int t, final BigInteger r, final int tau) throws InvalidKeySpecException, NoSuchAlgorithmException {
@@ -110,7 +121,7 @@ public class RsaProactiveSharing {
 
     public static RsaProactiveSharing generateSharing(final int keySizeBits, final int numServers, final int threshold,
                                                       final BigInteger r, final int tau) throws InvalidKeySpecException, NoSuchAlgorithmException {
-        logger.info("Generating RSA keys with max bit size: " + keySizeBits);
+        logger.info("Generating Proactive-RSA keys with max bit size: " + keySizeBits);
         final int primeLength = (keySizeBits / 2);
 
         logger.info("Generating p...");
@@ -151,21 +162,25 @@ public class RsaProactiveSharing {
         BigInteger R = BigInteger.valueOf(numServers).multiply(r.add(BigInteger.ONE)).multiply(n).multiply(BigInteger.valueOf(2).pow(tau + 1));
 
         // Generate additive shares
+        logger.info("Generating additive shares of private exponent...");
         List<SecretShare> additiveShares = new ArrayList<>();
         for (int i = 0; i < numServers; i++) {
             additiveShares.add(new SecretShare(BigInteger.valueOf(i + 1), RandomNumberGenerator.generateRandomInteger(R.multiply(BigInteger.valueOf(2)))));
         }
         BigInteger d_pub = realD.subtract(additiveShares.stream().map(SecretShare::getY).reduce(BigInteger::add).get());
+        logger.info("[DONE]");
 
         // Generator of verification values for additive shares - random square (of order phi(n)/4)
         final BigInteger sqrtG = RandomNumberGenerator.generateRandomInteger(n);
         final BigInteger g = sqrtG.modPow(BigInteger.valueOf(2), n);
 
         // Generate additive verification values g^{d_i}
+        logger.info("Computing verification values for additive shares...");
         List<SecretShare> additiveVerificationKeys = new ArrayList<>();
         for (int i = 0; i < additiveShares.size(); i++) {
             additiveVerificationKeys.add(new SecretShare(BigInteger.valueOf(i + 1), g.modPow(additiveShares.get(i).getY(), n)));
         }
+        logger.info("[DONE]");
 
 		// L = numServers!
 		BigInteger L = Polynomials.factorial(BigInteger.valueOf(numServers));
@@ -207,6 +222,18 @@ public class RsaProactiveSharing {
 //            System.out.println("Old: " + Arrays.toString(shares));
 		}
 
+        logger.info("Summing shamir share for additive shares...");
+        List<SecretShare> shamirAdditiveSharesSummed = new ArrayList<>();
+        for(int i = 0; i < numServers; i++) {
+            BigInteger accumulator = BigInteger.ZERO;
+            logger.info(shamirAdditiveShares.get(i));
+            for(int j = 0; j < numServers; j++) {
+                accumulator = accumulator.add(shamirAdditiveShares.get(j).get(i).getY());
+            }
+            shamirAdditiveSharesSummed.add(new SecretShare(BigInteger.valueOf(i+1), accumulator));
+        }
+        logger.info("[DONE]");
+
         //////////////////////////////////////////////////////////////////////////////////////////////
 		// Create secret shares of "d"
 		logger.info("Generating secret shares...");
@@ -243,7 +270,7 @@ public class RsaProactiveSharing {
         //////////////////////////////////////////////////////////////////////////////////////////////
 
         return new RsaProactiveSharing(qPrime, pPrime, numServers, threshold, r, tau, tauHat, R, coeffR, publicKey, privateKey, shares,
-				additiveShares, d_pub, g, shamirAdditiveShares, feldmanAdditiveVerificationValues, additiveVerificationKeys, v, verificationKeys);
+				additiveShares, d_pub, g, shamirAdditiveShares, shamirAdditiveSharesSummed, feldmanAdditiveVerificationValues, additiveVerificationKeys, v, verificationKeys);
     }
 
     public BigInteger getpPrime() {
@@ -314,7 +341,11 @@ public class RsaProactiveSharing {
 		return shamirAdditiveShares;
 	}
 
-	public List<List<SecretShare>> getFeldmanAdditiveVerificationValues() {
+    public List<SecretShare> getShamirAdditiveSharesSummed() {
+        return shamirAdditiveSharesSummed;
+    }
+
+    public List<List<SecretShare>> getFeldmanAdditiveVerificationValues() {
 		return feldmanAdditiveVerificationValues;
 	}
 
@@ -328,6 +359,22 @@ public class RsaProactiveSharing {
 
     public KeyPair getKeyPair() {
         return new KeyPair(this.publicKey, this.privateKey);
+    }
+
+    public BigInteger getAdditiveShareOfAgent() {
+        return additiveShareOfAgent;
+    }
+
+    public List<SecretShare> getShamirAdditiveSharesOfAgent() {
+        return shamirAdditiveSharesOfAgent;
+    }
+
+    public void setAdditiveShareOfAgent(BigInteger additiveShareOfAgent) {
+        this.additiveShareOfAgent = additiveShareOfAgent;
+    }
+
+    public void setShamirAdditiveSharesOfAgent(List<SecretShare> shamirAdditiveSharesOfAgent) {
+        this.shamirAdditiveSharesOfAgent = shamirAdditiveSharesOfAgent;
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.ibm.pross.client.app.http.handlers;
 import com.ibm.pross.client.app.http.HttpRequestProcessor;
 import com.ibm.pross.client.app.permissions.AppPermissions;
 import com.ibm.pross.client.encryption.EciesEncryptionClient;
+import com.ibm.pross.client.encryption.ProactiveRsaEncryptionClient;
 import com.ibm.pross.client.encryption.RsaEncryptionClient;
 import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.config.KeyLoader;
@@ -37,6 +38,7 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
     public static final String USER_FIELD = "userName";
     // Query values
     public static final String RSA_CIPHER = "rsa";
+    public static final String PROACTIVE_RSA_CIPHER = "proactive-rsa";
     public static final String ECIES_CIPHER = "ecies";
     private static final Logger logger = LogManager.getLogger(EncryptHandler.class);
     //Path names
@@ -135,6 +137,17 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 				logger.error(ex);
 			}
 		}
+        else if (cipher.equals(PROACTIVE_RSA_CIPHER)) {
+            ProactiveRsaEncryptionClient proactiveRsaEncryptionClient = new ProactiveRsaEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey);
+
+            try (final OutputStream os = exchange.getResponseBody();) {
+                final byte[] binaryResponse = proactiveRsaEncryptionClient.encryptStream(secretName, exchange.getRequestBody());
+                exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
+                os.write(binaryResponse);
+            } catch (Exception ex) {
+                logger.error(ex);
+            }
+        }
         // Write headers
         // exchange.getResponseHeaders().add("Strict-Transport-Security", "max-age=300;
         // includeSubdomains");

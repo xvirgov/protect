@@ -3,7 +3,9 @@ package com.ibm.pross.client.app.http.handlers;
 import com.ibm.pross.client.app.http.HttpRequestProcessor;
 import com.ibm.pross.client.app.permissions.AppPermissions;
 import com.ibm.pross.client.encryption.EciesEncryptionClient;
+import com.ibm.pross.client.encryption.ProactiveRsaEncryptionClient;
 import com.ibm.pross.client.encryption.RsaEncryptionClient;
+import com.ibm.pross.client.util.ProactiveRsaPublicParameters;
 import com.ibm.pross.common.config.KeyLoader;
 import com.ibm.pross.common.config.ServerConfiguration;
 import com.ibm.pross.common.exceptions.http.*;
@@ -33,6 +35,7 @@ public class DecryptHandler extends AuthenticatedClientRequestHandler {
     public static final String USER_FIELD = "userName";
     // Query values
     public static final String RSA_CIPHER = "rsa";
+    public static final String RSA_PROACTIVE_CIPHER = "proactive-rsa";
     public static final String ECIES_CIPHER = "ecies";
     private static final Logger logger = LogManager.getLogger(DecryptHandler.class);
     //Path names
@@ -133,6 +136,18 @@ public class DecryptHandler extends AuthenticatedClientRequestHandler {
 				logger.error(ex);
 			}
 		}
+        else if (cipher.equals(RSA_PROACTIVE_CIPHER)) {
+            logger.debug("RSA decryption using key " + secretName);
+            ProactiveRsaEncryptionClient proactiveRsaEncryptionClient = new ProactiveRsaEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey);
+
+            try (final OutputStream os = exchange.getResponseBody()) {
+                final byte[] binaryResponse = proactiveRsaEncryptionClient.decryptStream(secretName, exchange.getRequestBody());
+                exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
+                os.write(binaryResponse);
+            } catch (Exception ex) {
+                logger.error(ex);
+            }
+        }
         // Write headers
         // exchange.getResponseHeaders().add("Strict-Transport-Security", "max-age=300;
         // includeSubdomains");

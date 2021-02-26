@@ -26,6 +26,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
+import com.ibm.pross.common.util.SecretShare;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -372,6 +373,145 @@ public class BaseClient {
                 int maxWait = 10;
                 while (rsaPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
                     for (Map.Entry<RsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
+                        if (params.getValue() >= reconstructionThreshold) {
+                            logger.info("Consistency level reached.");
+                            return params.getKey();
+                        }
+                    }
+                    logger.info("Waiting for more servers to send config...");
+                    Thread.sleep(2000);
+                }
+
+                throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
+            } else {
+                logger.error("Number of failures exceeded the threshold");
+                executor.shutdown();
+                throw new ResourceUnavailableException();
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Interacts with the servers to determine the public key of the secret (by
+     * majority vote)
+     *
+     * @param inputPoint
+     * @return
+     * @throws ResourceUnavailableException
+     * @throws BelowThresholdException
+     */
+    @SuppressWarnings("unchecked")
+    protected ProactiveRsaPublicParameters getProactiveRsaPublicParams(final String secretName)
+            throws ResourceUnavailableException, BelowThresholdException {
+
+        logger.info("Starting retrieval of the proactive RSA Public params from secret " + secretName);
+
+        // Server configuration
+        final int numShareholders = this.serverConfiguration.getNumServers();
+        final int reconstructionThreshold = this.serverConfiguration.getReconstructionThreshold();
+
+        // We create a thread pool with a thread for each task and remote server
+        final ExecutorService executor = Executors.newFixedThreadPool(numShareholders - 1);
+
+        // The countdown latch tracks progress towards reaching a threshold
+        final CountDownLatch latch = new CountDownLatch(reconstructionThreshold);
+
+        logger.info("Wait until at least " + reconstructionThreshold + " servers respond");
+
+        final AtomicInteger failureCounter = new AtomicInteger(0);
+        final int maximumFailures = (numShareholders - reconstructionThreshold);
+
+        // Each task deposits its result into this map after verifying it is correct and
+        // consistent
+
+        final Map<ProactiveRsaPublicParameters, Integer> rsaPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
+
+        // Create a partial result task for everyone except ourselves
+        int serverId = 0;
+        for (final InetSocketAddress serverAddress : this.serverConfiguration.getServerAddresses()) {
+            serverId++;
+            final String serverIp = serverAddress.getAddress().getHostAddress();
+            final int serverPort = CommonConfiguration.BASE_HTTP_PORT + serverId;
+            final String linkUrl = "https://" + serverIp + ":" + serverPort + "/info?cipher=proactive-rsa&secretName=" + secretName + "&json=true";
+
+            logger.info(linkUrl);
+
+            final int thisServerId = serverId;
+
+            // Create new task to get the secret info from the server
+            executor.submit(new PartialResultTask(this, serverId, linkUrl, rsaPublicParametersCount, latch, failureCounter,
+                    maximumFailures, 1) {
+                @Override
+                protected void parseJsonResult(final String json) throws Exception {
+                    logger.info("Parsing response...");
+                    final JSONParser parser = new JSONParser();
+                    final Object obj = parser.parse(json);
+                    final JSONObject jsonObject = (JSONObject) obj;
+
+
+                    final Long responder = Long.parseLong(jsonObject.get("responder").toString());
+                    final long epoch = Long.parseLong(jsonObject.get("epoch").toString());
+                    final BigInteger publicExponent = new BigInteger((String) jsonObject.get("public_key"));
+                    final BigInteger publicModulus = new BigInteger((String) jsonObject.get("public_modulus"));
+                    final BigInteger g = new BigInteger((String) jsonObject.get("g"));
+                    final BigInteger d_pub = new BigInteger((String) jsonObject.get("d_pub"));
+
+                    List<List<SecretShare>> feldmanAdditiveVerificationValues = new ArrayList<>();
+                    List<SecretShare> additiveVerificationKeys = new ArrayList<>();
+
+                    for (int i = 0; i < numShareholders; i++) {
+                        JSONArray feldmanAdditiveVerificationValuesArray = (JSONArray) jsonObject.get("b_" + (i + 1));
+                        List<SecretShare> collector = new ArrayList<>();
+                        for (int j = 0; j < reconstructionThreshold; j++) {
+                            collector.add(new SecretShare(BigInteger.valueOf(j + 1), new BigInteger((String) feldmanAdditiveVerificationValuesArray.get(j))));
+                        }
+                        feldmanAdditiveVerificationValues.add(collector);
+                    }
+
+                    JSONArray additiveVerificationKeysArray = (JSONArray) jsonObject.get("additiveVerificationKeys");
+                    for (int i = 0; i < numShareholders; i++) {
+                        additiveVerificationKeys.add(new SecretShare(BigInteger.valueOf(i + 1), new BigInteger((String) additiveVerificationKeysArray.get(i))));
+                    }
+
+//                    for (int i = 1; i <= numShareholders; i++) {
+//                        shareVerificationKeys.add(new BigInteger((String) jsonObject.get("share_verification_key_" + i)));
+//                    }
+
+                    if ((responder == thisServerId)) {
+
+                        ProactiveRsaPublicParameters proactiveRsaPublicParameters = new ProactiveRsaPublicParameters(publicExponent, publicModulus, g, d_pub, feldmanAdditiveVerificationValues, additiveVerificationKeys, epoch);
+
+                        // Add parameters to the hashmap
+                        if (!rsaPublicParametersCount.containsKey(proactiveRsaPublicParameters)) {
+                            rsaPublicParametersCount.put(proactiveRsaPublicParameters, 1);
+                        } else {
+                            rsaPublicParametersCount.put(proactiveRsaPublicParameters, rsaPublicParametersCount.get(proactiveRsaPublicParameters) + 1);
+                        }
+
+                        // Everything checked out, increment successes
+                        latch.countDown();
+                    } else {
+                        throw new Exception("Server " + thisServerId + " sent inconsistent results");
+                    }
+
+                }
+            });
+        }
+
+        try {
+            latch.await();
+
+            // Check that we have enough results to interpolate the share
+            if (failureCounter.get() <= maximumFailures) {
+
+                executor.shutdown();
+                // Use the config which was returned by more than threshold number of servers
+
+                int maxWait = 10;
+                while (rsaPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
+                    for (Map.Entry<ProactiveRsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
                         if (params.getValue() >= reconstructionThreshold) {
                             logger.info("Consistency level reached.");
                             return params.getKey();
