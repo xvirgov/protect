@@ -323,7 +323,7 @@ public class RsaProactiveSharingTest extends TestCase {
                 assertEquals(expect, result);
             }
 
-            // Generate partial decryption with each secret share key
+            // Generate partial decryption with verification for each secret share key
             for (int i = 0; i < numServers; i++) {
                 // Prepare params
                 final BigInteger ciphertext = BigInteger.valueOf(420);

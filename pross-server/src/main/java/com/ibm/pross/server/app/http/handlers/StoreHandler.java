@@ -234,6 +234,29 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
             throw new RuntimeException();
         }
 
+        List<BigInteger> multipliedFeldmanVerificationValues = new ArrayList<>();
+        for (int i = 0; i < shareholder.getK(); i++) {
+            BigInteger accumulator = BigInteger.ONE;
+            for (int j = 0; j < shareholder.getN(); j++) {
+                accumulator = accumulator.multiply(feldmanAdditiveVerificationValues.get(j).get(i).getY());
+            }
+            multipliedFeldmanVerificationValues.add(accumulator);
+        }
+
+        BigInteger summedPrivateKeysShares = agentShamirShares.stream().map(SecretShare::getY).reduce(BigInteger::add).get();
+
+        BigInteger modulus = rsaPublicKeySpec.getModulus();
+
+        List<BigInteger> agentsFeldmanVerificationValues = new ArrayList<>();
+        for (int i = 0; i < shareholder.getN(); i++) {
+            BigInteger result = BigInteger.ONE;
+            for (int j = 0; j < shareholder.getK(); j++) {
+                result = result.multiply(multipliedFeldmanVerificationValues.get(j).modPow(BigInteger.valueOf(i + 1).pow(j), modulus)).mod(modulus);
+            }
+            agentsFeldmanVerificationValues.add(result);
+        }
+
+
         RsaProactiveSharing rsaProactiveSharing = new RsaProactiveSharing(null, null, shareholder.getN(),
                 shareholder.getK(), null, 0, 0, null, null, (RSAPublicKey) keyFactory.generatePublic(rsaPublicKeySpec),
                 null, null, null, d_pub, g, null, null,
@@ -241,6 +264,8 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
 
         rsaProactiveSharing.setShamirAdditiveSharesOfAgent(agentShamirShares);
         rsaProactiveSharing.setAdditiveShareOfAgent(d_i);
+        rsaProactiveSharing.setSummedAgentsShamirKeyShares(summedPrivateKeysShares);
+        rsaProactiveSharing.setAgentsFeldmanVerificationValues(agentsFeldmanVerificationValues);
         return rsaProactiveSharing;
     }
 

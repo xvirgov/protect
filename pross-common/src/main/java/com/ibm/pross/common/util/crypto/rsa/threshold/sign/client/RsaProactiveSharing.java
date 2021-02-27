@@ -60,6 +60,10 @@ public class RsaProactiveSharing {
     private final List<SecretShare> shamirAdditiveSharesSummed; // dimension: n
     private final List<List<SecretShare>> feldmanAdditiveVerificationValues; // dimension: nxt
 
+    // Computed after generation (optimizations)
+    List<BigInteger> agentsFeldmanVerificationValues;
+    BigInteger summedAgentsShamirKeyShares;
+
     /////////////////////////////////////////////////////////////////////////
     // The shamir shares of d mod totient
     private final ShamirShare[] shares;
@@ -369,12 +373,28 @@ public class RsaProactiveSharing {
         return shamirAdditiveSharesOfAgent;
     }
 
+    public List<BigInteger> getAgentsFeldmanVerificationValues() {
+        return agentsFeldmanVerificationValues;
+    }
+
+    public BigInteger getSummedAgentsShamirKeyShares() {
+        return summedAgentsShamirKeyShares;
+    }
+
     public void setAdditiveShareOfAgent(BigInteger additiveShareOfAgent) {
         this.additiveShareOfAgent = additiveShareOfAgent;
     }
 
     public void setShamirAdditiveSharesOfAgent(List<SecretShare> shamirAdditiveSharesOfAgent) {
         this.shamirAdditiveSharesOfAgent = shamirAdditiveSharesOfAgent;
+    }
+
+    public void setAgentsFeldmanVerificationValues(List<BigInteger> agentsFeldmanVerificationValues) {
+        this.agentsFeldmanVerificationValues = agentsFeldmanVerificationValues;
+    }
+
+    public void setSummedAgentsShamirKeyShares(BigInteger summedAgentsShamirKeyShares) {
+        this.summedAgentsShamirKeyShares = summedAgentsShamirKeyShares;
     }
 
     @Override

@@ -187,6 +187,8 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
             additiveVerificationKeysArray.addAll(additiveVerificationKeys.stream().map(SecretShare::getY).map(BigInteger::toString).collect(Collectors.toList()));
             obj.put("additiveVerificationKeys", additiveVerificationKeysArray);
 
+
+
             List<List<SecretShare>> feldmanVerificationValues = shareholder.getRsaProactiveSharing().getFeldmanAdditiveVerificationValues();
             for(int i = 0; i < shareholder.getN(); i++) {
                 JSONArray agentsFeldmanVerificationValuesArray = new JSONArray();

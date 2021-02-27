@@ -158,25 +158,25 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
         // Perform validation of decryption shares
 //        logger.info("Verifying decryption shares...");
-        List<SignatureResponse> validatedDecryptionShares = decryptionShares;
-//        List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
-//        for (SignatureResponse decryptionShare : decryptionShares) {
-//            BigInteger serverIndex = decryptionShare.getServerIndex();
-//
-//            try {
-//                if (validateDecryptionShare(encryptedPaddedSecretKey, decryptionShare, rsaPublicParameters, serverConfiguration)) {
-//                    validatedDecryptionShares.add(decryptionShare);
-//                    logger.debug("Decryption share from server " + serverIndex + " passed validation");
-//                } else {
-//                    logger.info(serverIndex);
-//                    logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation");
-//                }
-//            } catch (Exception exception) {
-//                logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation, error = " + exception);
-//            }
-//        }
-//        logger.info("Number of validated shares: " + validatedDecryptionShares.size());
-//        logger.info("[DONE]");
+//        List<SignatureResponse> validatedDecryptionShares = decryptionShares;
+        List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
+        for (SignatureResponse decryptionShare : decryptionShares) {
+            BigInteger serverIndex = decryptionShare.getServerIndex();
+
+            try {
+                if (validateDecryptionShare(encryptedPaddedSecretKey, decryptionShare, rsaPublicParameters, serverConfiguration)) {
+                    validatedDecryptionShares.add(decryptionShare);
+                    logger.debug("Decryption share from server " + serverIndex + " passed validation");
+                } else {
+                    logger.info(serverIndex);
+                    logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation");
+                }
+            } catch (Exception exception) {
+                logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation, error = " + exception);
+            }
+        }
+        logger.info("Number of validated shares: " + validatedDecryptionShares.size());
+        logger.info("[DONE]");
 
 //        logger.debug("Recovered key length: " + encryptedPaddedSecretKey.toString(2).length());
 
@@ -255,9 +255,9 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
                     final Long responder = (Long) jsonObject.get("responder");
                     final long epoch = (Long) jsonObject.get("epoch");
 
-//                    final JSONArray shareProof = (JSONArray) jsonObject.get("share_proof");
-//                    SignatureShareProof decryptionShareProof = new SignatureShareProof(new BigInteger(shareProof.get(0).toString()),
-//                            new BigInteger(shareProof.get(1).toString()));
+                    final JSONArray shareProof = (JSONArray) jsonObject.get("share_proof");
+                    SignatureShareProof decryptionShareProof = new SignatureShareProof(new BigInteger(shareProof.get(0).toString()),
+                            new BigInteger(shareProof.get(1).toString()));
 
                     BigInteger decryptionShare = new BigInteger(jsonObject.get("share").toString());
 
@@ -267,7 +267,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
                     if ((responder == thisServerId) && (epoch == expectedEpoch)) {
 
 //                        verifiedResults.add(new SignatureResponse(new BigInteger(responder.toString()), decryptionShare, decryptionShareProof));
-                        verifiedResults.add(new SignatureResponse(new BigInteger(responder.toString()), decryptionShare, null));
+                        verifiedResults.add(new SignatureResponse(new BigInteger(responder.toString()), decryptionShare, decryptionShareProof));
 
                         // Everything checked out, increment successes
                         latch.countDown();
@@ -401,43 +401,87 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
     }
 
     public static boolean validateDecryptionShare(final BigInteger ciphertext, final SignatureResponse decryptionShare,
-                                                  final RsaPublicParameters rsaPublicParameters, ServerConfiguration serverConfiguration) {
-
-        // Extract configuration items
-        final BigInteger n = rsaPublicParameters.getModulus();
-        final BigInteger v = rsaPublicParameters.getVerificationKey();
-        final List<BigInteger> verificationKeys = rsaPublicParameters.getShareVerificationKeys();
-
-        final int serverCount = serverConfiguration.getNumServers();
-
-        // Extract elements from returned signature triplet
+                                                  final ProactiveRsaPublicParameters rsaPublicParameters, ServerConfiguration serverConfiguration) {
+//        logger.info("validateDecryptionShare");
+//
+//        logger.info(ciphertext);
+//        logger.info(decryptionShare);
+//        logger.info(rsaPublicParameters);
+//        logger.info(serverConfiguration);
+        final int n = serverConfiguration.getNumServers();
+        final int t = serverConfiguration.getReconstructionThreshold();
+//
+//        final BigInteger L = Polynomials.factorial(BigInteger.valueOf(n));
+////        logger.info(L);
+        final BigInteger modulus = rsaPublicParameters.getModulus();
+////        logger.info(modulus);
+        final BigInteger g = rsaPublicParameters.getG();
+////        logger.info(g);
+//
         final BigInteger index = decryptionShare.getServerIndex();
-        final BigInteger signatureShare = decryptionShare.getSignatureShare();
-        final BigInteger z = decryptionShare.getSignatureShareProof().getZ();
+////        logger.info(index);
+//        final BigInteger partialDecryption = decryptionShare.getSignatureShare();
+////        logger.info(partialDecryption);
+//        final BigInteger z = decryptionShare.getSignatureShareProof().getZ();
+////        logger.info(z);
+//        final BigInteger c = decryptionShare.getSignatureShareProof().getC();
+////        logger.info(c);
+//
+//        logger.info("AAAAAAAAAAAAAAAAAAAAAAAAll params received");
+//
+        final BigInteger verificationShare = rsaPublicParameters.computeAgentsFeldmanValues(t, n, index.intValue());
+//        BigInteger ciphertextToFourL = ciphertext.modPow(BigInteger.valueOf(4).multiply(L), modulus);
+//        BigInteger partialDecryptionSquared = partialDecryption.modPow(BigInteger.valueOf(2), modulus);
+//
+//        final BigInteger zVerifPart = g.modPow(z, modulus);
+//        final BigInteger invVerifSharePart = verificationShare.modInverse(modulus).modPow(c, modulus);
+//        final BigInteger vTerms = zVerifPart.multiply(invVerifSharePart).mod(modulus);
+//
+//        final BigInteger zSharePart = ciphertextToFourL.modPow(z, modulus);
+//        final BigInteger invSharePart = partialDecryption.modInverse(modulus).modPow(BigInteger.valueOf(4).multiply(c), modulus);
+//        final BigInteger xTerms = zSharePart.multiply(invSharePart).mod(modulus);
+//
+//        final byte[] validationString = Parse.concatenate(g, ciphertextToFourL, partialDecryption, partialDecryptionSquared, vTerms, xTerms);
+//        BigInteger validation = ThresholdSignatures.hashToInteger(validationString, ThresholdSignatures.HASH_MOD);
+
         final BigInteger c = decryptionShare.getSignatureShareProof().getC();
 
-        // Perform verification
-        final BigInteger vToZ = Exponentiation.modPow(v, z, n);
-        final int keyIndex = index.intValue() - 1;
-        if ((keyIndex < 0) || (keyIndex >= verificationKeys.size())) {
-            return false;
-        }
-        final BigInteger vk = verificationKeys.get(keyIndex);
-        final BigInteger invVerificationKey = Exponentiation.modInverse(vk, n);
-        final BigInteger invVkToC = Exponentiation.modPow(invVerificationKey, c, n);
-        final BigInteger vTerms = vToZ.multiply(invVkToC).mod(n);
+        final BigInteger recomputedC = ThresholdSignatures.recomputeC(ciphertext, n, modulus, g, verificationShare, decryptionShare);
 
-        final BigInteger delta = Polynomials.factorial(BigInteger.valueOf(serverCount));
-        final BigInteger mToFourD = Exponentiation.modPow(ciphertext, BigInteger.valueOf(4).multiply(delta), n);
-        final BigInteger xToZ = Exponentiation.modPow(mToFourD, z, n);
-        final BigInteger invShare = Exponentiation.modInverse(signatureShare, n);
-        final BigInteger invShareToTwoC = Exponentiation.modPow(invShare, ThresholdSignatures.TWO.multiply(c), n);
-        final BigInteger xTerms = xToZ.multiply(invShareToTwoC).mod(n);
 
-        final BigInteger shareSquared = Exponentiation.modPow(signatureShare, ThresholdSignatures.TWO, n);
-
-        final byte[] verificationString = Parse.concatenate(v, mToFourD, vk, shareSquared, vTerms, xTerms);
-        final BigInteger recomputedC = hashToInteger(verificationString, ThresholdSignatures.HASH_MOD);
+//        final BigInteger v = rsaPublicParameters.getVerificationKey();
+//        final List<BigInteger> verificationKeys = rsaPublicParameters.getShareVerificationKeys();
+//
+//        final int serverCount = serverConfiguration.getNumServers();
+//
+//        // Extract elements from returned signature triplet
+//        final BigInteger index = decryptionShare.getServerIndex();
+//        final BigInteger signatureShare = decryptionShare.getSignatureShare();
+//        final BigInteger z = decryptionShare.getSignatureShareProof().getZ();
+//        final BigInteger c = decryptionShare.getSignatureShareProof().getC();
+//
+//        // Perform verification
+//        final BigInteger vToZ = Exponentiation.modPow(v, z, n);
+//        final int keyIndex = index.intValue() - 1;
+//        if ((keyIndex < 0) || (keyIndex >= verificationKeys.size())) {
+//            return false;
+//        }
+//        final BigInteger vk = verificationKeys.get(keyIndex);
+//        final BigInteger invVerificationKey = Exponentiation.modInverse(vk, n);
+//        final BigInteger invVkToC = Exponentiation.modPow(invVerificationKey, c, n);
+//        final BigInteger vTerms = vToZ.multiply(invVkToC).mod(n);
+//
+//        final BigInteger delta = Polynomials.factorial(BigInteger.valueOf(serverCount));
+//        final BigInteger mToFourD = Exponentiation.modPow(ciphertext, BigInteger.valueOf(4).multiply(delta), n);
+//        final BigInteger xToZ = Exponentiation.modPow(mToFourD, z, n);
+//        final BigInteger invShare = Exponentiation.modInverse(signatureShare, n);
+//        final BigInteger invShareToTwoC = Exponentiation.modPow(invShare, ThresholdSignatures.TWO.multiply(c), n);
+//        final BigInteger xTerms = xToZ.multiply(invShareToTwoC).mod(n);
+//
+//        final BigInteger shareSquared = Exponentiation.modPow(signatureShare, ThresholdSignatures.TWO, n);
+//
+//        final byte[] verificationString = Parse.concatenate(v, mToFourD, vk, shareSquared, vTerms, xTerms);
+//        final BigInteger recomputedC = hashToInteger(verificationString, ThresholdSignatures.HASH_MOD);
 
         if (recomputedC.equals(c)) {
             return true;
@@ -445,6 +489,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             return false;
         }
     }
+
 
     public byte[] encryptStream(final String secretName, InputStream inputStream) throws BelowThresholdException, ResourceUnavailableException, IOException {
         logger.info("Starting proactive RSA encryption with secret " + secretName);

@@ -15,6 +15,7 @@ public class ProactiveRsaPublicParameters extends KeyParameters {
     private final BigInteger d_pub;
     private final List<List<SecretShare>> feldmanVerificationValues;
     private final List<SecretShare> additiveVerificationValues;
+
     public ProactiveRsaPublicParameters(BigInteger exponent, BigInteger modulus, BigInteger g, BigInteger d_pub,
                                         List<List<SecretShare>> feldmanVerificationValues, List<SecretShare> additiveVerificationValues,
                                         Long epoch) {
@@ -27,6 +28,28 @@ public class ProactiveRsaPublicParameters extends KeyParameters {
         this.d_pub = d_pub;
         this.feldmanVerificationValues = feldmanVerificationValues;
         this.additiveVerificationValues = additiveVerificationValues;
+    }
+
+    public static List<SecretShare> computeAgentsFeldmanValues(List<List<SecretShare>> feldmanVerificationValues, int threshold, int numServers, BigInteger modulus) {
+        List<BigInteger> multipliedFeldmanVerificationValues = new ArrayList<>();
+        for (int i = 0; i < threshold; i++) {
+            BigInteger accumulator = BigInteger.ONE;
+            for (int j = 0; j < numServers; j++) {
+                accumulator = accumulator.multiply(feldmanVerificationValues.get(j).get(i).getY());
+            }
+            multipliedFeldmanVerificationValues.add(accumulator);
+        }
+
+        List<SecretShare> agentsFeldmanVerificationValues = new ArrayList<>();
+        for (int i = 0; i < numServers; i++) {
+            BigInteger result = BigInteger.ONE;
+            for (int j = 0; j < threshold; j++) {
+                result = result.multiply(multipliedFeldmanVerificationValues.get(j).modPow(BigInteger.valueOf(i + 1).pow(j), modulus)).mod(modulus);
+            }
+            agentsFeldmanVerificationValues.add(new SecretShare(BigInteger.valueOf(i + 1), result));
+        }
+
+        return agentsFeldmanVerificationValues;
     }
 
     public BigInteger getG() {
@@ -51,6 +74,46 @@ public class ProactiveRsaPublicParameters extends KeyParameters {
 
     public BigInteger getModulus() {
         return modulus;
+    }
+
+    public List<SecretShare> computeAgentsFeldmanValues(int threshold, int numServers) {
+        List<BigInteger> multipliedFeldmanVerificationValues = new ArrayList<>();
+        for (int i = 0; i < threshold; i++) {
+            BigInteger accumulator = BigInteger.ONE;
+            for (int j = 0; j < numServers; j++) {
+                accumulator = accumulator.multiply(feldmanVerificationValues.get(j).get(i).getY());
+            }
+            multipliedFeldmanVerificationValues.add(accumulator);
+        }
+
+        List<SecretShare> agentsFeldmanVerificationValues = new ArrayList<>();
+        for (int i = 0; i < numServers; i++) {
+            BigInteger result = BigInteger.ONE;
+            for (int j = 0; j < threshold; j++) {
+                result = result.multiply(multipliedFeldmanVerificationValues.get(j).modPow(BigInteger.valueOf(i + 1).pow(j), modulus)).mod(modulus);
+            }
+            agentsFeldmanVerificationValues.add(new SecretShare(BigInteger.valueOf(i + 1), result));
+        }
+
+        return agentsFeldmanVerificationValues;
+    }
+
+    public BigInteger computeAgentsFeldmanValues(int threshold, int numServers, int index) {
+        List<BigInteger> multipliedFeldmanVerificationValues = new ArrayList<>();
+        for (int i = 0; i < threshold; i++) {
+            BigInteger accumulator = BigInteger.ONE;
+            for (int j = 0; j < numServers; j++) {
+                accumulator = accumulator.multiply(feldmanVerificationValues.get(j).get(i).getY());
+            }
+            multipliedFeldmanVerificationValues.add(accumulator);
+        }
+
+        BigInteger result = BigInteger.ONE;
+        for (int j = 0; j < threshold; j++) {
+            result = result.multiply(multipliedFeldmanVerificationValues.get(j).modPow(BigInteger.valueOf(index).pow(j), modulus)).mod(modulus);
+        }
+
+        return result;
     }
 
     @Override

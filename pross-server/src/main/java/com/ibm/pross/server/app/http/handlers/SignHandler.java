@@ -236,7 +236,6 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		return obj.toJSONString() + "\n";
 	}
 
-	// TODO-thesis: return SignatureResponse
 	private SignatureResponse doProactiveSigning(final ApvssShareholder shareholder, final BigInteger m,
 										final RsaProactiveSharing rsaSharing) throws NotFoundException {
 		logger.info("doProactiveSigning");
@@ -303,10 +302,10 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 
 		obj.put("share", signatureResponse.getSignatureShare().toString());
 
-//		JSONArray shareProof = new JSONArray();
-//		shareProof.add(signatureResponse.getSignatureShareProof().getC().toString());
-//		shareProof.add(signatureResponse.getSignatureShareProof().getZ().toString());
-//		obj.put("share_proof", shareProof);
+		JSONArray shareProof = new JSONArray();
+		shareProof.add(signatureResponse.getSignatureShareProof().getC().toString());
+		shareProof.add(signatureResponse.getSignatureShareProof().getZ().toString());
+		obj.put("share_proof", shareProof);
 
 		// public exponenet e
 		obj.put("e", rsaSharing.getPublicKey().getPublicExponent().toString());
@@ -314,10 +313,9 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		// modulus
 		obj.put("n", rsaSharing.getPublicKey().getModulus().toString());
 
-//		// V
+		// V
 //		obj.put("v", rsaSharing.getV().toString());
 
-		// Verification keys
 //		JSONArray verificationKeys = new JSONArray();
 //		for (final BigInteger vi : rsaSharing.getVerificationKeys()) {
 //			verificationKeys.add(vi.toString());
