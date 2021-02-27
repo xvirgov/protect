@@ -180,7 +180,7 @@ public class ThresholdSignatures {
 		}
 	}
 
-	private static BigInteger hashToInteger(final byte[] input, final BigInteger modulus) {
+	public static BigInteger hashToInteger(final byte[] input, final BigInteger modulus) {
 		try {
 			byte[] hashed = MessageDigest.getInstance(CommonConfiguration.HASH_ALGORITHM).digest(input);
 			return (new BigInteger(1, hashed)).mod(modulus);

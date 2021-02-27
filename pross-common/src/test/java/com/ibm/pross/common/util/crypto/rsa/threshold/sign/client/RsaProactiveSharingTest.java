@@ -6,6 +6,8 @@ import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.GcdTriplet;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
+import com.ibm.pross.common.util.serialization.Parse;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import junit.framework.TestCase;
 import org.junit.Test;
@@ -273,6 +275,93 @@ public class RsaProactiveSharingTest extends TestCase {
 
             // Plaintext is same as recovered plaintext
             assertEquals(plaintext, recovered);
+        }
+    }
+
+    @Test
+    public void testProactiveRobustness() throws InvalidKeySpecException, NoSuchAlgorithmException {
+        for (int ii = 0; ii < numIterations; ii++) {
+            RsaProactiveSharing rsaProactiveSharing = RsaProactiveSharing.generateSharing(numServers, threshold, r, tau);
+
+            BigInteger g = rsaProactiveSharing.getG();
+            BigInteger modulus = rsaProactiveSharing.getPublicKey().getModulus();
+
+            List<List<SecretShare>> feldmanVerificationValues = rsaProactiveSharing.getFeldmanAdditiveVerificationValues();
+
+            // Compute feldman verification values
+            List<BigInteger> multipliedFeldmanVerificationValues = new ArrayList<>();
+            for (int i = 0; i < threshold; i++) {
+                BigInteger accumulator = BigInteger.ONE;
+                for (int j = 0; j < numServers; j++) {
+                    accumulator = accumulator.multiply(feldmanVerificationValues.get(j).get(i).getY());
+                }
+                multipliedFeldmanVerificationValues.add(accumulator);
+            }
+
+            // Compute private key shares
+            List<BigInteger> summedPrivateKeyShares = new ArrayList<>();
+            List<List<SecretShare>> shamirAdditiveShares = rsaProactiveSharing.getShamirAdditiveShares();
+            for (int i = 0; i < numServers; i++) {
+                BigInteger accumulator = BigInteger.ZERO;
+                for (int j = 0; j < numServers; j++) {
+                    accumulator = accumulator.add(shamirAdditiveShares.get(j).get(i).getY());
+                }
+                summedPrivateKeyShares.add(accumulator);
+
+                assertNotEquals(BigInteger.ZERO, accumulator);
+            }
+
+            // g^{s_i} = prod_{k=0}^{t} (b_{k})^{i^{k}}
+            List<BigInteger> agentsFeldmanVerificationValues = new ArrayList<>();
+            for (int i = 0; i < numServers; i++) {
+                BigInteger expect = g.modPow(summedPrivateKeyShares.get(i), modulus);
+                BigInteger result = BigInteger.ONE;
+                for (int j = 0; j < threshold; j++) {
+                    result = result.multiply(multipliedFeldmanVerificationValues.get(j).modPow(BigInteger.valueOf(i + 1).pow(j), modulus)).mod(modulus);
+                }
+                agentsFeldmanVerificationValues.add(result);
+                assertEquals(expect, result);
+            }
+
+            // Generate partial decryption with each secret share key
+            for (int i = 0; i < numServers; i++) {
+                // Prepare params
+                final BigInteger ciphertext = BigInteger.valueOf(420);
+                final BigInteger privateKeyShare = summedPrivateKeyShares.get(i);
+                final BigInteger L = Polynomials.factorial(BigInteger.valueOf(numServers));
+                final BigInteger verificationShare = agentsFeldmanVerificationValues.get(i);
+                final BigInteger r = RandomNumberGenerator.generateRandomInteger(modulus.bitLength() + 2 * ThresholdSignatures.HASH_LEN);
+
+                // Compute partial decryption
+                BigInteger partialDecryption = ciphertext.modPow(L.multiply(privateKeyShare), modulus);
+
+                assertEquals(verificationShare, g.modPow(privateKeyShare, modulus));
+
+                // Compute NIZK proof: (z, c)
+                BigInteger ciphertextToFourL = ciphertext.modPow(BigInteger.valueOf(4).multiply(L), modulus);
+                BigInteger partialDecryptionSquared = partialDecryption.modPow(BigInteger.valueOf(2), modulus);
+                BigInteger gPrime = g.modPow(r, modulus);
+                BigInteger xPrime = ciphertext.modPow(BigInteger.valueOf(4).multiply(L).multiply(r), modulus);
+                final byte[] cBytes = Parse.concatenate(g, ciphertextToFourL, partialDecryption, partialDecryptionSquared, gPrime, xPrime);
+
+                BigInteger c = ThresholdSignatures.hashToInteger(cBytes, ThresholdSignatures.HASH_MOD);
+
+                BigInteger z = privateKeyShare.multiply(c).add(r);
+
+                // Verify NIZK proof, needed params: g, verificationShare, modulus, c, z, L
+                final BigInteger zVerifPart = g.modPow(z, modulus);
+                final BigInteger invVerifSharePart = verificationShare.modInverse(modulus).modPow(c, modulus);
+                final BigInteger vTerms = zVerifPart.multiply(invVerifSharePart).mod(modulus);
+
+                final BigInteger zSharePart = ciphertext.modPow(BigInteger.valueOf(4).multiply(L), modulus).modPow(z, modulus);
+                final BigInteger invSharePart = partialDecryption.modInverse(modulus).modPow(BigInteger.valueOf(4).multiply(c), modulus);
+                final BigInteger xTerms = zSharePart.multiply(invSharePart).mod(modulus);
+
+                final byte[] validationString = Parse.concatenate(g, ciphertextToFourL, partialDecryption, partialDecryptionSquared, vTerms, xTerms);
+                BigInteger validation = ThresholdSignatures.hashToInteger(validationString, ThresholdSignatures.HASH_MOD);
+
+                assertEquals(c, validation);
+            }
         }
     }
 
