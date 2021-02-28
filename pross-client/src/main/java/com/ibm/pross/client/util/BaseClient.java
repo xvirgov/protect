@@ -27,6 +27,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -449,36 +450,13 @@ public class BaseClient {
                     final JSONParser parser = new JSONParser();
                     final Object obj = parser.parse(json);
                     final JSONObject jsonObject = (JSONObject) obj;
-
-
-                    final Long responder = Long.parseLong(jsonObject.get("responder").toString()); // TODO-now json->publicRsaParams
-                    final long epoch = Long.parseLong(jsonObject.get("epoch").toString());
-                    final BigInteger publicExponent = new BigInteger((String) jsonObject.get("public_key"));
-                    final BigInteger publicModulus = new BigInteger((String) jsonObject.get("public_modulus"));
-                    final BigInteger g = new BigInteger((String) jsonObject.get("g"));
-                    final BigInteger d_pub = new BigInteger((String) jsonObject.get("d_pub"));
-
-                    List<List<SecretShare>> feldmanAdditiveVerificationValues = new ArrayList<>();
-                    List<SecretShare> additiveVerificationKeys = new ArrayList<>();
-
-                    for (int i = 0; i < numShareholders; i++) {
-                        JSONArray feldmanAdditiveVerificationValuesArray = (JSONArray) jsonObject.get("b_" + (i + 1));
-                        List<SecretShare> collector = new ArrayList<>();
-                        for (int j = 0; j < reconstructionThreshold; j++) {
-                            collector.add(new SecretShare(BigInteger.valueOf(j + 1), new BigInteger((String) feldmanAdditiveVerificationValuesArray.get(j))));
-                        }
-                        feldmanAdditiveVerificationValues.add(collector);
-                    }
-
-                    JSONArray additiveVerificationKeysArray = (JSONArray) jsonObject.get("additiveVerificationKeys");
-                    for (int i = 0; i < numShareholders; i++) {
-                        additiveVerificationKeys.add(new SecretShare(BigInteger.valueOf(i + 1), new BigInteger((String) additiveVerificationKeysArray.get(i))));
-                    }
+//
+//
+                    final Long responder = Long.parseLong(jsonObject.get("responder").toString());
+                    final JSONObject proactiveRsaPublicParametersJson = (JSONObject) jsonObject.get("proactiveRsaPublicParameters");
 
                     if ((responder == thisServerId)) {
-
-                        ProactiveRsaPublicParameters proactiveRsaPublicParameters = new ProactiveRsaPublicParameters(publicExponent, publicModulus, g, d_pub, feldmanAdditiveVerificationValues, additiveVerificationKeys, epoch);
-
+                        ProactiveRsaPublicParameters proactiveRsaPublicParameters = ProactiveRsaPublicParameters.getParams(proactiveRsaPublicParametersJson);
                         // Add parameters to the hashmap
                         if (!rsaPublicParametersCount.containsKey(proactiveRsaPublicParameters)) {
                             rsaPublicParametersCount.put(proactiveRsaPublicParameters, 1);

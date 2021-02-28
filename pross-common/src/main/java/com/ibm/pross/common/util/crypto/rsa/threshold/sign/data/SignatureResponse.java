@@ -1,5 +1,7 @@
 package com.ibm.pross.common.util.crypto.rsa.threshold.sign.data;
 
+import org.json.simple.JSONObject;
+
 import java.math.BigInteger;
 
 /**
@@ -32,6 +34,23 @@ public class SignatureResponse {
 		this.serverIndex = serverIndex;
 		this.signatureShare = signatureShare;
 		this.signatureShareProof = signatureShareProof;
+	}
+
+	public JSONObject getJson() {
+		JSONObject jsonObject = new JSONObject();
+
+		jsonObject.put("serverIndex", this.serverIndex.toString());
+		jsonObject.put("signatureShare", this.signatureShare.toString());
+		jsonObject.put("signatureShareProof", this.signatureShareProof.getJson());
+
+		return jsonObject;
+	}
+
+	public static SignatureResponse getInstance(JSONObject jsonObject) {
+		BigInteger serverIndex = new BigInteger(jsonObject.get("serverIndex").toString());
+		BigInteger signatureShare = new BigInteger(jsonObject.get("signatureShare").toString());
+		SignatureShareProof signatureShareProof = SignatureShareProof.getInstance((JSONObject) jsonObject.get("signatureShareProof"));
+		return new SignatureResponse(serverIndex, signatureShare, signatureShareProof);
 	}
 
 	/**

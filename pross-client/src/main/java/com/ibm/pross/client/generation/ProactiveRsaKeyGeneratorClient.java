@@ -7,6 +7,9 @@ import com.ibm.pross.common.config.KeyLoader;
 import com.ibm.pross.common.config.ServerConfiguration;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThresholdException;
 import org.apache.logging.log4j.LogManager;
@@ -46,7 +49,7 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
     public static String CA_DIRECTORY = "ca";
     public static String CERTS_DIRECTORY = "certs";
 
-    //    // Parameters of operation
+        // Parameters of operation
     private final String secretName;
 //    private final File caFile;
 //
@@ -75,22 +78,14 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
         final int numServers = serverConfiguration.getNumServers();
         final int threshold = serverConfiguration.getReconstructionThreshold();
 
-        final RsaProactiveSharing rsaProactiveSharing = RsaProactiveSharing.generateSharing(numServers, threshold);
+        final List<ProactiveRsaShareholder> proactiveRsaShareholders = ProactiveRsaGenerator.generateProactiveRsa(numServers, threshold);
         logger.info("RSA key generation complete");
 
         logger.info("Storing RSA private key");
-        return this.storeProactiveRsaSharing(rsaProactiveSharing);
+        return this.storeProactiveRsaSharing(proactiveRsaShareholders);
     }
 
-    /**
-     * Interacts with the servers to store an RSA sharing to a given secret
-     *
-     * @param rsaProactiveSharing
-     * @return
-     * @throws ResourceUnavailableException
-     * @throws BelowThresholdException
-     */
-    private Boolean storeProactiveRsaSharing(final RsaProactiveSharing rsaProactiveSharing)
+    private Boolean storeProactiveRsaSharing(final List<ProactiveRsaShareholder> proactiveRsaShareholders)
             throws ResourceUnavailableException, BelowThresholdException {
 
         // Server configuration
@@ -109,28 +104,8 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
         // consistent
         final List<Object> successfulResults = Collections.synchronizedList(new ArrayList<>());
 
-        // Collect pulic data to register with servers
-
-        // Send the public exponenet to the server
-        final BigInteger exponent = rsaProactiveSharing.getPublicKey().getPublicExponent();
-
-        // Send the modulus to the rsaProactiveSharing
-        final BigInteger modulus = rsaProactiveSharing.getPublicKey().getModulus();
-
         // Send the generator to the server
-        final BigInteger v = rsaProactiveSharing.getV();
-
-        StringBuilder allVerificationKeys = new StringBuilder();
-        for (int i = 1; i <= this.serverConfiguration.getNumServers(); i++) {
-            allVerificationKeys.append("&v_" + i + "=" + rsaProactiveSharing.getVerificationKeys()[i - 1]);
-        }
-
-        List<SecretShare> additiveSecretVerificationKeys = rsaProactiveSharing.getAdditiveVerificationKeys();
-        StringBuilder additiveSecretVerificationKeysString = new StringBuilder();
-        for (SecretShare verificationKey : additiveSecretVerificationKeys) {
-            additiveSecretVerificationKeysString.append("&w_" + verificationKey.getY() + "=" + verificationKey.getX());
-        }
-
+        final BigInteger v = null;
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -139,45 +114,11 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
             final String serverIp = serverAddress.getAddress().getHostAddress();
             final int serverPort = CommonConfiguration.BASE_HTTP_PORT + serverId;
 
-            // Prepare json message with values for agent
-            final JSONObject message = new JSONObject();
-            message.put("d_pub", rsaProactiveSharing.getD_pub().toString());
-            message.put("g", rsaProactiveSharing.getG().toString());
-
-            message.put("additiveSecretKey", rsaProactiveSharing.getAdditiveShares().get(serverId-1).getY().toString());
-
-            List<SecretShare> additiveVerificationKeys = rsaProactiveSharing.getAdditiveVerificationKeys();
-            JSONArray additiveVerificationKeysArray = new JSONArray();
-            additiveVerificationKeysArray.addAll(additiveVerificationKeys.stream().map(SecretShare::getY).map(BigInteger::toString).collect(Collectors.toList()));
-            message.put("additiveVerificationKeys", additiveVerificationKeysArray);
-
-            List<List<SecretShare>> allShamirShares = rsaProactiveSharing.getShamirAdditiveShares();
-            JSONArray agentsShamirSharesArray = new JSONArray();
-            for(int i = 0 ; i < numShareholders; i++) {
-                agentsShamirSharesArray.add(allShamirShares.get(i).get(serverId-1).getY().toString());
-            }
-            message.put("agentsShamirShares", agentsShamirSharesArray);
-
-            List<List<SecretShare>> feldmanVerificationValues = rsaProactiveSharing.getFeldmanAdditiveVerificationValues();
-            for(int i = 0; i < numShareholders; i++) {
-                JSONArray agentsFeldmanVerificationValuesArray = new JSONArray();
-
-                agentsFeldmanVerificationValuesArray.addAll(feldmanVerificationValues.get(i).stream().map(SecretShare::getY).map(BigInteger::toString).collect(Collectors.toList()));
-                message.put("b_" + (i+1), agentsFeldmanVerificationValuesArray);
-            }
-
-            logger.info("Generation of the json object completed!");
-
-            // Send share to the server
-            final BigInteger share = rsaProactiveSharing.getShares()[serverId - 1].getY();
+            final JSONObject message = proactiveRsaShareholders.get(serverId-1).getJson();
 
             final String linkUrl = "https://" + serverIp + ":" + serverPort + "/store" + // TODO-now move all to json body
                     "?secretName=" + this.secretName
-                    + "&e=" + exponent +
-                    "&n=" + modulus +
-                    "&v=" + v
-                    + allVerificationKeys.toString() +
-                    "&share=" + share;
+                    + "&sharingType=proactive-rsa";
 
             // Create new task to get the partial exponentiation result from the server
             executor.submit(new PartialResultTask(this, serverId, linkUrl, message.toJSONString() + "\n", "POST", successfulResults, latch, failureCounter,

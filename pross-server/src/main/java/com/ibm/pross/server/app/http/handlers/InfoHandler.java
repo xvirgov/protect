@@ -154,25 +154,27 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
             // Return the result in json
             final JSONObject obj = new JSONObject(); // TODO-now PublicRsaParams -> json
             obj.put("responder", Integer.valueOf(serverIndex).toString());
-            obj.put("epoch", Long.valueOf(shareholder.getEpoch()).toString());
-            obj.put("public_key", shareholder.getRsaProactiveSharing().getPublicKey().getPublicExponent().toString());
-            obj.put("public_modulus", shareholder.getRsaProactiveSharing().getPublicKey().getModulus().toString());
-            obj.put("d_pub", shareholder.getRsaProactiveSharing().getD_pub().toString());
-            obj.put("g", shareholder.getRsaProactiveSharing().getG().toString());
+//            obj.put("epoch", Long.valueOf(shareholder.getEpoch()).toString());
+//            obj.put("public_key", shareholder.getRsaProactiveSharing().getPublicKey().getPublicExponent().toString());
+//            obj.put("public_modulus", shareholder.getRsaProactiveSharing().getPublicKey().getModulus().toString());
+//            obj.put("d_pub", shareholder.getRsaProactiveSharing().getD_pub().toString());
+//            obj.put("g", shareholder.getRsaProactiveSharing().getG().toString());
+//
+//            List<SecretShare> additiveVerificationKeys = shareholder.getRsaProactiveSharing().getAdditiveVerificationKeys();
+//            JSONArray additiveVerificationKeysArray = new JSONArray();
+//            additiveVerificationKeysArray.addAll(additiveVerificationKeys.stream().map(SecretShare::getY).map(BigInteger::toString).collect(Collectors.toList()));
+//            obj.put("additiveVerificationKeys", additiveVerificationKeysArray);
+//
+//            List<List<SecretShare>> feldmanVerificationValues = shareholder.getRsaProactiveSharing().getFeldmanAdditiveVerificationValues();
+//            for(int i = 0; i < shareholder.getN(); i++) {
+//                JSONArray agentsFeldmanVerificationValuesArray = new JSONArray();
+//                agentsFeldmanVerificationValuesArray.addAll(feldmanVerificationValues.get(i).stream().map(SecretShare::getY).map(BigInteger::toString).collect(Collectors.toList()));
+//                obj.put("b_" + (i+1), agentsFeldmanVerificationValuesArray);
+//            }
 
-            List<SecretShare> additiveVerificationKeys = shareholder.getRsaProactiveSharing().getAdditiveVerificationKeys();
-            JSONArray additiveVerificationKeysArray = new JSONArray();
-            additiveVerificationKeysArray.addAll(additiveVerificationKeys.stream().map(SecretShare::getY).map(BigInteger::toString).collect(Collectors.toList()));
-            obj.put("additiveVerificationKeys", additiveVerificationKeysArray);
+            obj.put("proactiveRsaPublicParameters", shareholder.getProactiveRsaShareholder().getProactiveRsaPublicParameters().getJson());
 
-            List<List<SecretShare>> feldmanVerificationValues = shareholder.getRsaProactiveSharing().getFeldmanAdditiveVerificationValues();
-            for(int i = 0; i < shareholder.getN(); i++) {
-                JSONArray agentsFeldmanVerificationValuesArray = new JSONArray();
-                agentsFeldmanVerificationValuesArray.addAll(feldmanVerificationValues.get(i).stream().map(SecretShare::getY).map(BigInteger::toString).collect(Collectors.toList()));
-                obj.put("b_" + (i+1), agentsFeldmanVerificationValuesArray);
-            }
-
-            logger.info("[ONE]");
+            logger.info("[DONE]");
 
             return obj.toJSONString() + "\n";
         }

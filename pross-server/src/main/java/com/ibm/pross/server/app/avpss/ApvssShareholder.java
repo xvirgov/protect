@@ -26,6 +26,7 @@ import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.crypto.paillier.PaillierCipher;
 import com.ibm.pross.common.util.crypto.paillier.PaillierPrivateKey;
 import com.ibm.pross.common.util.crypto.paillier.PaillierPublicKey;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
 import com.ibm.pross.common.util.crypto.zkp.splitting.ZeroKnowledgeProof;
@@ -111,6 +112,7 @@ public class ApvssShareholder {
 	private volatile BigInteger storedShareOfSecret = null;
 
 	private RsaProactiveSharing rsaProactiveSharing;
+	private ProactiveRsaShareholder proactiveRsaShareholder;
 
 	private static final Logger logger = LogManager.getLogger(ApvssShareholder.class);
 
@@ -1010,6 +1012,23 @@ public class ApvssShareholder {
 		//for (int i = 0; i < this.n; i++ ) {
 		//	state.getSharePublicKeys()[0] = new EcPoint(BigInteger.valueOf(i+1), rsaSharing.getVerificationKeys()[i]); // Using EcPoints is a hack
 		//}
+	}
+
+	public void setProactiveRsaShareholder(ProactiveRsaShareholder proactiveRsaShareholder) {
+		this.sharingType = SharingType.RSA_PROACTIVE_STORED;
+		SharingState state = this.getCurrentSharing();
+		state.setCreationTime(new Date());
+		this.proactiveRsaShareholder = proactiveRsaShareholder;
+//		state.setShare1(new ShamirShare(BigInteger.valueOf(index), shareValue));
+//		state.setRsaSharing(rsaSharing);
+//		state.getSharePublicKeys()[0] = new EcPoint(rsaSharing.getPublicKey().getPublicExponent(), rsaSharing.getPublicKey().getModulus()); // Using EcPoints is a hack
+		//for (int i = 0; i < this.n; i++ ) {
+		//	state.getSharePublicKeys()[0] = new EcPoint(BigInteger.valueOf(i+1), rsaSharing.getVerificationKeys()[i]); // Using EcPoints is a hack
+		//}
+	}
+
+	public ProactiveRsaShareholder getProactiveRsaShareholder() {
+		return proactiveRsaShareholder;
 	}
 
 	public RsaSharing getRsaSharing() {

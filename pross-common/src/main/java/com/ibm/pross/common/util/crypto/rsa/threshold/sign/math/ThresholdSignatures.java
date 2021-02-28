@@ -11,6 +11,7 @@ import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureResponse;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureShareProof;
@@ -93,6 +94,24 @@ public class ThresholdSignatures {
 		BigInteger modulus = rsaProactiveSharing.getPublicKey().getModulus();
 		final BigInteger r = RandomNumberGenerator.generateRandomInteger(modulus.bitLength() + 2 * ThresholdSignatures.HASH_LEN);
 		final BigInteger g = rsaProactiveSharing.getG();
+
+		BigInteger c = computeC(inputMessage, signatureShare, L, modulus, g, r);
+		BigInteger z = privateKeyShare.multiply(c).add(r);
+
+		return new SignatureResponse(index, signatureShare, new SignatureShareProof(c, z));
+	}
+
+	public static SignatureResponse produceProactiveSignatureResponse(final BigInteger inputMessage,
+																	  final ProactiveRsaShareholder proactiveRsaShareholder,
+																	  BigInteger index) {
+
+		final BigInteger privateKeyShare = proactiveRsaShareholder.getS_i();
+		final BigInteger L = proactiveRsaShareholder.getProactiveRsaPublicParameters().getL();
+		final BigInteger modulus = proactiveRsaShareholder.getProactiveRsaPublicParameters().getPublicKey().getModulus();
+		final BigInteger r = RandomNumberGenerator.generateRandomInteger(modulus.bitLength() + 2 * ThresholdSignatures.HASH_LEN);
+		final BigInteger g = proactiveRsaShareholder.getProactiveRsaPublicParameters().getG();
+
+		final BigInteger signatureShare = inputMessage.modPow(L.multiply(privateKeyShare), modulus);
 
 		BigInteger c = computeC(inputMessage, signatureShare, L, modulus, g, r);
 		BigInteger z = privateKeyShare.multiply(c).add(r);

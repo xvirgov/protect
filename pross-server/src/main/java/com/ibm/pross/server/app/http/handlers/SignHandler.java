@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import org.apache.logging.log4j.LogManager;
@@ -236,22 +237,15 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		return obj.toJSONString() + "\n";
 	}
 
-	private SignatureResponse doProactiveSigning(final ApvssShareholder shareholder, final BigInteger m,
-										final RsaProactiveSharing rsaSharing) throws NotFoundException { // TODO-now remove this
-
-		BigInteger L = Polynomials.factorial(BigInteger.valueOf(shareholder.getN())); // TODO-now precompute
-		return ThresholdSignatures.produceProactiveSignatureResponse(m, shareholder.getRsaProactiveSharing(), L, BigInteger.valueOf(shareholder.getIndex()));
-	}
-
 	private String createProactiveRsaResponse(ApvssShareholder shareholder, BigInteger m) throws NotFoundException {
 		// Get RSA parameters
-		final RsaProactiveSharing rsaSharing = shareholder.getRsaProactiveSharing();
+		final ProactiveRsaShareholder proactiveRsaShareholder = shareholder.getProactiveRsaShareholder();
 
 		logger.info("Creating partial decryption for proactive rsa");
 
 		// Do processing
 		final long startTime = System.nanoTime();
-		final SignatureResponse signatureResponse = doProactiveSigning(shareholder, m, rsaSharing);
+		final SignatureResponse signatureResponse = ThresholdSignatures.produceProactiveSignatureResponse(m, proactiveRsaShareholder, BigInteger.valueOf(shareholder.getIndex()));
 		final long endTime = System.nanoTime();
 
 		// Compute processing time
@@ -263,16 +257,9 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 
 		// Return the result in json
 		final JSONObject obj = new JSONObject();
-		obj.put("responder", new Integer(serverIndex)); // TODO-now signatureResponse -> json
-		obj.put("epoch", new Long(epoch));
-		obj.put("share", signatureResponse.getSignatureShare().toString());
-		JSONArray shareProof = new JSONArray();
-		shareProof.add(signatureResponse.getSignatureShareProof().getC().toString());
-		shareProof.add(signatureResponse.getSignatureShareProof().getZ().toString());
-		obj.put("share_proof", shareProof);
-		obj.put("e", rsaSharing.getPublicKey().getPublicExponent().toString());
-		obj.put("n", rsaSharing.getPublicKey().getModulus().toString());
-		obj.put("compute_time_us", new Long(processingTimeUs));
+		obj.put("compute_time_us", Long.toString(processingTimeUs));
+		obj.put("epoch", Integer.toString(proactiveRsaShareholder.getProactiveRsaPublicParameters().getEpoch()));
+		obj.put("signatureResponse", signatureResponse.getJson());
 
 		return obj.toJSONString() + "\n";
 	}

@@ -1,5 +1,7 @@
 package com.ibm.pross.common.util.crypto.rsa.threshold.sign.data;
 
+import org.json.simple.JSONObject;
+
 import java.math.BigInteger;
 
 /**
@@ -25,6 +27,21 @@ public class SignatureShareProof {
 	
 	public BigInteger getZ() {
 		return z;
+	}
+
+	public JSONObject getJson() {
+		JSONObject jsonObject = new JSONObject();
+
+		jsonObject.put("c", c.toString());
+		jsonObject.put("z", z.toString());
+
+		return jsonObject;
+	}
+
+	public static SignatureShareProof getInstance(JSONObject jsonObject) {
+		BigInteger c = new BigInteger(jsonObject.get("c").toString());
+		BigInteger z = new BigInteger(jsonObject.get("z").toString());
+		return new SignatureShareProof(c, z);
 	}
 
 	@Override

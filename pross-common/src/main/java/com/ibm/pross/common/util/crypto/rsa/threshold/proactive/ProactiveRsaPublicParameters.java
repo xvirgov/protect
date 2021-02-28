@@ -53,6 +53,8 @@ public class ProactiveRsaPublicParameters {
     private final BigInteger aGcd;
     private final BigInteger bGcd;
 
+    private final int epoch;
+
     private ProactiveRsaPublicParameters(ProactiveRsaPublicParametersBuilder proactiveRsaPublicParametersBuilder) {
         this.numServers = proactiveRsaPublicParametersBuilder.numServers;
         this.threshold = proactiveRsaPublicParametersBuilder.threshold;
@@ -70,6 +72,7 @@ public class ProactiveRsaPublicParameters {
         this.bAgent = proactiveRsaPublicParametersBuilder.bAgent;
         this.aGcd = proactiveRsaPublicParametersBuilder.aGcd;
         this.bGcd = proactiveRsaPublicParametersBuilder.bGcd;
+        this.epoch = proactiveRsaPublicParametersBuilder.epoch;
     }
 
     public static ProactiveRsaPublicParameters getParams(JSONObject jsonObject) throws NoSuchAlgorithmException, InvalidKeySpecException {
@@ -92,6 +95,8 @@ public class ProactiveRsaPublicParameters {
         int tauHat = Integer.parseInt(jsonObject.get("tauHat").toString());
         BigInteger bigR = new BigInteger(jsonObject.get("bigR").toString());
         BigInteger coeffR = new BigInteger(jsonObject.get("coeffR").toString());
+        int epoch = Integer.parseInt(jsonObject.get("epoch").toString());
+
 
         JSONArray w_json = (JSONArray) jsonObject.get("w");
         JSONArray bAgent_json = (JSONArray) jsonObject.get("bAgent");
@@ -129,6 +134,7 @@ public class ProactiveRsaPublicParameters {
                 .setBigR(bigR)
                 .setCoeffR(coeffR)
                 .setW(w)
+                .setEpoch(epoch)
                 .build();
     }
 
@@ -150,6 +156,8 @@ public class ProactiveRsaPublicParameters {
         jsonObject.put("tauHat", String.valueOf(this.tauHat));
         jsonObject.put("bigR", this.bigR.toString());
         jsonObject.put("coeffR", this.coeffR.toString());
+
+        jsonObject.put("epoch", String.valueOf(this.epoch));
 
         JSONArray w = new JSONArray();
         w.addAll(this.w.stream().map(x -> x.getY().toString()).collect(Collectors.toList()));
@@ -198,6 +206,8 @@ public class ProactiveRsaPublicParameters {
         // GCD values (for decryption)
         private BigInteger aGcd;
         private BigInteger bGcd;
+
+        private int epoch;
 
         public ProactiveRsaPublicParameters build() {
             ProactiveRsaPublicParameters proactiveRsaPublicParameters = new ProactiveRsaPublicParameters(this);
@@ -298,6 +308,11 @@ public class ProactiveRsaPublicParameters {
             this.bGcd = bGcd;
             return this;
         }
+
+        public ProactiveRsaPublicParametersBuilder setEpoch(int epoch) {
+            this.epoch = epoch;
+            return this;
+        }
     }
 
     public int getNumServers() {
@@ -364,25 +379,20 @@ public class ProactiveRsaPublicParameters {
         return bGcd;
     }
 
+    public int getEpoch() {
+        return epoch;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ProactiveRsaPublicParameters)) return false;
         ProactiveRsaPublicParameters that = (ProactiveRsaPublicParameters) o;
-
-        for (int i = 0; i < getB().size(); i++) {
-            List<SecretShare> shares = getB().get(i);
-            List<SecretShare> sharesOther = that.getB().get(i);
-
-            if(!shares.equals(sharesOther))
-                return false;
-        }
-
-        return getNumServers() == that.getNumServers() && getThreshold() == that.getThreshold() && getTau() == that.getTau() && getTauHat() == that.getTauHat() && getPublicKey().getPublicExponent().equals(that.getPublicKey().getPublicExponent()) && getPublicKey().getModulus().equals(that.getPublicKey().getModulus()) && getG().equals(that.getG()) && getD_pub().equals(that.getD_pub()) && getR().equals(that.getR()) && getBigR().equals(that.getBigR()) && getCoeffR().equals(that.getCoeffR()) && getW().equals(that.getW()) && getL().equals(that.getL()) && getbAgent().equals(that.getbAgent()) && getaGcd().equals(that.getaGcd()) && getbGcd().equals(that.getbGcd());
+        return getNumServers() == that.getNumServers() && getThreshold() == that.getThreshold() && getTau() == that.getTau() && getTauHat() == that.getTauHat() && epoch == that.epoch && getPublicKey().equals(that.getPublicKey()) && getG().equals(that.getG()) && getD_pub().equals(that.getD_pub()) && getR().equals(that.getR()) && getBigR().equals(that.getBigR()) && getCoeffR().equals(that.getCoeffR()) && getW().equals(that.getW()) && getB().equals(that.getB()) && getL().equals(that.getL()) && getbAgent().equals(that.getbAgent()) && getaGcd().equals(that.getaGcd()) && getbGcd().equals(that.getbGcd());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getNumServers(), getThreshold(), getPublicKey(), getG(), getD_pub(), getR(), getTau(), getTauHat(), getBigR(), getCoeffR(), getW(), getB(), getL(), getbAgent(), getaGcd(), getbGcd());
+        return Objects.hash(getNumServers(), getThreshold(), getPublicKey(), getG(), getD_pub(), getR(), getTau(), getTauHat(), getBigR(), getCoeffR(), getW(), getB(), getL(), getbAgent(), getaGcd(), getbGcd(), epoch);
     }
 }

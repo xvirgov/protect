@@ -191,6 +191,7 @@ public class ProactiveRsaGenerator {
                 .setR(r)
                 .setaGcd(aGcd)
                 .setbGcd(bGcd)
+                .setEpoch(0)
                 .build();
 
         List<ProactiveRsaShareholder> proactiveRsaShareholders = new ArrayList<>();

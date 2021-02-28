@@ -23,6 +23,7 @@ import com.ibm.pross.common.exceptions.http.NotFoundException;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
 import com.ibm.pross.common.exceptions.http.UnauthorizedException;
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
 import com.ibm.pross.common.util.shamir.ShamirShare;
@@ -59,6 +60,8 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
     // RSA query parameters
     public static final String MODULUS_VALUE = "n";
     public static final String PUBLIC_EXPONENT_VALUE = "e";
+    public static final String SHARING_TYPE_VALUE = "sharingType";
+    public static final String SHARING_TYPE_VALUE_PROACTIVE_RSA = "proactive-rsa";
     public static final String VERIFICATION_BASE = "v";
     public static final String VERIFICATION_KEYS = "v_";
     private static final Logger logger = LogManager.getLogger(StoreHandler.class);
@@ -113,16 +116,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
         final String eStr = HttpRequestProcessor.getParameterValue(params, PUBLIC_EXPONENT_VALUE);
         final BigInteger e = (eStr == null) ? null : new BigInteger(eStr);
 
-        final String vStr = HttpRequestProcessor.getParameterValue(params, VERIFICATION_BASE);
-        final BigInteger v = (vStr == null) ? null : new BigInteger(vStr);
-
-        final BigInteger[] verificationKeys = new BigInteger[shareholder.getN()];
-        for (int i = 1; i <= shareholder.getN(); i++) {
-            final String vStrI = HttpRequestProcessor.getParameterValue(params, VERIFICATION_KEYS + i);
-            verificationKeys[i - 1] = (vStrI == null) ? null : new BigInteger(vStrI);
-        }
-
-//		String receivedBody = Arrays.toString(IOUtils.toByteArray(exchange.getRequestBody()));
+        final String sharingType = HttpRequestProcessor.getParameterValue(params, SHARING_TYPE_VALUE);
 //		logger.info(receivedBody);
 
         // Receive store request message
@@ -138,6 +132,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
             throw new RuntimeException(ex);
         }
 
+//        logger.info("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ");
 //        if (jsonParameters != null)
 //            logger.info(jsonParameters.toString());
 
@@ -147,13 +142,14 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
 
         // Extract share from the request
         final List<String> shareValues = params.get(SHARE_VALUE);
-        if ((shareValues == null) || (shareValues.size() != 1) || (shareValues.get(0) == null)) {
+        if (((shareValues == null) || (shareValues.size() != 1) || (shareValues.get(0) == null)) && sharingType == null) {
             // Unset the stored value
             shareholder.setStoredShareOfSecret(null);
             response = "s_" + serverIndex + " has been unset, DKG will use a random value for '" + secretName + "'.";
         } else {
-            final BigInteger shareValue = new BigInteger(shareValues.get(0));
-            if ((e != null) && (n != null) && (v != null)) { // TODO-now specify in store request
+            BigInteger shareValue = BigInteger.ZERO;
+            if (((e != null) && (n != null))) { // TODO-now specify in store request
+                shareValue = new BigInteger(shareValues.get(0));
                 // Store RSA share, e and exponent n
                 RSAPublicKeySpec spec = new RSAPublicKeySpec(n, e);
                 KeyFactory keyFactory;
@@ -161,18 +157,33 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
                 try {
                     keyFactory = KeyFactory.getInstance("RSA");
 
-                    if (jsonParameters != null) {
-                        logger.info("Storing proactive RSA values");
-                        final RsaProactiveSharing rsaProactiveSharing = createProactiveRsaSharingFromParameters(jsonParameters, shareholder, keyFactory,
-                                spec, null, null); // TODO-now remvoe v and verificationKeys
-                        shareholder.setProactiveRsaSecret(rsaProactiveSharing);
-                        response = "proactive RSA share have been stored.";
-                    } else {
-                        final RsaSharing rsaSharing = new RsaSharing(shareholder.getN(), shareholder.getK(), (RSAPublicKey) keyFactory.generatePublic(spec), null, null, v, verificationKeys);
-                        shareholder.setRsaSecret(shareValue, rsaSharing);
-                        response = "RSA share have been stored.";
+
+                    final String vStr = HttpRequestProcessor.getParameterValue(params, VERIFICATION_BASE);
+                    final BigInteger v = (vStr == null) ? null : new BigInteger(vStr);
+
+                    final BigInteger[] verificationKeys = new BigInteger[shareholder.getN()];
+                    for (int i = 1; i <= shareholder.getN(); i++) {
+                        final String vStrI = HttpRequestProcessor.getParameterValue(params, VERIFICATION_KEYS + i);
+                        verificationKeys[i - 1] = (vStrI == null) ? null : new BigInteger(vStrI);
                     }
+
+                    final RsaSharing rsaSharing = new RsaSharing(shareholder.getN(), shareholder.getK(), (RSAPublicKey) keyFactory.generatePublic(spec), null, null, v, verificationKeys);
+                    shareholder.setRsaSecret(shareValue, rsaSharing);
+                    response = "RSA share have been stored.";
+
                 } catch (NoSuchAlgorithmException | InvalidKeySpecException e1) {
+                    throw new InternalServerException();
+                }
+            } else if (sharingType != null && sharingType.equals(SHARING_TYPE_VALUE_PROACTIVE_RSA)) {
+                try {
+                    logger.info("Storing proactive RSA values");
+
+                    final ProactiveRsaShareholder proactiveRsaShareholder = ProactiveRsaShareholder.getParams(jsonParameters);
+
+                    shareholder.setProactiveRsaShareholder(proactiveRsaShareholder);
+                    response = "proactive RSA share have been stored.";
+                } catch (NoSuchAlgorithmException | InvalidKeySpecException exception) {
+                    logger.error(exception);
                     throw new InternalServerException();
                 }
             } else {

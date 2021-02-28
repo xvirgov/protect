@@ -2,7 +2,6 @@ package com.ibm.pross.client.encryption;
 
 import com.ibm.pross.client.util.BaseClient;
 import com.ibm.pross.client.util.PartialResultTask;
-import com.ibm.pross.client.util.ProactiveRsaPublicParameters;
 import com.ibm.pross.client.util.RsaPublicParameters;
 import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.config.KeyLoader;
@@ -10,6 +9,7 @@ import com.ibm.pross.common.config.ServerConfiguration;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
 import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.crypto.rsa.OaepUtil;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureResponse;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureShareProof;
@@ -129,6 +129,52 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
     }
 
+    public static BigInteger recoverPlaintext(final BigInteger ciphertext,
+                                              final List<SignatureResponse> signatureResponses, final ProactiveRsaPublicParameters rsaPublicParameters,
+                                              final ServerConfiguration serverConfiguration) throws BadArgumentException {
+
+        logger.info("recoverPlaintext");
+
+        // Extract values from configuration
+        final BigInteger n = rsaPublicParameters.getPublicKey().getModulus();
+        final int threshold = serverConfiguration.getReconstructionThreshold();
+
+        // Determine coordinates
+        List<BigInteger> xCoords = new ArrayList<>();
+        for (int i = 0; i < threshold; i++) {
+            xCoords.add(signatureResponses.get(i).getServerIndex());
+        }
+
+        // Interpolate polynomial
+        BigInteger L = rsaPublicParameters.getL();
+        BigInteger preFactor = ciphertext.modPow(L.pow(3).multiply(rsaPublicParameters.getD_pub()), rsaPublicParameters.getPublicKey().getModulus());
+        BigInteger gamma = BigInteger.ONE;
+        for (int i = 0; i < threshold; i++) {
+            final BigInteger decryptionShareCurrentIndex = xCoords.get(i);
+            final BigInteger decryptionShareValue = signatureResponses.get(i).getSignatureShare();
+            final BigInteger lambda_0j = Polynomials.interpolateNoModulus(xCoords, L, BigInteger.ZERO, decryptionShareCurrentIndex);
+            gamma = gamma.multiply(decryptionShareValue.modPow(lambda_0j, rsaPublicParameters.getPublicKey().getModulus()));
+        }
+        gamma = preFactor.multiply(gamma).mod(rsaPublicParameters.getPublicKey().getModulus());
+
+        final BigInteger a = rsaPublicParameters.getaGcd();
+        final BigInteger b = rsaPublicParameters.getbGcd();
+
+        return Exponentiation.modPow(gamma, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n);
+    }
+
+    public static boolean validateDecryptionShare(final BigInteger ciphertext, final SignatureResponse decryptionShare,
+                                                  final ProactiveRsaPublicParameters rsaPublicParameters) {
+        final int n = rsaPublicParameters.getNumServers();
+        final BigInteger modulus = rsaPublicParameters.getPublicKey().getModulus();
+        final BigInteger g = rsaPublicParameters.getG();
+        final BigInteger index = decryptionShare.getServerIndex();
+        final BigInteger verificationShare = rsaPublicParameters.getbAgent().get(index.intValue() - 1).getY();
+        final BigInteger c = decryptionShare.getSignatureShareProof().getC();
+        final BigInteger recomputedC = ThresholdSignatures.recomputeC(ciphertext, n, modulus, g, verificationShare, decryptionShare);
+        return recomputedC.equals(c);
+    }
+
     public byte[] rsaAesDecrypt(final byte[] ciphertextData, ProactiveRsaPublicParameters rsaPublicParameters, ServerConfiguration serverConfiguration, String secretName) throws BadPaddingException, ResourceUnavailableException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadArgumentException {
 
         final byte[][] combined = Parse.splitArrays(ciphertextData);
@@ -152,7 +198,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             BigInteger serverIndex = decryptionShare.getServerIndex();
 
             try {
-                if (validateDecryptionShare(encryptedPaddedSecretKey, decryptionShare, rsaPublicParameters, serverConfiguration)) {
+                if (validateDecryptionShare(encryptedPaddedSecretKey, decryptionShare, rsaPublicParameters)) {
                     validatedDecryptionShares.add(decryptionShare);
                     logger.debug("Decryption share from server " + serverIndex + " passed validation");
                 } else {
@@ -238,22 +284,18 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
                     final JSONParser parser = new JSONParser();
                     final Object obj = parser.parse(json);
                     final JSONObject jsonObject = (JSONObject) obj;
-                    final Long responder = (Long) jsonObject.get("responder");
-                    final long epoch = (Long) jsonObject.get("epoch"); // TODO-now json -> signatureResponse
+                    final long epoch = Long.parseLong(jsonObject.get("epoch").toString());
 
-                    final JSONArray shareProof = (JSONArray) jsonObject.get("share_proof");
-                    SignatureShareProof decryptionShareProof = new SignatureShareProof(new BigInteger(shareProof.get(0).toString()),
-                            new BigInteger(shareProof.get(1).toString()));
+                    final JSONObject signatureResponseJson = (JSONObject) jsonObject.get("signatureResponse");
 
-                    BigInteger decryptionShare = new BigInteger(jsonObject.get("share").toString());
+                    final SignatureResponse signatureResponse = SignatureResponse.getInstance(signatureResponseJson);
 
                     // Verify result
                     // TODO: Separate results by their epoch, wait for enough results of the same
                     // epoch
-                    if ((responder == thisServerId) && (epoch == expectedEpoch)) {
+                    if ((signatureResponse.getServerIndex().equals(BigInteger.valueOf(thisServerId))) && (epoch == expectedEpoch)) {
 
-//                        verifiedResults.add(new SignatureResponse(new BigInteger(responder.toString()), decryptionShare, decryptionShareProof));
-                        verifiedResults.add(new SignatureResponse(new BigInteger(responder.toString()), decryptionShare, decryptionShareProof));
+                        verifiedResults.add(signatureResponse);
 
                         // Everything checked out, increment successes
                         latch.countDown();
@@ -284,62 +326,6 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         }
     }
 
-    public static BigInteger recoverPlaintext(final BigInteger ciphertext,
-                                              final List<SignatureResponse> signatureResponses, final ProactiveRsaPublicParameters rsaPublicParameters,
-                                              final ServerConfiguration serverConfiguration) throws BadArgumentException {
-
-        logger.info("recoverPlaintext");
-
-        // Extract values from configuration
-        final BigInteger n = rsaPublicParameters.getModulus();
-        final BigInteger e = rsaPublicParameters.getExponent();
-        final int threshold = serverConfiguration.getReconstructionThreshold();
-
-        // Determine coordinates
-        List<BigInteger> xCoords = new ArrayList<>();
-        for (int i = 0; i < threshold; i++) {
-            xCoords.add(signatureResponses.get(i).getServerIndex());
-        }
-
-        // Interpolate polynomial
-        BigInteger L = (Polynomials.factorial(BigInteger.valueOf(serverConfiguration.getNumServers()))); // TODO-now move to special class
-        BigInteger preFactor = ciphertext.modPow(L.pow(3).multiply(rsaPublicParameters.getD_pub()), rsaPublicParameters.getModulus());
-        BigInteger gamma = BigInteger.ONE;
-        for (int i = 0; i < threshold; i++) {
-            final BigInteger decryptionShareCurrentIndex = xCoords.get(i);
-            final BigInteger decryptionShareValue = signatureResponses.get(i).getSignatureShare();
-            final BigInteger lambda_0j = Polynomials.interpolateNoModulus(xCoords, L, BigInteger.ZERO, decryptionShareCurrentIndex);
-            gamma = gamma.multiply(decryptionShareValue.modPow(lambda_0j, rsaPublicParameters.getModulus()));
-        }
-        gamma = preFactor.multiply(gamma).mod(rsaPublicParameters.getModulus());
-
-        final BigInteger lPow = L.pow(3);
-        final GcdTriplet gcdTriplet = GcdTriplet.extendedGreatestCommonDivisor(lPow, e);
-        final BigInteger a = gcdTriplet.getX(); // TODO-now have this pre-computed in rsPubParams by generator
-        final BigInteger b = gcdTriplet.getY();
-
-        return Exponentiation.modPow(gamma, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n);
-    }
-
-    public static boolean validateDecryptionShare(final BigInteger ciphertext, final SignatureResponse decryptionShare,
-                                                  final ProactiveRsaPublicParameters rsaPublicParameters, ServerConfiguration serverConfiguration) { // TODO-now maybe remove this
-        final int n = serverConfiguration.getNumServers();
-        final int t = serverConfiguration.getReconstructionThreshold();
-        final BigInteger modulus = rsaPublicParameters.getModulus();
-        final BigInteger g = rsaPublicParameters.getG();
-        final BigInteger index = decryptionShare.getServerIndex();
-        final BigInteger verificationShare = rsaPublicParameters.computeAgentsFeldmanValues(t, n, index.intValue());
-        final BigInteger c = decryptionShare.getSignatureShareProof().getC();
-        final BigInteger recomputedC = ThresholdSignatures.recomputeC(ciphertext, n, modulus, g, verificationShare, decryptionShare);
-
-        if (recomputedC.equals(c)) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-
     public byte[] encryptStream(final String secretName, InputStream inputStream) throws BelowThresholdException, ResourceUnavailableException, IOException {
         logger.info("Starting proactive RSA encryption with secret " + secretName);
 
@@ -349,7 +335,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
         final byte[] plaintextData = IOUtils.toByteArray(inputStream);
 
-        final byte[] hybridCiphertext = rsaAesEncrypt(plaintextData, rsaPublicParameters.getExponent(), rsaPublicParameters.getModulus());
+        final byte[] hybridCiphertext = rsaAesEncrypt(plaintextData, rsaPublicParameters.getPublicKey().getPublicExponent(), rsaPublicParameters.getPublicKey().getModulus());
 
         logger.info("[DONE]");
 
