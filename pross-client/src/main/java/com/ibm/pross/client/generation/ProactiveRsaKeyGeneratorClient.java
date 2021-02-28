@@ -8,7 +8,6 @@ import com.ibm.pross.common.config.ServerConfiguration;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
 import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
-import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThresholdException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -76,9 +75,7 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
         final int numServers = serverConfiguration.getNumServers();
         final int threshold = serverConfiguration.getReconstructionThreshold();
 
-//        logger.info("Generating threshold RSA keys with parameters: [number of private key shares : " + numServers + ", threshold: " + threshold + "]");
         final RsaProactiveSharing rsaProactiveSharing = RsaProactiveSharing.generateSharing(numServers, threshold);
-//        final RsaSharing rsaSharing = RsaSharing.generateSharing(numServers, threshold);
         logger.info("RSA key generation complete");
 
         logger.info("Storing RSA private key");
@@ -110,7 +107,6 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
 
         // Each task deposits its result into this map after verifying it is correct and
         // consistent
-        // TODO: Add verification via proofs
         final List<Object> successfulResults = Collections.synchronizedList(new ArrayList<>());
 
         // Collect pulic data to register with servers
@@ -138,7 +134,7 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
-        for (final InetSocketAddress serverAddress : this.serverConfiguration.getServerAddresses()) {
+        for (final InetSocketAddress serverAddress : this.serverConfiguration.getServerAddresses()) { // TODO-now agent->json
             serverId++;
             final String serverIp = serverAddress.getAddress().getHostAddress();
             final int serverPort = CommonConfiguration.BASE_HTTP_PORT + serverId;
@@ -175,7 +171,7 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
             // Send share to the server
             final BigInteger share = rsaProactiveSharing.getShares()[serverId - 1].getY();
 
-            final String linkUrl = "https://" + serverIp + ":" + serverPort + "/store" +
+            final String linkUrl = "https://" + serverIp + ":" + serverPort + "/store" + // TODO-now move all to json body
                     "?secretName=" + this.secretName
                     + "&e=" + exponent +
                     "&n=" + modulus +

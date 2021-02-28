@@ -132,7 +132,7 @@ public class RsaKeyGeneratorClient extends BaseClient {
             final BigInteger share = rsaSharing.getShares()[serverId - 1].getY();
 
             final String linkUrl = "https://" + serverIp + ":" + serverPort + "/store?secretName=" + this.secretName
-                    + "&e=" + exponent + "&n=" + modulus + "&v=" + v + allVerificationKeys.toString() + "&share="
+                    + "&e=" + exponent + "&n=" + modulus + "&v=" + v + allVerificationKeys.toString() + "&share=" // TODO-now move to json
                     + share;
 
             // Create new task to get the partial exponentiation result from the server

@@ -87,61 +87,16 @@ public class ThresholdSignatures {
 																	  final RsaProactiveSharing rsaProactiveSharing,
 																	  final BigInteger L, BigInteger index) {
 
-		// Extract public configuration and share
-//		final ServerPublicConfiguration publicConfig = serverConfig.getServerPublicConfiguration();
-//		final ShamirShare share = serverConfig.getShare();
-
-		// Compute signature share
-//		final BigInteger n = publicConfig.getN();
-//		final int serverCount = publicConfig.getServerCount();
-//		final BigInteger delta = Polynomials.factorial(BigInteger.valueOf(serverCount));
-//		final BigInteger secretShare = share.getY();
-//		final BigInteger exponent = TWO.multiply(delta).multiply(secretShare);
-//		final BigInteger signatureShare = Exponentiation.modPow(inputMessage, exponent, n);
-
-		logger.info("produceProactiveSignatureResponse");
-
-//		final BigInteger privateKeyShare = rsaProactiveSharing.getShamirAdditiveSharesOfAgent().stream().map(SecretShare::getY).reduce(BigInteger::add).get();
 		final BigInteger privateKeyShare = rsaProactiveSharing.getSummedAgentsShamirKeyShares();
-
 		final BigInteger signatureShare = inputMessage.modPow(L.multiply(privateKeyShare), rsaProactiveSharing.getPublicKey().getModulus());
 
-		logger.info("[produceProactiveSignatureResponse]");
-
-
-
-		// Compute verification proof // TODO
 		BigInteger modulus = rsaProactiveSharing.getPublicKey().getModulus();
 		final BigInteger r = RandomNumberGenerator.generateRandomInteger(modulus.bitLength() + 2 * ThresholdSignatures.HASH_LEN);
 		final BigInteger g = rsaProactiveSharing.getG();
 
-//		final BigInteger cipherTextToFour = inputMessage.modPow(BigInteger.valueOf(4), modulus);
-//		final BigInteger partialDecryptionSquared = signatureShare.modPow(BigInteger.valueOf(2), modulus);
-//		BigInteger gPrime = g.modPow(r, modulus);
-//		BigInteger xPrime = inputMessage.modPow(BigInteger.valueOf(4).multiply(L).multiply(r), modulus);
-//
-//		final byte[] cBytes = Parse.concatenate(g, cipherTextToFour, signatureShare, partialDecryptionSquared, gPrime, xPrime);
-//
-//		final BigInteger c = ThresholdSignatures.hashToInteger(cBytes, ThresholdSignatures.HASH_MOD);
-
 		BigInteger c = computeC(inputMessage, signatureShare, L, modulus, g, r);
 		BigInteger z = privateKeyShare.multiply(c).add(r);
 
-//		final BigInteger v = publicConfig.getV();
-//		final BigInteger index = share.getX();
-//		final BigInteger vk = publicConfig.getVerificationKeys()[index.intValue() - 1];
-//		final BigInteger mToFourD = Exponentiation.modPow(inputMessage, BigInteger.valueOf(4).multiply(delta), n);
-//		final BigInteger r = RandomNumberGenerator.generateRandomInteger(n.bitLength() + 2 * HASH_LEN);
-//		final BigInteger vPrime = Exponentiation.modPow(v, r, n);
-//		final BigInteger xPrime = Exponentiation.modPow(mToFourD, r, n);
-//		final BigInteger shareSquared = Exponentiation.modPow(signatureShare, TWO, n);
-//
-//		final byte[] verificationString = Parse.concatenate(v, mToFourD, vk, shareSquared, vPrime, xPrime);
-//		final BigInteger c = hashToInteger(verificationString, TWO.pow(HASH_LEN));
-//		final BigInteger z = secretShare.multiply(c).add(r);
-//		final SignatureShareProof signatureShareProof = new SignatureShareProof(c, z);
-
-//		return new SignatureResponse(index, signatureShare, signatureShareProof);
 		return new SignatureResponse(index, signatureShare, new SignatureShareProof(c, z));
 	}
 

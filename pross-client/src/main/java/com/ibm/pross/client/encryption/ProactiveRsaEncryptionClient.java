@@ -63,16 +63,6 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
     }
 
-    private static BigInteger hashToInteger(final byte[] input, final BigInteger modulus) {
-        try {
-            byte[] hashed = MessageDigest.getInstance(CommonConfiguration.HASH_ALGORITHM).digest(input);
-            return (new BigInteger(1, hashed)).mod(modulus);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-
-    }
-
     public static byte[] rsaAesEncrypt(final byte[] message, BigInteger exponent, BigInteger modulus) {
 
         try {
@@ -157,8 +147,6 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         logger.info("Decryption shares generated");
 
         // Perform validation of decryption shares
-//        logger.info("Verifying decryption shares...");
-//        List<SignatureResponse> validatedDecryptionShares = decryptionShares;
         List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
         for (SignatureResponse decryptionShare : decryptionShares) {
             BigInteger serverIndex = decryptionShare.getServerIndex();
@@ -177,8 +165,6 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         }
         logger.info("Number of validated shares: " + validatedDecryptionShares.size());
         logger.info("[DONE]");
-
-//        logger.debug("Recovered key length: " + encryptedPaddedSecretKey.toString(2).length());
 
         // Decrypt symmetric key with threshold RSA
         final byte[] recoveredPaddedSymmetricKey = recoverPlaintext(encryptedPaddedSecretKey, validatedDecryptionShares, rsaPublicParameters, serverConfiguration).toByteArray();
@@ -253,7 +239,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
                     final Object obj = parser.parse(json);
                     final JSONObject jsonObject = (JSONObject) obj;
                     final Long responder = (Long) jsonObject.get("responder");
-                    final long epoch = (Long) jsonObject.get("epoch");
+                    final long epoch = (Long) jsonObject.get("epoch"); // TODO-now json -> signatureResponse
 
                     final JSONArray shareProof = (JSONArray) jsonObject.get("share_proof");
                     SignatureShareProof decryptionShareProof = new SignatureShareProof(new BigInteger(shareProof.get(0).toString()),
@@ -300,16 +286,13 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
     public static BigInteger recoverPlaintext(final BigInteger ciphertext,
                                               final List<SignatureResponse> signatureResponses, final ProactiveRsaPublicParameters rsaPublicParameters,
-                                              final ServerConfiguration serverConfiguration)
-            throws BadArgumentException {
+                                              final ServerConfiguration serverConfiguration) throws BadArgumentException {
 
         logger.info("recoverPlaintext");
-        logger.info("signatureResponses-num :: " + signatureResponses.size());
-                // Extract values from configuration
+
+        // Extract values from configuration
         final BigInteger n = rsaPublicParameters.getModulus();
         final BigInteger e = rsaPublicParameters.getExponent();
-        final int serverCount = serverConfiguration.getNumServers();
-        final BigInteger delta = Polynomials.factorial(BigInteger.valueOf(serverCount));
         final int threshold = serverConfiguration.getReconstructionThreshold();
 
         // Determine coordinates
@@ -319,18 +302,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         }
 
         // Interpolate polynomial
-        logger.info("Interpolate decryption shares from servers: " + xCoords);
-//        BigInteger w = BigInteger.ONE;
-//        for (int i = 0; i < threshold; i++) {
-//            final SignatureResponse signatureResponse = signatureResponses.get(i);
-//
-//            final BigInteger j = signatureResponse.getServerIndex();
-//            final BigInteger signatureShare = signatureResponse.getSignatureShare();
-//            final BigInteger L_ij = Polynomials.interpolateNoModulus(xCoords, delta, BigInteger.ZERO, j);
-//
-//            w = w.multiply(Exponentiation.modPow(signatureShare, ThresholdSignatures.TWO.multiply(L_ij), n));
-//        }
-        BigInteger L = (Polynomials.factorial(BigInteger.valueOf(serverConfiguration.getNumServers())));
+        BigInteger L = (Polynomials.factorial(BigInteger.valueOf(serverConfiguration.getNumServers()))); // TODO-now move to special class
         BigInteger preFactor = ciphertext.modPow(L.pow(3).multiply(rsaPublicParameters.getD_pub()), rsaPublicParameters.getModulus());
         BigInteger gamma = BigInteger.ONE;
         for (int i = 0; i < threshold; i++) {
@@ -341,147 +313,24 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         }
         gamma = preFactor.multiply(gamma).mod(rsaPublicParameters.getModulus());
 
-        logger.info("[Interpolation complete]");
-
-        // Use Extended Euclidean Algorithm to solve for the signature
-//        final BigInteger ePrime = delta.multiply(delta).multiply(BigInteger.valueOf(4)); // 4*D*D
-//        final GcdTriplet gcdTriplet = GcdTriplet.extendedGreatestCommonDivisor(ePrime, e);
-//        final BigInteger a = gcdTriplet.getX();
-//        final BigInteger b = gcdTriplet.getY();
         final BigInteger lPow = L.pow(3);
         final GcdTriplet gcdTriplet = GcdTriplet.extendedGreatestCommonDivisor(lPow, e);
-        final BigInteger a = gcdTriplet.getX();
+        final BigInteger a = gcdTriplet.getX(); // TODO-now have this pre-computed in rsPubParams by generator
         final BigInteger b = gcdTriplet.getY();
 
-
-//        logger.info("Calculated interpolated decryption: " + new BigInteger(1, Exponentiation.modPow(w, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n).toByteArray()));
-//        logger.info("Calculated interpolated decryption: " + Hex.encodeHexString(Exponentiation.modPow(w, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n).toByteArray()));
-
         return Exponentiation.modPow(gamma, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n);
-
-//        // Extract values from configuration
-//        final BigInteger n = rsaPublicParameters.getModulus();
-//        final BigInteger e = rsaPublicParameters.getExponent();
-//        final int serverCount = serverConfiguration.getNumServers();
-//        final BigInteger delta = Polynomials.factorial(BigInteger.valueOf(serverCount));
-//        final int threshold = serverConfiguration.getReconstructionThreshold();
-//
-//        // Determine coordinates
-//        final BigInteger[] xCoords = new BigInteger[threshold];
-//        for (int i = 0; i < threshold; i++) {
-//            final SignatureResponse signatureResponse = signatureResponses.get(i);
-//            xCoords[i] = signatureResponse.getServerIndex();
-//        }
-//
-//        // Interpolate polynomial
-//        logger.info("Interpolate decryption shares from servers: " + Arrays.toString(xCoords));
-//        BigInteger w = BigInteger.ONE;
-//        for (int i = 0; i < threshold; i++) {
-//            final SignatureResponse signatureResponse = signatureResponses.get(i);
-//
-//            final BigInteger j = signatureResponse.getServerIndex();
-//            final BigInteger signatureShare = signatureResponse.getSignatureShare();
-//            final BigInteger L_ij = Polynomials.interpolateNoModulus(xCoords, delta, BigInteger.ZERO, j);
-//
-//            w = w.multiply(Exponentiation.modPow(signatureShare, ThresholdSignatures.TWO.multiply(L_ij), n));
-//        }
-//
-//        logger.info("[Interpolation complete]");
-//
-//        // Use Extended Euclidean Algorithm to solve for the signature
-//        final BigInteger ePrime = delta.multiply(delta).multiply(BigInteger.valueOf(4)); // 4*D*D
-//        final GcdTriplet gcdTriplet = GcdTriplet.extendedGreatestCommonDivisor(ePrime, e);
-//        final BigInteger a = gcdTriplet.getX();
-//        final BigInteger b = gcdTriplet.getY();
-//
-////        logger.info("Calculated interpolated decryption: " + new BigInteger(1, Exponentiation.modPow(w, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n).toByteArray()));
-////        logger.info("Calculated interpolated decryption: " + Hex.encodeHexString(Exponentiation.modPow(w, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n).toByteArray()));
-//
-//        return Exponentiation.modPow(w, a, n).multiply(Exponentiation.modPow(ciphertext, b, n)).mod(n);
     }
 
     public static boolean validateDecryptionShare(final BigInteger ciphertext, final SignatureResponse decryptionShare,
-                                                  final ProactiveRsaPublicParameters rsaPublicParameters, ServerConfiguration serverConfiguration) {
-//        logger.info("validateDecryptionShare");
-//
-//        logger.info(ciphertext);
-//        logger.info(decryptionShare);
-//        logger.info(rsaPublicParameters);
-//        logger.info(serverConfiguration);
+                                                  final ProactiveRsaPublicParameters rsaPublicParameters, ServerConfiguration serverConfiguration) { // TODO-now maybe remove this
         final int n = serverConfiguration.getNumServers();
         final int t = serverConfiguration.getReconstructionThreshold();
-//
-//        final BigInteger L = Polynomials.factorial(BigInteger.valueOf(n));
-////        logger.info(L);
         final BigInteger modulus = rsaPublicParameters.getModulus();
-////        logger.info(modulus);
         final BigInteger g = rsaPublicParameters.getG();
-////        logger.info(g);
-//
         final BigInteger index = decryptionShare.getServerIndex();
-////        logger.info(index);
-//        final BigInteger partialDecryption = decryptionShare.getSignatureShare();
-////        logger.info(partialDecryption);
-//        final BigInteger z = decryptionShare.getSignatureShareProof().getZ();
-////        logger.info(z);
-//        final BigInteger c = decryptionShare.getSignatureShareProof().getC();
-////        logger.info(c);
-//
-//        logger.info("AAAAAAAAAAAAAAAAAAAAAAAAll params received");
-//
         final BigInteger verificationShare = rsaPublicParameters.computeAgentsFeldmanValues(t, n, index.intValue());
-//        BigInteger ciphertextToFourL = ciphertext.modPow(BigInteger.valueOf(4).multiply(L), modulus);
-//        BigInteger partialDecryptionSquared = partialDecryption.modPow(BigInteger.valueOf(2), modulus);
-//
-//        final BigInteger zVerifPart = g.modPow(z, modulus);
-//        final BigInteger invVerifSharePart = verificationShare.modInverse(modulus).modPow(c, modulus);
-//        final BigInteger vTerms = zVerifPart.multiply(invVerifSharePart).mod(modulus);
-//
-//        final BigInteger zSharePart = ciphertextToFourL.modPow(z, modulus);
-//        final BigInteger invSharePart = partialDecryption.modInverse(modulus).modPow(BigInteger.valueOf(4).multiply(c), modulus);
-//        final BigInteger xTerms = zSharePart.multiply(invSharePart).mod(modulus);
-//
-//        final byte[] validationString = Parse.concatenate(g, ciphertextToFourL, partialDecryption, partialDecryptionSquared, vTerms, xTerms);
-//        BigInteger validation = ThresholdSignatures.hashToInteger(validationString, ThresholdSignatures.HASH_MOD);
-
         final BigInteger c = decryptionShare.getSignatureShareProof().getC();
-
         final BigInteger recomputedC = ThresholdSignatures.recomputeC(ciphertext, n, modulus, g, verificationShare, decryptionShare);
-
-
-//        final BigInteger v = rsaPublicParameters.getVerificationKey();
-//        final List<BigInteger> verificationKeys = rsaPublicParameters.getShareVerificationKeys();
-//
-//        final int serverCount = serverConfiguration.getNumServers();
-//
-//        // Extract elements from returned signature triplet
-//        final BigInteger index = decryptionShare.getServerIndex();
-//        final BigInteger signatureShare = decryptionShare.getSignatureShare();
-//        final BigInteger z = decryptionShare.getSignatureShareProof().getZ();
-//        final BigInteger c = decryptionShare.getSignatureShareProof().getC();
-//
-//        // Perform verification
-//        final BigInteger vToZ = Exponentiation.modPow(v, z, n);
-//        final int keyIndex = index.intValue() - 1;
-//        if ((keyIndex < 0) || (keyIndex >= verificationKeys.size())) {
-//            return false;
-//        }
-//        final BigInteger vk = verificationKeys.get(keyIndex);
-//        final BigInteger invVerificationKey = Exponentiation.modInverse(vk, n);
-//        final BigInteger invVkToC = Exponentiation.modPow(invVerificationKey, c, n);
-//        final BigInteger vTerms = vToZ.multiply(invVkToC).mod(n);
-//
-//        final BigInteger delta = Polynomials.factorial(BigInteger.valueOf(serverCount));
-//        final BigInteger mToFourD = Exponentiation.modPow(ciphertext, BigInteger.valueOf(4).multiply(delta), n);
-//        final BigInteger xToZ = Exponentiation.modPow(mToFourD, z, n);
-//        final BigInteger invShare = Exponentiation.modInverse(signatureShare, n);
-//        final BigInteger invShareToTwoC = Exponentiation.modPow(invShare, ThresholdSignatures.TWO.multiply(c), n);
-//        final BigInteger xTerms = xToZ.multiply(invShareToTwoC).mod(n);
-//
-//        final BigInteger shareSquared = Exponentiation.modPow(signatureShare, ThresholdSignatures.TWO, n);
-//
-//        final byte[] verificationString = Parse.concatenate(v, mToFourD, vk, shareSquared, vTerms, xTerms);
-//        final BigInteger recomputedC = hashToInteger(verificationString, ThresholdSignatures.HASH_MOD);
 
         if (recomputedC.equals(c)) {
             return true;

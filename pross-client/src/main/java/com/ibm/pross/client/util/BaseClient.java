@@ -451,7 +451,7 @@ public class BaseClient {
                     final JSONObject jsonObject = (JSONObject) obj;
 
 
-                    final Long responder = Long.parseLong(jsonObject.get("responder").toString());
+                    final Long responder = Long.parseLong(jsonObject.get("responder").toString()); // TODO-now json->publicRsaParams
                     final long epoch = Long.parseLong(jsonObject.get("epoch").toString());
                     final BigInteger publicExponent = new BigInteger((String) jsonObject.get("public_key"));
                     final BigInteger publicModulus = new BigInteger((String) jsonObject.get("public_modulus"));
@@ -474,10 +474,6 @@ public class BaseClient {
                     for (int i = 0; i < numShareholders; i++) {
                         additiveVerificationKeys.add(new SecretShare(BigInteger.valueOf(i + 1), new BigInteger((String) additiveVerificationKeysArray.get(i))));
                     }
-
-//                    for (int i = 1; i <= numShareholders; i++) {
-//                        shareVerificationKeys.add(new BigInteger((String) jsonObject.get("share_verification_key_" + i)));
-//                    }
 
                     if ((responder == thisServerId)) {
 

@@ -76,7 +76,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
     @Override
     public void authenticatedClientHandle(final HttpExchange exchange, final String username)
             throws IOException, UnauthorizedException, NotFoundException, BadRequestException,
-            ResourceUnavailableException, ConflictException, InternalServerException {
+            ResourceUnavailableException, ConflictException, InternalServerException { // TODO-now refactor
 
         logger.info("Starting store operation");
 
@@ -153,7 +153,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
             response = "s_" + serverIndex + " has been unset, DKG will use a random value for '" + secretName + "'.";
         } else {
             final BigInteger shareValue = new BigInteger(shareValues.get(0));
-            if ((e != null) && (n != null) && (v != null)) { // TODO-thesis: add better check for different types of storage requests
+            if ((e != null) && (n != null) && (v != null)) { // TODO-now specify in store request
                 // Store RSA share, e and exponent n
                 RSAPublicKeySpec spec = new RSAPublicKeySpec(n, e);
                 KeyFactory keyFactory;
@@ -164,7 +164,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
                     if (jsonParameters != null) {
                         logger.info("Storing proactive RSA values");
                         final RsaProactiveSharing rsaProactiveSharing = createProactiveRsaSharingFromParameters(jsonParameters, shareholder, keyFactory,
-                                spec, null, null);
+                                spec, null, null); // TODO-now remvoe v and verificationKeys
                         shareholder.setProactiveRsaSecret(rsaProactiveSharing);
                         response = "proactive RSA share have been stored.";
                     } else {
@@ -234,7 +234,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
             throw new RuntimeException();
         }
 
-        List<BigInteger> multipliedFeldmanVerificationValues = new ArrayList<>();
+        List<BigInteger> multipliedFeldmanVerificationValues = new ArrayList<>(); // TODO-now have this directly precomputed
         for (int i = 0; i < shareholder.getK(); i++) {
             BigInteger accumulator = BigInteger.ONE;
             for (int j = 0; j < shareholder.getN(); j++) {
@@ -247,7 +247,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
 
         BigInteger modulus = rsaPublicKeySpec.getModulus();
 
-        List<BigInteger> agentsFeldmanVerificationValues = new ArrayList<>();
+        List<BigInteger> agentsFeldmanVerificationValues = new ArrayList<>();  // TODO-now have this directly precomputed
         for (int i = 0; i < shareholder.getN(); i++) {
             BigInteger result = BigInteger.ONE;
             for (int j = 0; j < shareholder.getK(); j++) {
@@ -260,7 +260,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
         RsaProactiveSharing rsaProactiveSharing = new RsaProactiveSharing(null, null, shareholder.getN(),
                 shareholder.getK(), null, 0, 0, null, null, (RSAPublicKey) keyFactory.generatePublic(rsaPublicKeySpec),
                 null, null, null, d_pub, g, null, null,
-                feldmanAdditiveVerificationValues, additiveVerificationKeys, null, null);
+                feldmanAdditiveVerificationValues, additiveVerificationKeys, null, null); // TODO-now: json->agent object
 
         rsaProactiveSharing.setShamirAdditiveSharesOfAgent(agentShamirShares);
         rsaProactiveSharing.setAdditiveShareOfAgent(d_i);
