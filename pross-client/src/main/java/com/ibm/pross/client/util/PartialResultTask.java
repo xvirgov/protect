@@ -107,6 +107,7 @@ public abstract class PartialResultTask implements Runnable {
         try {
             // Create HTTPS connection to the remote server
 //			System.out.println(this.requestUrl);
+
             final URL url = new URL(this.requestUrl);
             final HttpsURLConnection httpsConnection = (HttpsURLConnection) url.openConnection();
             httpsConnection.setDoOutput(true);

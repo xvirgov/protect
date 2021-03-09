@@ -9,7 +9,6 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -26,18 +25,15 @@ import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
-import com.ibm.pross.common.util.shamir.ShamirShare;
 import com.ibm.pross.server.app.avpss.ApvssShareholder;
 import com.ibm.pross.server.app.http.HttpRequestProcessor;
 import com.ibm.pross.server.configuration.permissions.AccessEnforcement;
 import com.ibm.pross.server.configuration.permissions.ClientPermissions.Permissions;
 import com.sun.net.httpserver.HttpExchange;
-import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
 /**
@@ -181,6 +177,19 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
                     final ProactiveRsaShareholder proactiveRsaShareholder = ProactiveRsaShareholder.getParams(jsonParameters);
 
                     shareholder.setProactiveRsaShareholder(proactiveRsaShareholder);
+
+                    // Start proactive RSA process
+
+                    boolean started = shareholder.refreshRsaSharing(0);
+
+                    if (started) {
+//                        shareholder.waitForEpochIncrease(shareholder.getEpoch()); // wait until epoch number is increased
+                    }
+                    else {
+                        logger.error("Secret was already established");
+                        throw new ConflictException();
+                    }
+
                     response = "proactive RSA share have been stored.";
                 } catch (NoSuchAlgorithmException | InvalidKeySpecException exception) {
                     logger.error(exception);

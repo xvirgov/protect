@@ -10,7 +10,7 @@ import java.util.List;
 
 public class ProactiveRsaGeneratorTest extends TestCase {
     private final int numServers = 5;
-    private final int threshold = 5;
+    private final int threshold = 3;
 
     @Test
     public void testGenerateRsaProactiveShareholders() throws InvalidKeySpecException, NoSuchAlgorithmException {

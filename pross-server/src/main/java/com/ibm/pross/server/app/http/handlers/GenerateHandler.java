@@ -18,6 +18,8 @@ import com.ibm.pross.server.app.http.HttpRequestProcessor;
 import com.ibm.pross.server.configuration.permissions.AccessEnforcement;
 import com.ibm.pross.server.configuration.permissions.ClientPermissions.Permissions;
 import com.sun.net.httpserver.HttpExchange;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This handler initiates a Distributed Key Generation for a secret. Client's
@@ -41,6 +43,8 @@ import com.sun.net.httpserver.HttpExchange;
 @SuppressWarnings("restriction")
 public class GenerateHandler extends AuthenticatedClientRequestHandler {
 
+	private static final Logger logger = LogManager.getLogger(GenerateHandler.class);
+
 	public static final Permissions REQUEST_PERMISSION = Permissions.GENERATE;
 
 	// Query name
@@ -60,6 +64,8 @@ public class GenerateHandler extends AuthenticatedClientRequestHandler {
 	@Override
 	public void authenticatedClientHandle(final HttpExchange exchange, final String username)
 			throws IOException, UnauthorizedException, NotFoundException, ConflictException, BadRequestException {
+
+		logger.info("Starting generate handler...");
 
 		// Extract secret name from request
 		// final String secretName =

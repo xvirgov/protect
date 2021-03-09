@@ -121,7 +121,7 @@ public class ProactiveRsaGenerator {
             // Create shamir shares
             List<SecretShare> shamirShares = new ArrayList<>();
             for(int j = 0; j < numServers; j++) {
-                shamirShares.add(Polynomials.evaluatePolynomial(coefficients, BigInteger.valueOf(j + 1), m));
+                shamirShares.add(Polynomials.evaluatePolynomial(coefficients, BigInteger.valueOf(j + 1), n));
             }
             shamirAdditiveShares.add(shamirShares);
 

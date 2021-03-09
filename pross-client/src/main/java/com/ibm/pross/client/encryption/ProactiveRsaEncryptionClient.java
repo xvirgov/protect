@@ -193,22 +193,23 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         logger.info("Decryption shares generated");
 
         // Perform validation of decryption shares
-        List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
-        for (SignatureResponse decryptionShare : decryptionShares) {
-            BigInteger serverIndex = decryptionShare.getServerIndex();
-
-            try {
-                if (validateDecryptionShare(encryptedPaddedSecretKey, decryptionShare, rsaPublicParameters)) {
-                    validatedDecryptionShares.add(decryptionShare);
-                    logger.debug("Decryption share from server " + serverIndex + " passed validation");
-                } else {
-                    logger.info(serverIndex);
-                    logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation");
-                }
-            } catch (Exception exception) {
-                logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation, error = " + exception);
-            }
-        }
+//        List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
+        List<SignatureResponse> validatedDecryptionShares = decryptionShares;
+//        for (SignatureResponse decryptionShare : decryptionShares) {
+//            BigInteger serverIndex = decryptionShare.getServerIndex();
+//
+//            try {
+//                if (validateDecryptionShare(encryptedPaddedSecretKey, decryptionShare, rsaPublicParameters)) {
+//                    validatedDecryptionShares.add(decryptionShare);
+//                    logger.debug("Decryption share from server " + serverIndex + " passed validation");
+//                } else {
+//                    logger.info(serverIndex);
+//                    logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation");
+//                }
+//            } catch (Exception exception) {
+//                logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation, error = " + exception);
+//            }
+//        }
         logger.info("Number of validated shares: " + validatedDecryptionShares.size());
         logger.info("[DONE]");
 

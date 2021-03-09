@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 
 # TODO-thesis: move file names into variables
 
@@ -107,16 +107,11 @@ rm ssl-extensions-x509.cnf-tmp
 rm -rf $CONFIG_DIR || true
 mkdir -p $CONFIG_DIR/ca $CONFIG_DIR/server/bft-config $CONFIG_DIR/client && \
 cp common.config $CONFIG_DIR/server && \
-cp ../pross-server/config/ca/ca-cert-clients.pem $CONFIG_DIR/ca && \
-cp ../pross-server/config/ca/ca-key-clients $CONFIG_DIR/ca && \
-cp -R ../pross-server/config/client $CONFIG_DIR && \
 cp -R ../pross-server/config/server/bft-config $CONFIG_DIR/server && \
 mv ssl-extensions-x509.cnf $CONFIG_DIR && \
-cp setup-config.sh $CONFIG_DIR && \
-cd $CONFIG_DIR && \
-./setup-config.sh "$NODES_NR" && \
-rm setup-config.sh ssl-extensions-x509.cnf && \
-cd ..
+./setup-config.sh "$NODES_NR" $CONFIG_DIR #&& \
+#rm setup-config.sh ssl-extensions-x509.cnf && \
+#cd ..
 
 # Prepare configuration directories for each server separately
 i=1

@@ -151,6 +151,10 @@ public class ChainBuildingMessageHandler implements ChannelListener, MessageHand
 				}
 			}
 		}
+//		else {
+//			logger.error("Not enough message votes!");
+//			throw new RuntimeException();
+//		}
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -212,8 +216,10 @@ public class ChainBuildingMessageHandler implements ChannelListener, MessageHand
 	}
 
 	public void send(final Message message) {
+		logger.info("send");
 		final SignedMessage signedMessage = new SignedMessage((Message) message, keyLoader.getSigningKey());
 		this.sender.broadcast(signedMessage);
+		logger.info("send - completed");
 	}
 
 	public void send(final SignedMessage signedMessage) {

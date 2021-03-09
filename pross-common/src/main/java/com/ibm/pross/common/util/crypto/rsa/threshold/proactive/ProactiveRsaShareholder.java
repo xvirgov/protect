@@ -21,9 +21,9 @@ public class ProactiveRsaShareholder {
     private final ProactiveRsaPublicParameters proactiveRsaPublicParameters;
 
     // Secret shares
-    private final BigInteger d_i;
-    private final List<SecretShare> s;
-    private final BigInteger s_i;
+    private BigInteger d_i;
+    private List<SecretShare> s;
+    private BigInteger s_i;
 
     private ProactiveRsaShareholder(ProactiveRsaShareholderBuilder proactiveRsaShareholderBuilder) {
         this.proactiveRsaPublicParameters = proactiveRsaShareholderBuilder.proactiveRsaPublicParameters;
@@ -116,6 +116,21 @@ public class ProactiveRsaShareholder {
 
     public BigInteger getS_i() {
         return s_i;
+    }
+
+    public ProactiveRsaShareholder setD_i(BigInteger d_i) {
+        this.d_i = d_i;
+        return this;
+    }
+
+    public ProactiveRsaShareholder setS(List<SecretShare> s) {
+        this.s = s;
+        return this;
+    }
+
+    public ProactiveRsaShareholder setS_i(BigInteger s_i) {
+        this.s_i = s_i;
+        return this;
     }
 
     @Override

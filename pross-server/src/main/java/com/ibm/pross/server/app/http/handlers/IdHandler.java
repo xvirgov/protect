@@ -10,17 +10,22 @@ import com.ibm.pross.common.exceptions.http.BadRequestException;
 import com.ibm.pross.common.exceptions.http.HttpStatusCode;
 import com.ibm.pross.common.exceptions.http.NotFoundException;
 import com.ibm.pross.common.exceptions.http.UnauthorizedException;
+import com.ibm.pross.server.app.ServerApplication;
 import com.ibm.pross.server.app.avpss.ApvssShareholder;
 import com.ibm.pross.server.configuration.permissions.AccessEnforcement;
 import com.ibm.pross.server.configuration.permissions.ClientPermissions;
 import com.ibm.pross.server.configuration.permissions.ClientPermissions.Permissions;
 import com.sun.net.httpserver.HttpExchange;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This handler returns the id of the authenticated client
  */
 @SuppressWarnings("restriction")
 public class IdHandler extends AuthenticatedClientRequestHandler {
+
+	private static final Logger logger = LogManager.getLogger(IdHandler.class);
 
 	private final AccessEnforcement accessEnforcement;
 	private final ConcurrentMap<String, ApvssShareholder> shareholders;
@@ -35,6 +40,8 @@ public class IdHandler extends AuthenticatedClientRequestHandler {
 	@Override
 	public void authenticatedClientHandle(final HttpExchange exchange, final String username)
 			throws IOException, UnauthorizedException, NotFoundException, BadRequestException {
+
+		logger.info("Starting id");
 
 		final StringBuilder stringBuilder = new StringBuilder();
 

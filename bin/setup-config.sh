@@ -1,13 +1,16 @@
-#!/bin/bash -e
+                #!/bin/bash -e
 
 NODES_NR=$1
+CONFIG_DIR=$2
 CA_KEY=ca-key-server
 CA_CERT=ca-cert-server
 CLIENT_CERT=cert
 #clientPK=public
 CLIENT_SK=private
 
-mkdir -p ca server/certs server/keys
+cd $CONFIG_DIR
+
+mkdir -p ca server/certs server/keys client/keys client/certs
 
 # Generate keys and certificates for servers
 i=1
@@ -23,7 +26,23 @@ do
 	i=$((i+1))
 done
 
+# Client server key
 java -classpath ../../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli server/keys 0
+
+# User config
+echo "[prf-secret]
+administrator       = generate,delete,disable,enable,info,exponentiate,read,store,recover,sign
+
+[my-secret]
+administrator       = generate,delete,disable,enable,info,exponentiate,read,store,recover,sign
+[rsa-secret]
+administrator       = generate,delete,disable,enable,info,exponentiate,read,store,recover,sign" > client/clients.config
+
+# Client keys
+cd ..
+java -classpath ../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli $CONFIG_DIR/client/keys administrator
+java -classpath ../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.CertificateAuthorityCli $CONFIG_DIR/ca $CONFIG_DIR/client/keys $CONFIG_DIR/client/certs false
+
 #openssl req -new -sha256 -key server/keys/$CLIENT_SK-0 -out my-0.csr -subj '/CN=Server client '0'/ST=TEST/O=TEST'
 #openssl ecparam -name secp521r1 -genkey -noout -out ca/$CA_KEY-0
 #openssl req -x509 -new -nodes -key ca/$CA_KEY-0 -sha256 -days 1024 -out ca/$CA_CERT-0.pem -subj '/CN=CA Server '0'/ST=TEST/O=TEST'

@@ -10,6 +10,8 @@ public class Payload  {
 
 	public enum OpCode {
 		// AVSS
+		RSA, // Proactive-RSA sharing (additive shares)
+		FS, // Feldman sharing for Proactive-RSA
 		PS, // Public Sharing
 		ZK, // Zero Knowledge
 		NOOP, // No-Op

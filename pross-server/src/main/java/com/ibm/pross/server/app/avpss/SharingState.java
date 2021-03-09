@@ -2,12 +2,12 @@ package com.ibm.pross.server.app.avpss;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Date;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.ibm.pross.common.util.pvss.PolynomialSharing;
+import com.ibm.pross.common.util.pvss.ProactiveRsaSharing;
 import org.apache.commons.codec.binary.Hex;
 
 import com.ibm.pross.common.config.CommonConfiguration;
@@ -57,6 +57,10 @@ public class SharingState {
 	// Used to time operation
 	private volatile long startTime;
 
+	// Proactive RSA parameters
+	private final SortedMap<Long, ProactiveRsaSharing> receivedProactiveRsaSharings;
+	private final SortedMap<Long, PolynomialSharing> receivedPolynomialSharings;
+
 	public SharingState(final int n, final int k, final long epochNumber) {
 		this.epochNumber = epochNumber;
 
@@ -69,6 +73,10 @@ public class SharingState {
 		this.qualifiedProofs = new TreeMap<>();
 		this.sharePublicKeys = new EcPoint[n + 1]; // position 0 = g^s
 		this.feldmanValues = new EcPoint[k];
+
+		/** Variables to track RSA sharing **/
+		this.receivedProactiveRsaSharings = new TreeMap<>();
+		this.receivedPolynomialSharings = new TreeMap<>();
 	}
 
 	public EcPoint[] getFeldmanValues() {
@@ -184,4 +192,19 @@ public class SharingState {
 		this.rsaSharing = rsaSharing;
 	}
 
+	public void addProactiveRsaSharing(long senderIndex, ProactiveRsaSharing proactiveRsaSharing) {
+		this.receivedProactiveRsaSharings.put(senderIndex, proactiveRsaSharing);
+	}
+
+	public SortedMap<Long, ProactiveRsaSharing> getReceivedProactiveRsaSharings() {
+		return receivedProactiveRsaSharings;
+	}
+
+	public void addPolynomialSharing(long senderIndex, PolynomialSharing polynomialSharing) {
+		this.receivedPolynomialSharings.put(senderIndex, polynomialSharing);
+	}
+
+	public SortedMap<Long, PolynomialSharing> getReceivedPolynomialSharings() {
+		return receivedPolynomialSharings;
+	}
 }

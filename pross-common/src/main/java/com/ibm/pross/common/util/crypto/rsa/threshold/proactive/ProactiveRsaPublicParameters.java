@@ -30,7 +30,7 @@ public class ProactiveRsaPublicParameters {
     // Crypto scheme parameters
     private final RSAPublicKey publicKey;
     private final BigInteger g;
-    private final BigInteger d_pub;
+    private BigInteger d_pub;
 
     // Scheme security config
     private final BigInteger r; // caps the number of epochs
@@ -40,14 +40,14 @@ public class ProactiveRsaPublicParameters {
     private final BigInteger coeffR;
 
     // Verification values
-    private final List<SecretShare> w; // dimension: n
-    private final List<List<SecretShare>> b; // dimension: nxt
+    private List<SecretShare> w; // dimension: n
+    private List<List<SecretShare>> b; // dimension: nxt
 
     // Pre-computed values
     private final BigInteger L; // L = n!
 
     // Verification values
-    private final List<SecretShare> bAgent;  // dimension: n
+    private List<SecretShare> bAgent;  // dimension: n
 
     // GCD values (for decryption)
     private final BigInteger aGcd;
@@ -381,6 +381,26 @@ public class ProactiveRsaPublicParameters {
 
     public int getEpoch() {
         return epoch;
+    }
+
+    public ProactiveRsaPublicParameters setD_pub(BigInteger d_pub) {
+        this.d_pub = d_pub;
+        return this;
+    }
+
+    public ProactiveRsaPublicParameters setW(List<SecretShare> w) {
+        this.w = w;
+        return this;
+    }
+
+    public ProactiveRsaPublicParameters setB(List<List<SecretShare>> b) {
+        this.b = b;
+        return this;
+    }
+
+    public ProactiveRsaPublicParameters setbAgent(List<SecretShare> bAgent) {
+        this.bAgent = bAgent;
+        return this;
     }
 
     @Override

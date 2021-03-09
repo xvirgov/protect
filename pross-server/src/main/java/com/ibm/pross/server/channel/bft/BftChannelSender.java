@@ -2,6 +2,7 @@ package com.ibm.pross.server.channel.bft;
 
 import com.ibm.pross.server.app.MessageStatusCli;
 import com.ibm.pross.server.channel.ChannelSender;
+import com.ibm.pross.server.communication.handlers.ChainBuildingMessageHandler;
 import com.ibm.pross.server.messages.SignedMessage;
 import com.ibm.pross.server.util.MessageSerializer;
 
@@ -21,6 +22,7 @@ public class BftChannelSender implements ChannelSender {
 
 	@Override
 	public void broadcast(SignedMessage message) {
+		logger.info("broadcast");
 
 		// Serialize message to bytes
 		byte[] serializedMessage = MessageSerializer.serializeSignedMessage(message);
@@ -28,6 +30,8 @@ public class BftChannelSender implements ChannelSender {
 		// Send total ordered message
 		//logger.info("Sending message: " + HexUtil.binToHex(serializedMessage));
 		this.serviceProxy.invokeOrdered(serializedMessage);
+
+		logger.info("broadcast - completed");
 
 		// Give some time for everyone to process the message
 		try {
