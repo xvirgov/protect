@@ -129,8 +129,6 @@ public class RsaEncryptionClient extends BaseClient {
 
             logger.info("Encryption process finished");
 
-            System.out.println("Ciphertext1: " + new BigInteger(symmetricKeyCiphertext));
-
             return Parse.concatenate(symmetricKeyCiphertext, result, hash);
         } catch (GeneralSecurityException e) {
             logger.error(e);

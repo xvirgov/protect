@@ -69,7 +69,7 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 	public void authenticatedClientHandle(final HttpExchange exchange, final String username) throws IOException,
 			UnauthorizedException, NotFoundException, BadRequestException, ResourceUnavailableException {
 
-		logger.info("Performing partial signature/decryption...");
+		logger.debug("Performing partial signature/decryption...");
 
 		// Extract secret name from request
 		final String queryString = exchange.getRequestURI().getQuery();

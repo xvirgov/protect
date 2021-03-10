@@ -172,8 +172,6 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
                 }
             } else if (sharingType != null && sharingType.equals(SHARING_TYPE_VALUE_PROACTIVE_RSA)) {
                 try {
-                    logger.info("Storing proactive RSA values");
-
                     final ProactiveRsaShareholder proactiveRsaShareholder = ProactiveRsaShareholder.getParams(jsonParameters);
 
                     shareholder.setProactiveRsaShareholder(proactiveRsaShareholder);

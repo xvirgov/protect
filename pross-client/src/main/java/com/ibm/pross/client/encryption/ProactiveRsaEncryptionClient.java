@@ -82,7 +82,6 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
             keyGenerator.init(AES_KEY_SIZE, random);
             SecretKey secretKey = keyGenerator.generateKey();
-            logger.info("Session key: " + Arrays.toString(secretKey.getEncoded()));
             logger.info("[DONE]");
 
             // Encrypt data using AES
@@ -118,8 +117,6 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             logger.info("[DONE]");
 
             logger.info("Encryption process finished");
-
-            System.out.println("Ciphertext1: " + new BigInteger(symmetricKeyCiphertext));
 
             return Parse.concatenate(symmetricKeyCiphertext, result, hash);
         } catch (GeneralSecurityException e) {
@@ -193,23 +190,22 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         logger.info("Decryption shares generated");
 
         // Perform validation of decryption shares
-//        List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
-        List<SignatureResponse> validatedDecryptionShares = decryptionShares;
-//        for (SignatureResponse decryptionShare : decryptionShares) {
-//            BigInteger serverIndex = decryptionShare.getServerIndex();
-//
-//            try {
-//                if (validateDecryptionShare(encryptedPaddedSecretKey, decryptionShare, rsaPublicParameters)) {
-//                    validatedDecryptionShares.add(decryptionShare);
-//                    logger.debug("Decryption share from server " + serverIndex + " passed validation");
-//                } else {
-//                    logger.info(serverIndex);
-//                    logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation");
-//                }
-//            } catch (Exception exception) {
-//                logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation, error = " + exception);
-//            }
-//        }
+        List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
+        for (SignatureResponse decryptionShare : decryptionShares) {
+            BigInteger serverIndex = decryptionShare.getServerIndex();
+
+            try {
+                if (validateDecryptionShare(encryptedPaddedSecretKey, decryptionShare, rsaPublicParameters)) {
+                    validatedDecryptionShares.add(decryptionShare);
+                    logger.debug("Decryption share from server " + serverIndex + " passed validation");
+                } else {
+                    logger.info(serverIndex);
+                    logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation");
+                }
+            } catch (Exception exception) {
+                logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation, error = " + exception);
+            }
+        }
         logger.info("Number of validated shares: " + validatedDecryptionShares.size());
         logger.info("[DONE]");
 
@@ -331,8 +327,6 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         logger.info("Starting proactive RSA encryption with secret " + secretName);
 
         ProactiveRsaPublicParameters rsaPublicParameters = this.getProactiveRsaPublicParams(secretName);
-
-        logger.info(rsaPublicParameters);
 
         final byte[] plaintextData = IOUtils.toByteArray(inputStream);
 

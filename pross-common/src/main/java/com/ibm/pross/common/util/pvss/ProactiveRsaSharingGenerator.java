@@ -14,16 +14,19 @@ public class ProactiveRsaSharingGenerator {
 
     public static ProactiveRsaSharing refreshAdditiveShares(final int index, final ProactiveRsaShareholder proactiveRsaShareholder) {
         List<SecretShare> d_i_j = new ArrayList<>();
-        List<SecretShare> w_i_j = new ArrayList<>(); // TODO-rsa
+        List<SecretShare> w_i_j = new ArrayList<>();
         SecretShare d_i_pub;
 
         final BigInteger d_i = proactiveRsaShareholder.getD_i();
         final int numServers = proactiveRsaShareholder.getProactiveRsaPublicParameters().getNumServers();
         final BigInteger rPrime = proactiveRsaShareholder.getProactiveRsaPublicParameters().getBigR().divide(BigInteger.valueOf(numServers));
+        final BigInteger g = proactiveRsaShareholder.getProactiveRsaPublicParameters().getG();
+        final BigInteger modulus = proactiveRsaShareholder.getProactiveRsaPublicParameters().getPublicKey().getModulus();
 
         for (int i = 0; i < numServers; i++) {
             BigInteger additiveShare = RandomNumberGenerator.generateRandomInteger(rPrime.multiply(BigInteger.valueOf(2)));
             d_i_j.add(new SecretShare(BigInteger.valueOf(i+1), additiveShare));
+            w_i_j.add(new SecretShare(BigInteger.valueOf(i+1), g.modPow(additiveShare, modulus)));
         }
 
         d_i_pub = new SecretShare(BigInteger.valueOf(index), d_i.subtract(d_i_j.stream().map(SecretShare::getY).reduce(BigInteger::add).get()));

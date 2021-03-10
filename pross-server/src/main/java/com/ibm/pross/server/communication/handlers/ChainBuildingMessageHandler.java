@@ -131,7 +131,7 @@ public class ChainBuildingMessageHandler implements ChannelListener, MessageHand
 			// to Opt-BFT Chain: " /*+ bftMessage*/);
 			synchronized (this.optChain) {
 
-				logger.info("Certified message #" + (messagePosition + 1) + " is available.");
+//				logger.info("Certified message #" + (messagePosition + 1) + " is available.");
 				if (this.optChain.putIfAbsent(messagePosition + 1, bftMessage) == null) {
 
 					// Increment contiguousOptMessages if we are contiguous
@@ -216,10 +216,8 @@ public class ChainBuildingMessageHandler implements ChannelListener, MessageHand
 	}
 
 	public void send(final Message message) {
-		logger.info("send");
 		final SignedMessage signedMessage = new SignedMessage((Message) message, keyLoader.getSigningKey());
 		this.sender.broadcast(signedMessage);
-		logger.info("send - completed");
 	}
 
 	public void send(final SignedMessage signedMessage) {

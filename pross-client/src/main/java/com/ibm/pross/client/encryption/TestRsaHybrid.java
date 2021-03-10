@@ -53,8 +53,6 @@ public class TestRsaHybrid {
             final byte[] aesCiphertextData = combined[1];
             final byte[] plaintextHash = combined[2];
 
-            System.out.println(new BigInteger(combined[0]));
-            System.out.println("AAAAAAAAAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: " + new BigInteger(combined[0]).compareTo(BigInteger.ZERO));
             if (new BigInteger(combined[0]).compareTo(BigInteger.ZERO) < 0) {
                 System.out.println("IT'S GOING TO FAIL!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 System.out.println(new BigInteger(combined[0]));

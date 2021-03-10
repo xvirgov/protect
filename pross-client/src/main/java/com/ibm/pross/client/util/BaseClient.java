@@ -160,7 +160,7 @@ public class BaseClient {
         if (maxConsistencies < threshold) {
             ;
             for (Object o : configurationData) {
-                logger.info(" --- " + o);
+                logger.debug(" --- " + o);
             }
             throw new BelowThresholdException("Insufficient consistency to permit recovery (below threshold)");
         }
@@ -375,11 +375,11 @@ public class BaseClient {
                 while (rsaPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
                     for (Map.Entry<RsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
                         if (params.getValue() >= reconstructionThreshold) {
-                            logger.info("Consistency level reached.");
+                            logger.debug("Consistency level reached.");
                             return params.getKey();
                         }
                     }
-                    logger.info("Waiting for more servers to send config...");
+                    logger.debug("Waiting for more servers to send config...");
                     Thread.sleep(2000);
                 }
 
@@ -407,7 +407,7 @@ public class BaseClient {
     protected ProactiveRsaPublicParameters getProactiveRsaPublicParams(final String secretName)
             throws ResourceUnavailableException, BelowThresholdException {
 
-        logger.info("Starting retrieval of the proactive RSA Public params from secret " + secretName);
+        logger.debug("Starting retrieval of the proactive RSA Public params from secret " + secretName);
 
         // Server configuration
         final int numShareholders = this.serverConfiguration.getNumServers();
@@ -419,7 +419,7 @@ public class BaseClient {
         // The countdown latch tracks progress towards reaching a threshold
         final CountDownLatch latch = new CountDownLatch(reconstructionThreshold);
 
-        logger.info("Wait until at least " + reconstructionThreshold + " servers respond");
+        logger.debug("Wait until at least " + reconstructionThreshold + " servers respond");
 
         final AtomicInteger failureCounter = new AtomicInteger(0);
         final int maximumFailures = (numShareholders - reconstructionThreshold);
@@ -437,7 +437,7 @@ public class BaseClient {
             final int serverPort = CommonConfiguration.BASE_HTTP_PORT + serverId;
             final String linkUrl = "https://" + serverIp + ":" + serverPort + "/info?cipher=proactive-rsa&secretName=" + secretName + "&json=true";
 
-            logger.info(linkUrl);
+//            logger.info(linkUrl);
 
             final int thisServerId = serverId;
 
@@ -446,7 +446,7 @@ public class BaseClient {
                     maximumFailures, 1) {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
-                    logger.info("Parsing response...");
+                    logger.debug("Parsing response...");
                     final JSONParser parser = new JSONParser();
                     final Object obj = parser.parse(json);
                     final JSONObject jsonObject = (JSONObject) obj;
@@ -487,11 +487,11 @@ public class BaseClient {
                 while (rsaPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
                     for (Map.Entry<ProactiveRsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
                         if (params.getValue() >= reconstructionThreshold) {
-                            logger.info("Consistency level reached.");
+                            logger.debug("Consistency level reached.");
                             return params.getKey();
                         }
                     }
-                    logger.info("Waiting for more servers to send config...");
+                    logger.debug("Waiting for more servers to send config...");
                     Thread.sleep(2000);
                 }
 

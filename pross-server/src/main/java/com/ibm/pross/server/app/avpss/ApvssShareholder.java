@@ -402,8 +402,6 @@ public class ApvssShareholder {
         // Create a message
         final Message publicSharingMessage = new Message(this.secretName, this.index, proactiveRsaPayload);
 
-        logger.info("MESSSSSSSSSSSSSSSSSSSSSSSSAGE:");
-        logger.info(publicSharingMessage);
         this.channel.send(publicSharingMessage);
 
         return true;
@@ -576,8 +574,7 @@ public class ApvssShareholder {
 
         // perform checks
         final int senderIndex = message.getSenderIndex();
-        logger.info("Rsa sharing arrived from " + senderIndex);
-//        logger.info("SSSSSSSSSSSSSSSSSSSSENDER INDEX: " + senderIndex);
+
         if (sharingState.getReceivedProactiveRsaSharings().get((long) senderIndex) != null) {
             throw new DuplicateMessageReceivedException("duplicate share contribution");
         }
@@ -594,9 +591,36 @@ public class ApvssShareholder {
         if (proactiveRsaSharing.getD_i_j().size() != this.n) {
             throw new InconsistentShareException("incorrect number of additive shares");
         }
-//        if (proactiveRsaSharing.getW_i_j().size() != this.n) {
-//            throw new InconsistentShareException("incorrect number of verification shares");
-//        }
+        if (proactiveRsaSharing.getW_i_j().size() != this.n) {
+            throw new InconsistentShareException("incorrect number of verification shares");
+        }
+
+        // Verify consistency
+        BigInteger d_i_pub = proactiveRsaSharing.getD_i_pub().getY();
+        BigInteger d_i_pub_i = proactiveRsaSharing.getD_i_pub().getX();
+
+        if(!d_i_pub_i.equals(BigInteger.valueOf(senderIndex)))
+            throw new RuntimeException("Inconsistent proactive RSA sharing");
+
+
+        if(this.proactiveRsaShareholder == null) { // TODO do this better: wait until store was processed on every server
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        BigInteger g = this.proactiveRsaShareholder.getProactiveRsaPublicParameters().getG();
+        BigInteger modulus = this.proactiveRsaShareholder.getProactiveRsaPublicParameters().getPublicKey().getModulus();
+        List<SecretShare> w_i_j = proactiveRsaSharing.getW_i_j();
+        BigInteger newVerificationValue = g.modPow(d_i_pub, modulus).multiply(w_i_j.stream().map(SecretShare::getY).reduce(BigInteger::multiply).get()).mod(modulus);
+        BigInteger w = this.proactiveRsaShareholder.getProactiveRsaPublicParameters().getW().get(senderIndex-1).getY();
+
+        if(!w.equals(newVerificationValue))
+            throw new RuntimeException("Validation of generated additive shares failed for server " + senderIndex);
+
+        logger.info("Additive shares from server " + senderIndex + " were verified");
 
         // Save it
         sharingState.addProactiveRsaSharing(senderIndex, proactiveRsaSharing);
@@ -619,8 +643,6 @@ public class ApvssShareholder {
 
     private synchronized void assembleAdditiveShare(final long senderEpoch) {
 
-        logger.info("assembleAdditiveShare");
-
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
 
@@ -630,18 +652,38 @@ public class ApvssShareholder {
         // Use our decryption key to access our shares
         final PaillierPrivateKey decryptionKey = (PaillierPrivateKey) this.keyLoader.getDecryptionKey();
 
+        BigInteger modulus = this.proactiveRsaShareholder.getProactiveRsaPublicParameters().getPublicKey().getModulus();
+        BigInteger g = this.proactiveRsaShareholder.getProactiveRsaPublicParameters().getG();
+
+        List<SecretShare> newW = new ArrayList<>();
 
         // Compute new d_pub and d_i
         for (int i = 0; i < this.n; i++) {
             ProactiveRsaSharing receivedProactiveSharings = sharingState.getReceivedProactiveRsaSharings().get((long) i + 1);
-            new_d_i = new_d_i.add(PaillierCipher.decrypt(decryptionKey, receivedProactiveSharings.getD_i_j().get(this.index - 1).getY()));
+            BigInteger d_i_j = PaillierCipher.decrypt(decryptionKey, receivedProactiveSharings.getD_i_j().get(this.index - 1).getY());
+            BigInteger w_i_j = receivedProactiveSharings.getW_i_j().get(this.index - 1).getY();
+
+            BigInteger w_j = BigInteger.ONE;
+            for(int j = 0; j < this.n; j++) {
+                w_j = w_j.multiply(sharingState.getReceivedProactiveRsaSharings().get((long) j + 1).getW_i_j().get(i).getY());
+            }
+
+            newW.add(new SecretShare(BigInteger.valueOf(i+1), w_j.mod(modulus)));
+
+            if(!w_i_j.equals(g.modPow(d_i_j, modulus))) // TODO-thesis this should be moved before we try to assemble
+                throw new RuntimeException("Verification of additive share splits failed for a share from agent " + receivedProactiveSharings.getI());
+
+            new_d_i = new_d_i.add(d_i_j);
             new_d_pub = new_d_pub.add(receivedProactiveSharings.getD_i_pub().getY());
         }
+
+        logger.info("Assembled and verified additive shares");
 
 //        logger.info("Calculated new di: " + new_d_i);
 
         this.proactiveRsaShareholder.setD_i(new_d_i);
         this.proactiveRsaShareholder.getProactiveRsaPublicParameters().setD_pub(new_d_pub);
+        this.proactiveRsaShareholder.getProactiveRsaPublicParameters().setW(newW);
 
         broadcastPolynomialSharing(senderEpoch);
 
@@ -657,8 +699,7 @@ public class ApvssShareholder {
 
         // perform checks
         final int senderIndex = message.getSenderIndex();
-        logger.info("Polynomial sharing arrived from " + senderIndex);
-//        logger.info("SSSSSSSSSSSSSSSSSSSSENDER INDEX: " + senderIndex);
+
         if (sharingState.getReceivedPolynomialSharings().get((long) senderIndex) != null) {
             throw new DuplicateMessageReceivedException("duplicate share contribution");
         }
@@ -687,7 +728,6 @@ public class ApvssShareholder {
 
         // wait for all some time if not all received, reconstruct failed nodes
         final int successes = sharingState.getSuccessCount().incrementAndGet();
-        logger.info("deliverPolynomial " + successes);
         if (successes == this.n) {
             assemblePolynomialShare(senderEpoch);
         }
@@ -695,7 +735,7 @@ public class ApvssShareholder {
 
     private synchronized void assemblePolynomialShare(final long senderEpoch) {
 
-        logger.info("assemblePolynomialShare");
+        BigInteger modulus = this.proactiveRsaShareholder.getProactiveRsaPublicParameters().getPublicKey().getModulus();
 
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
@@ -706,16 +746,42 @@ public class ApvssShareholder {
         final PaillierPrivateKey decryptionKey = (PaillierPrivateKey) this.keyLoader.getDecryptionKey();
 
         List<SecretShare> decryptedShares = new ArrayList<>();
+        List<List<SecretShare>> newB = new ArrayList<>();
         for (int i = 0; i < this.n; i++) {
             BigInteger decryptedShare = PaillierCipher.decrypt(decryptionKey, sharingState.getReceivedPolynomialSharings().get((long) i + 1).getShares().get(this.index - 1).getY());
             decryptedShares.add(new SecretShare(BigInteger.valueOf(i + 1), decryptedShare));
             newS_i = newS_i.add(decryptedShare);
+
+            newB.add(sharingState.getReceivedPolynomialSharings().get((long) i + 1).getB_i());
         }
+
+        List<BigInteger> multipliedFeldmanVerificationValues = new ArrayList<>();
+        for (int i = 0; i < this.k; i++) {
+            BigInteger accumulator = BigInteger.ONE;
+            for (int j = 0; j < this.n; j++) {
+                accumulator = accumulator.multiply(newB.get(j).get(i).getY());
+            }
+            multipliedFeldmanVerificationValues.add(accumulator);
+        }
+
+        List<SecretShare> newBAgent = new ArrayList<>();
+        for (int i = 0; i < this.n; i++) {
+            BigInteger result = BigInteger.ONE;
+            for (int j = 0; j < this.k; j++) {
+                result = result.multiply(multipliedFeldmanVerificationValues.get(j).modPow(BigInteger.valueOf(i + 1).pow(j), modulus)).mod(modulus);
+            }
+            newBAgent.add(new SecretShare(BigInteger.valueOf(i+1), result));
+        }
+
+        logger.info("New shamir secret share was computed");
 
         this.proactiveRsaShareholder.setS_i(newS_i);
         this.proactiveRsaShareholder.setS(decryptedShares);
+        this.proactiveRsaShareholder.getProactiveRsaPublicParameters().setB(newB);
+        this.proactiveRsaShareholder.getProactiveRsaPublicParameters().setbAgent(newBAgent);
 
-        logger.info("Proactive update of RSA secret finished, scheduling next round in " + getRefreshFrequency() + " seconds...");
+        logger.info("Proactive refresh of RSA secret was successful for new epoch " + currentEpoch.getAndIncrement());
+        logger.info("Scheduling next proactive refresh in " + this.getRefreshFrequency() + " seconds");
 
         final int refreshPeriodMillis = this.getRefreshFrequency() * 1000;
         this.timer.schedule(new RefreshTask(), refreshPeriodMillis);
@@ -1279,6 +1345,7 @@ public class ApvssShareholder {
         SharingState state = this.getCurrentSharing();
         state.setCreationTime(new Date());
         this.proactiveRsaShareholder = proactiveRsaShareholder;
+//        logger.info( this.proactiveRsaShareholder.getProactiveRsaPublicParameters().getG());
 //		state.setShare1(new ShamirShare(BigInteger.valueOf(index), shareValue));
 //		state.setRsaSharing(rsaSharing);
 //		state.getSharePublicKeys()[0] = new EcPoint(rsaSharing.getPublicKey().getPublicExponent(), rsaSharing.getPublicKey().getModulus()); // Using EcPoints is a hack
