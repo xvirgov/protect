@@ -565,7 +565,7 @@ public class ApvssShareholder {
         final long shareEnd = System.nanoTime();
         final long startTime = sharingState.getStartTime();
         logger.info("Time to establish share:             "
-                + (((double) (shareEnd - startTime)) / 1_000_000_000.0) + " seconds");
+                + (((double) (shareEnd - startTime)) / 1_000_000.0) + " ms");
     }
 
     protected synchronized void deliverRsaSharing(final long senderEpoch, final Message message) throws DuplicateMessageReceivedException, InconsistentShareException {

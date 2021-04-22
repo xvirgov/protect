@@ -34,7 +34,7 @@ public class CommonConfiguration {
 	 */
 
 	// This implementation is significantly faster
-	public static final EcCurve CURVE = EcCurveBc.createByName(EcCurve.secp256r1.getName());
+	public static final EcCurve CURVE = EcCurveBc.createByName(EcCurve.secp521r1.getName());
 
 	// Generators (from hashing)
 	public static final EcPoint g = CURVE.getPointHasher().hashToCurve(new byte[] { 0x01 });
