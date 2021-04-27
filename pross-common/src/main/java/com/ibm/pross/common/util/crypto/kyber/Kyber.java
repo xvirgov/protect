@@ -11,9 +11,9 @@ import java.util.List;
 
 public class Kyber {
 
-    final static int KYBER_K = 4;
-    final static int KYBER_N = 256;
-    final static int KYBER_Q = 3329;
+    public final static int KYBER_K = 4;
+    public final static int KYBER_N = 256;
+    public final static int KYBER_Q = 3329;
     final static short zetas[] = new short[]{
             -1044, -758, -359, -1517, 1493, 1422, 287, 202,
             -171, 622, 1577, 182, 962, -1202, -1474, 1468,
@@ -34,6 +34,7 @@ public class Kyber {
     };
     public static int KYBER_SYMBYTES = 32; /* size in bytes of hashes, and seeds */
     public static int KYBER_ETA1 = 2;
+    public static int KYBER_ETA2 = 2;
     // FIPS 202
     private static int SHAKE128_RATE = 168;
     private static int SHAKE256_RATE = 136;
@@ -45,13 +46,13 @@ public class Kyber {
     private static int QINV = -3327;
 
     private static int rej_uniform(short[] coeff, int polyLength, byte[] buf, int bufLength) {
-        int val0, val1;
+         int val0, val1;
 
         int ctr = 0, pos = 0;
 
         while (ctr < polyLength && pos + 3 <= bufLength) {
-            val0 = ((buf[pos + 0] >> 0) | (buf[pos + 1] << 8)) & 0xFFF;
-            val1 = ((buf[pos + 1] >> 4) | (buf[pos + 2] << 4)) & 0xFFF;
+            val0 = (short) (((((int)buf[pos + 0] & 0xFF)  >> 0) | (((int)buf[pos + 1] & 0xFF) << 8)) & 0xFFF);
+            val1 = (short) (((((int)buf[pos + 1] & 0xFF) >> 4) | (((int)buf[pos + 2] & 0xFF) << 4)) & 0xFFF);
             pos += 3;
 
             if (val0 < KYBER_Q)
@@ -68,7 +69,7 @@ public class Kyber {
 
         int t, d, a, b;
         for (int i = 0; i < KYBER_N / 8; i++) {
-            t = java.nio.ByteBuffer.wrap(Arrays.copyOfRange(buf, i, i + 8)).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt();
+            t = java.nio.ByteBuffer.wrap(Arrays.copyOfRange(buf, 4*i, 4*i + 8)).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt();
             d = t & 0x55555555;
             d += (t >> 1) & 0x55555555;
 
@@ -95,6 +96,20 @@ public class Kyber {
 
         return cbd2(buf);
     }
+    public static Polynomial poly_getnoise_eta2(final byte[] seed, int nonce) {
+        byte[] buf = new byte[KYBER_ETA2 * KYBER_N / 4];
+
+        // PRF
+        SHAKEDigest xof = new SHAKEDigest(256);
+        byte[] extkey = new byte[KYBER_SYMBYTES + 1];
+        System.arraycopy(seed, 0, extkey, 0, KYBER_SYMBYTES);
+        extkey[KYBER_SYMBYTES] = (byte) nonce;
+        xof.update(extkey, 0, extkey.length);
+        xof.doFinal(buf, 0, buf.length);
+
+        return cbd2(buf);
+    }
+
 
     public static void kyber_shake128_absorb(SHAKEDigest xof, byte[] seed, byte a, byte b) {
         byte[] extseed = new byte[KYBER_SYMBYTES + 2];
@@ -123,13 +138,10 @@ public class Kyber {
 
                 xof.reset();
 
-//                xof.update(seed, i, j);
-                kyber_shake128_absorb(xof, seed, (byte) i, (byte) j);
-
-//                if (transposed)
-//                    xof.update(seed, i, j);
-//                else
-//                    xof.update(seed, j, i);
+                if (transposed)
+                    kyber_shake128_absorb(xof, seed, (byte) i, (byte) j);
+                else
+                    kyber_shake128_absorb(xof, seed, (byte) j, (byte) i);
 
                 xof.doFinal(buf, 0, GEN_MATRIX_NBLOCKS * XOF_BLOCKBYTES);
 
@@ -163,11 +175,11 @@ public class Kyber {
     }
 
 
-    static int montgomery_reduce(int a) {
-        int t;
+    static short montgomery_reduce(int a) {
+        short t;
 
-        t = a * QINV;
-        t = (a - t * KYBER_Q) >> 16;
+        t = (short) (a * QINV);
+        t = (short) ((a - t * KYBER_Q) >> 16);
         return t;
     }
 
@@ -177,14 +189,13 @@ public class Kyber {
 
     static void ntt(short[] coeff) {
 
-        int j = 0, k = 0, zeta;
+        int j = 0, k = 1, zeta;
 
         short t = 0;
 
         for (int len = 128; len >= 2; len >>= 1) {
             for (int start = 0; start < 256; start = j + len) {
                 zeta = zetas[k++];
-
                 for (j = start; j < start + len; j++) {
                     t = (short) fqmul(zeta, coeff[j + len]);
                     coeff[j + len] = (short) (coeff[j] - t);
@@ -192,6 +203,28 @@ public class Kyber {
                 }
             }
         }
+    }
+
+    static void invntt(short[] coeff) {
+
+        int j = 0, k = 127, zeta;
+        final short f = 1441;
+        short t = 0;
+
+        for(int len = 2; len <= 128; len <<= 1) {
+            for(int start = 0; start < 256; start = j + len) {
+                zeta = zetas[k--];
+                for(j = start; j < start + len; j++) {
+                    t = coeff[j];
+                    coeff[j] = barret_reduce((short) (t + coeff[j + len]));
+                    coeff[j + len] = (short) (coeff[j + len] - t);
+                    coeff[j + len] = (short) fqmul(zeta, coeff[j + len]);
+                }
+            }
+        }
+
+        for(j = 0; j < 256; j++)
+            coeff[j] = (short) fqmul(coeff[j], f);
     }
 
     static short barret_reduce(short a) {
@@ -220,17 +253,26 @@ public class Kyber {
         poly_reduce(p);
     }
 
-    static void polyvec_ntt(List<Polynomial> pv) {
+    public static void polyvec_ntt(List<Polynomial> pv) {
         for (int i = 0; i < KYBER_K; i++) {
             poly_ntt(pv.get(i));
         }
     }
 
+    static void poly_invntt_tomont(Polynomial p) {
+        invntt(p.poly);
+    }
+
+    public static void polyvec_invntt_tomont(List<Polynomial> pv) {
+        for(int i = 0; i < KYBER_K; i++)
+            poly_invntt_tomont(pv.get(i));
+    }
+
     static short[] basemul(short[] a, short[] b, short zeta) {
-        short[] r = new short[]{0, 0};
+        short[] r = new short[2];
 
         r[0] = (short) fqmul(a[1], b[1]);
-        r[0] = (short) fqmul(r[1], zeta);
+        r[0] = (short) fqmul(r[0], zeta);
         r[0] += (short) fqmul(a[0], b[0]);
         r[1] = (short) fqmul(a[0], b[1]);
         r[1] += (short) fqmul(a[1], b[0]);
@@ -252,10 +294,18 @@ public class Kyber {
         return new Polynomial(r);
     }
 
-    static Polynomial poly_add(Polynomial a, Polynomial b) {
+    public static Polynomial poly_add(Polynomial a, Polynomial b) {
         short[] r = new short[KYBER_N];
         for (int i = 0; i < KYBER_N; i++) {
             r[i] = (short) (a.poly[i] + b.poly[i]);
+        }
+        return new Polynomial(r);
+    }
+
+    static Polynomial poly_sub(Polynomial a, Polynomial b) {
+        short[] r = new short[KYBER_N];
+        for (int i = 0; i < KYBER_N; i++) {
+            r[i] = (short) (a.poly[i] - b.poly[i]);
         }
         return new Polynomial(r);
     }
@@ -267,21 +317,52 @@ public class Kyber {
             r = poly_add(r, t);
         }
 
+        poly_reduce(r);
+
         return r;
     }
 
-    static void poly_tomont(Polynomial r) {
-        final long f = (1 << 32) % KYBER_Q;
+    public static void poly_tomont(Polynomial r) {
+        final long f = ((long) 1 << 32) % KYBER_Q;
         for (int i = 0; i < KYBER_N; i++)
             r.poly[i] = (short) montgomery_reduce((int) (r.poly[i] * f));
     }
 
-    static List<Polynomial> polyvec_add(final List<Polynomial> a, final List<Polynomial> b) {
+    public static List<Polynomial> polyvec_add(final List<Polynomial> a, final List<Polynomial> b) {
         List<Polynomial> r = new ArrayList<>();
         for (int i = 0; i < KYBER_K; i++)
             r.add(poly_add(a.get(i), b.get(i)));
 
         return r;
+    }
+
+    static Polynomial poly_frommsg(byte[] m) {
+        short[] p = new short[KYBER_N];
+        for(int i = 0; i < KYBER_N/8; i++) {
+            for(int j = 0; j < 8; j++) {
+                short mask = (short) (((m[i] >> j)&1) * -1);
+                p[8*i + j] = (short) (mask & ((KYBER_Q+1)/2));
+            }
+        }
+
+        return new Polynomial(p);
+    }
+
+    static byte[] poly_tomsg(Polynomial a) {
+        short t;
+        byte[] msg = new byte[KYBER_SYMBYTES];
+
+        for(int i = 0; i < KYBER_N/8; i++) {
+            msg[i] = 0;
+            for(int j = 0; j < 8; j++) {
+                t = a.poly[8*i + j];
+                t += (t >> 15) & KYBER_Q;
+                t = (short) ((((t << 1) + KYBER_Q/2)/KYBER_Q) & 1);
+                msg[i] |= t << j;
+            }
+        }
+
+        return msg;
     }
 
     public static KyberKeyPair indcpa_keypair() {
@@ -319,7 +400,7 @@ public class Kyber {
         pkpv = polyvec_add(pkpv, e);
         polyvec_reduce(pkpv);
 
-        return new KyberKeyPair(pkpv, skpv, seed);
+        return new KyberKeyPair(pkpv, skpv, hashedSeed);
     }
 
     /**
@@ -333,6 +414,78 @@ public class Kyber {
         return null;
     }
 
+    public static KyberCiphertext indcpa_enc(byte[] m, List<Polynomial> pkpv, byte[] publicSeed, byte[] coins) {
+
+        Polynomial k = poly_frommsg(m);
+        Kyber.Matrix at = gen_matrix(publicSeed, true);
+
+        List<Polynomial> sp = new ArrayList<>();
+        List<Polynomial> ep = new ArrayList<>();
+        int nonce = 0;
+
+        for(int i = 0; i < KYBER_K; i++)
+            sp.add(poly_getnoise_eta1(coins, nonce++));
+        for(int i = 0; i < KYBER_K; i++)
+            ep.add(poly_getnoise_eta2(coins, nonce++));
+        Polynomial epp = poly_getnoise_eta2(coins, nonce++);
+
+        polyvec_ntt(sp);
+
+        // matrix-vector multiplication
+        List<Polynomial> b = new ArrayList<>();
+        for(int i = 0; i < KYBER_K; i++)
+            b.add(polyvec_basemul_acc_montgomery(at.matrix.get(i), sp));
+
+        Polynomial v = polyvec_basemul_acc_montgomery(pkpv, sp);
+
+        polyvec_invntt_tomont(b);
+        poly_invntt_tomont(v);
+
+        b = polyvec_add(b, ep);
+        v = poly_add(v, epp);
+        v = poly_add(v, k);
+        polyvec_reduce(b);
+        poly_reduce(v);
+
+        return new KyberCiphertext(b, v);
+    }
+
+    public static KyberCiphertext indcpa_enc_no_gen_mat(byte[] m, List<Polynomial> pkpv, Matrix at, byte[] coins) {
+
+        Polynomial k = poly_frommsg(m);
+//        Kyber.Matrix at = gen_matrix(publicSeed, true);
+
+        List<Polynomial> sp = new ArrayList<>();
+        List<Polynomial> ep = new ArrayList<>();
+        int nonce = 0;
+
+        for(int i = 0; i < KYBER_K; i++)
+            sp.add(poly_getnoise_eta1(coins, nonce++));
+        for(int i = 0; i < KYBER_K; i++)
+            ep.add(poly_getnoise_eta2(coins, nonce++));
+        Polynomial epp = poly_getnoise_eta2(coins, nonce++);
+
+        polyvec_ntt(sp);
+
+        // matrix-vector multiplication
+        List<Polynomial> b = new ArrayList<>();
+        for(int i = 0; i < KYBER_K; i++)
+            b.add(polyvec_basemul_acc_montgomery(at.matrix.get(i), sp));
+
+        Polynomial v = polyvec_basemul_acc_montgomery(pkpv, sp);
+
+        polyvec_invntt_tomont(b);
+        poly_invntt_tomont(v);
+
+        b = polyvec_add(b, ep);
+        v = poly_add(v, epp);
+        v = poly_add(v, k);
+        polyvec_reduce(b);
+        poly_reduce(v);
+
+        return new KyberCiphertext(b, v);
+    }
+
     /**
      * Encrypts a shared secret (symmetric key)
      *
@@ -344,9 +497,20 @@ public class Kyber {
         return null;
     }
 
-    /**
-     * KYBER-CRYPTO KEM
-     */
+    public static byte[] indcpa_dec(KyberCiphertext c, List<Kyber.Polynomial> skpv) {
+
+        List<Polynomial> b = c.getC1();
+        Polynomial v = c.getC2();
+
+        polyvec_ntt(b);
+        Polynomial mp = polyvec_basemul_acc_montgomery(skpv, b);
+        poly_invntt_tomont(mp);
+
+        mp = poly_sub(v, mp);
+        poly_reduce(mp);
+
+        return poly_tomsg(mp);
+    }
 
     /**
      * Decrypts encrypted shared secret (symmetric key)
