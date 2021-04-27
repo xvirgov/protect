@@ -115,8 +115,39 @@ public class KyberTest extends TestCase {
     }
 
     @Test
-    public void testMPC() {
+    public void testMpcIter() {
         int n = 2;
+        List<KyberKeyPair> keyPairs = new ArrayList<>();
+        for(int i = 0; i < n; i++) {
+            keyPairs.add(Kyber.indcpa_keypair());
+        }
+
+        final SHA3.DigestSHA3 md1 = new SHA3.DigestSHA3(256);
+        md1.update(new byte[]{1,2});
+        byte[] m = md1.digest();
+
+        final SHA3.DigestSHA3 md2 = new SHA3.DigestSHA3(256);
+        md2.update(new byte[]{2,3});
+        byte[] coins = md2.digest();
+
+        // Test classic
+        for (int i = 0; i < n; i++) {
+            KyberCiphertext kyberCiphertext = Kyber.indcpa_enc(m, keyPairs.get(i).getPk(), keyPairs.get(i).getPublicSeed(), coins);
+            byte[] after = Kyber.indcpa_dec(kyberCiphertext, keyPairs.get(i).getSk());
+            assertTrue(Arrays.equals(m, after));
+        }
+
+//        // Test follow
+//        byte[] kyberCiphertextIter = Arrays.copyOf(m, m.length);
+//        for(int i = 0; i < n; i++) {
+//
+//        }
+
+    }
+
+    @Test
+    public void testMPCSum() {
+        int n = 1;
 
 //        KyberKeyPair keyPair = Kyber.indcpa_keypair();
 
@@ -162,13 +193,17 @@ public class KyberTest extends TestCase {
         for(int i = 0; i < n; i++) {
             for(int j = 0; j < Kyber.KYBER_K; j++) {
                 aCombined.matrix.set(j, Kyber.polyvec_add(aCombined.matrix.get(j), as.get(i).matrix.get(j)));
+                Kyber.polyvec_reduce(aCombined.matrix.get(j));
                 atCombined.matrix.set(j, Kyber.polyvec_add(atCombined.matrix.get(j), ats.get(i).matrix.get(j)));
+                Kyber.polyvec_reduce(atCombined.matrix.get(j));
             }
         }
 
         for(int i = 0; i < n; i++) {
             pk = Kyber.polyvec_add(pk, keyPairs.get(i).getPk());
-            sk = Kyber.polyvec_add(pk, keyPairs.get(i).getSk());
+            Kyber.polyvec_reduce(pk);
+            sk = Kyber.polyvec_add(sk, keyPairs.get(i).getSk());
+            Kyber.polyvec_reduce(sk);
         }
 
         // Encrypt a message using the combined As and pks
@@ -181,11 +216,9 @@ public class KyberTest extends TestCase {
         byte[] coins = md2.digest();
 
         KyberCiphertext kyberCiphertext = Kyber.indcpa_enc_no_gen_mat(m, pk, atCombined, coins);
+//        KyberCiphertext kyberCiphertext = Kyber.indcpa_enc(m, keyPairs.get(0).getPk(), keyPairs.get(0).getPublicSeed(), coins);
 
-        byte[] mAfter = new byte[Kyber.KYBER_SYMBYTES];
-
-        
-
+//        byte[] mAfter = new byte[Kyber.KYBER_SYMBYTES];
 //        byte[] mAfterTmp = new byte[Kyber.KYBER_SYMBYTES];
 //        for(int i = 0; i < n; i++) {
 //            mAfterTmp = Kyber.indcpa_dec(kyberCiphertext, keyPairs.get(i).getSk());
@@ -194,7 +227,59 @@ public class KyberTest extends TestCase {
 //            }
 //        }
 
-        assertNotNull(mAfter);
+        byte[] after = Kyber.indcpa_dec(kyberCiphertext, sk);
+
+        for(int i = 0; i < Kyber.KYBER_SYMBYTES; i++) {
+            System.out.println(Integer.toBinaryString(m[i] & 0xFF) + " -- " + Integer.toBinaryString(after[i] & 0xFF));
+        }
+
+        assertTrue(Arrays.equals(after, m));
+    }
+
+    @Test
+    public void testMpcFinalSum() {
+        int n = 2, nonce = 1;
+
+        final SHA3.DigestSHA3 md1 = new SHA3.DigestSHA3(256);
+        md1.update(new byte[]{1,2});
+        byte[] m = md1.digest();
+
+        final SHA3.DigestSHA3 md2 = new SHA3.DigestSHA3(256);
+        md2.update(new byte[]{2,3});
+        byte[] coins = md2.digest();
+
+        KyberKeyPair keyPair = Kyber.indcpa_keypair();
+        KyberCiphertext kyberCiphertext = Kyber.indcpa_enc(m, keyPair.getPk(), keyPair.getPublicSeed(), coins);
+
+        // split secrtet key
+        List<Kyber.Polynomial> sp1 = new ArrayList<>();
+        for(int i = 0; i < Kyber.KYBER_K; i++)
+            sp1.add(Kyber.poly_getnoise_eta1(coins, nonce++));
+
+        Kyber.polyvec_ntt(sp1);
+
+        List<Kyber.Polynomial> sp2 = Kyber.polyvec_sub(keyPair.getSk(), sp1);
+//        Kyber.polyvec_reduce(sp2);
+
+        List<Kyber.Polynomial> check = Kyber.polyvec_add(sp1, sp2);
+
+//        for(int i = 0; i < Kyber.KYBER_K; i++) {
+//            for(int j = 0; j < Kyber.KYBER_N; j++) {
+//                System.out.println(keyPair.getSk().get(i).poly[j] + " - " + sp1.get(i).poly[j] + " = " + sp2.get(i).poly[j]);
+//                if(check.get(i).poly[j] != keyPair.getSk().get(i).poly[j])
+//                    System.out.println("-----------------> " + i + " " + j + ": " + keyPair.getSk().get(i).poly[j] + " != " + check.get(i).poly[j]);
+//            }
+//        }
+
+        List<List<Kyber.Polynomial>> spp = new ArrayList<>();
+        List<List<Kyber.Polynomial>> spp2 = new ArrayList<>();
+        spp2.add(keyPair.getSk());
+        spp.add(sp1);
+        spp.add(sp2);
+        byte[] after_mpc = Kyber.indcpa_dec_n(kyberCiphertext, spp, keyPair.getSk());
+//        byte[] after = Kyber.indcpa_dec_n(kyberCiphertext, spp2, keyPair.getSk());
+//        byte[] after2 = Kyber.indcpa_dec_n(kyberCiphertext, sp2, 2);
+        assertTrue(Arrays.equals(m, after_mpc));
     }
 
 }

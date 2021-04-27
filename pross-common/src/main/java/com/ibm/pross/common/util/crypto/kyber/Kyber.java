@@ -242,7 +242,7 @@ public class Kyber {
         }
     }
 
-    static void polyvec_reduce(List<Polynomial> p) {
+    public static void polyvec_reduce(List<Polynomial> p) {
         for(int i = 0; i < KYBER_K; i++) {
             poly_reduce(p.get(i));
         }
@@ -336,6 +336,14 @@ public class Kyber {
         return r;
     }
 
+    public static List<Polynomial> polyvec_sub(final List<Polynomial> a, final List<Polynomial> b) {
+        List<Polynomial> r = new ArrayList<>();
+        for (int i = 0; i < KYBER_K; i++)
+            r.add(poly_sub(a.get(i), b.get(i)));
+
+        return r;
+    }
+
     static Polynomial poly_frommsg(byte[] m) {
         short[] p = new short[KYBER_N];
         for(int i = 0; i < KYBER_N/8; i++) {
@@ -369,7 +377,7 @@ public class Kyber {
 
         byte[] seed = new byte[Kyber.KYBER_SYMBYTES];
 
-        new SecureRandom().nextBytes(seed);
+//        new SecureRandom().nextBytes(seed);
 
         final SHA3.DigestSHA3 md = new SHA3.DigestSHA3(512);
         md.update(seed);
@@ -508,6 +516,47 @@ public class Kyber {
 
         mp = poly_sub(v, mp);
         poly_reduce(mp);
+
+        return poly_tomsg(mp);
+    }
+
+    public static byte[] indcpa_dec_n(KyberCiphertext c, List<List<Polynomial>> skpv, List<Polynomial> sstmp) {
+
+        List<Polynomial> b = c.getC1();
+        Polynomial v = c.getC2();
+
+        polyvec_ntt(b);
+//        Polynomial mp = polyvec_basemul_acc_montgomery(skpv, b);
+        Polynomial mp = new Polynomial(new short[KYBER_N]);
+
+        List<Polynomial> accuSk = new ArrayList<>();
+        for(int i = 0; i < KYBER_K;i++) {
+            accuSk.add(new Polynomial(new short[KYBER_N]));
+        }
+        for(int i = 0; i < skpv.size(); i++) {
+//            accuSk = polyvec_add(accuSk, skpv.get(i));
+            Polynomial tmp = polyvec_basemul_acc_montgomery(skpv.get(i), b);
+            mp = poly_add(mp, tmp);
+            poly_reduce(mp);
+        }
+//        accuSk = polyvec_add(skpv.get(0), skpv.get(1));
+
+//        for(int i = 0; i < sstmp.size(); i++) {
+//            for(int j = 0; j < KYBER_N; j++) {
+//                if(sstmp.get(i).poly[j] != accuSk.get(i).poly[j])
+//                    System.out.println("Not equal at: " + i + ", " + j + ": " + sstmp.get(i).poly[j] + " --- " + accuSk.get(i).poly[j] + " ( " + skpv.get(0).get(i).poly[j] + " + " + skpv.get(1).get(i).poly[j] + ")");
+//            }
+////            if(!Arrays.equals(sstmp.get(i).poly, accuSk.get(i).poly))
+////                System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa");
+//        }
+
+//        mp = polyvec_basemul_acc_montgomery(accuSk, b);
+
+        poly_invntt_tomont(mp);
+
+        mp = poly_sub(v, mp);
+        poly_reduce(mp);
+        poly_reduce(v);
 
         return poly_tomsg(mp);
     }
