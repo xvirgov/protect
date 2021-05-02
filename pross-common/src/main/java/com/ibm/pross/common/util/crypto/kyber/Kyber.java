@@ -707,6 +707,21 @@ public class Kyber {
         public Polynomial(short[] poly) {
             this.poly = poly;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof Polynomial)) return false;
+
+            Polynomial that = (Polynomial) o;
+
+            return Arrays.equals(poly, that.poly);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(poly);
+        }
     }
 
     // Polynomial[] - matrix:
@@ -715,6 +730,28 @@ public class Kyber {
 
         public Matrix(List<List<Polynomial>> matrix) {
             this.matrix = matrix;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof Matrix)) return false;
+
+            Matrix matrix1 = (Matrix) o;
+
+            for(int i = 0; i < Kyber.KYBER_K; i++) {
+                for(int j = 0; j < Kyber.KYBER_K; j++) {
+                    if(!matrix.get(i).get(j).equals(matrix1.matrix.get(i).get(j)))
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            return matrix.hashCode();
         }
     }
 }

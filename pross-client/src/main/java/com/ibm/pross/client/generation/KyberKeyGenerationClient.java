@@ -6,6 +6,8 @@ import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.config.KeyLoader;
 import com.ibm.pross.common.config.ServerConfiguration;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
+import com.ibm.pross.common.util.crypto.kyber.KyberKeyGenerator;
+import com.ibm.pross.common.util.crypto.kyber.KyberShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BelowThresholdException;
@@ -72,14 +74,14 @@ public class KyberKeyGenerationClient extends BaseClient {
         final int numServers = serverConfiguration.getNumServers();
         final int threshold = serverConfiguration.getReconstructionThreshold();
 
-        final List<ProactiveRsaShareholder> proactiveRsaShareholders = ProactiveRsaGenerator.generateProactiveRsa(numServers, threshold);
-        logger.info("RSA key generation complete");
+        final List<KyberShareholder> kyberShareholders = KyberKeyGenerator.generateKyber(numServers);
+        logger.info("Kyber key generation completed");
 
-        logger.info("Storing RSA private key");
-        return this.storeProactiveRsaSharing(proactiveRsaShareholders);
+        logger.info("Storing Kyber keys");
+        return this.storeKyberSharing(kyberShareholders);
     }
 
-    private Boolean storeProactiveRsaSharing(final List<ProactiveRsaShareholder> proactiveRsaShareholders)
+    private Boolean storeKyberSharing(final List<KyberShareholder> kyberShareholders)
             throws ResourceUnavailableException, BelowThresholdException {
 
         // Server configuration
@@ -92,27 +94,27 @@ public class KyberKeyGenerationClient extends BaseClient {
         // The countdown latch tracks progress towards reaching a threshold
         final CountDownLatch latch = new CountDownLatch(reconstructionThreshold);
         final AtomicInteger failureCounter = new AtomicInteger(0);
-        final int maximumFailures = (numShareholders - reconstructionThreshold);
+        final int maximumFailures = 0; // only n-out-of-n
 
         // Each task deposits its result into this map after verifying it is correct and
         // consistent
         final List<Object> successfulResults = Collections.synchronizedList(new ArrayList<>());
 
         // Send the generator to the server
-        final BigInteger v = null;
+//        final BigInteger v = null;
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
-        for (final InetSocketAddress serverAddress : this.serverConfiguration.getServerAddresses()) { // TODO-now agent->json
+        for (final InetSocketAddress serverAddress : this.serverConfiguration.getServerAddresses()) {
             serverId++;
             final String serverIp = serverAddress.getAddress().getHostAddress();
             final int serverPort = CommonConfiguration.BASE_HTTP_PORT + serverId;
 
-            final JSONObject message = proactiveRsaShareholders.get(serverId-1).getJson();
+            final JSONObject message = kyberShareholders.get(serverId-1).getJson();
 
-            final String linkUrl = "https://" + serverIp + ":" + serverPort + "/store" + // TODO-now move all to json body
+            final String linkUrl = "https://" + serverIp + ":" + serverPort + "/store" +
                     "?secretName=" + this.secretName
-                    + "&sharingType=proactive-rsa";
+                    + "&sharingType=kyber";
 
             // Create new task to get the partial exponentiation result from the server
             executor.submit(new PartialResultTask(this, serverId, linkUrl, message.toJSONString() + "\n", "POST", successfulResults, latch, failureCounter,

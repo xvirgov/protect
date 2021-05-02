@@ -15,6 +15,7 @@ import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
+import com.ibm.pross.common.util.crypto.kyber.KyberShareholder;
 import com.ibm.pross.common.util.crypto.paillier.PaillierCipher;
 import com.ibm.pross.common.util.crypto.paillier.PaillierPrivateKey;
 import com.ibm.pross.common.util.crypto.paillier.PaillierPublicKey;
@@ -92,6 +93,7 @@ public class ApvssShareholder {
 
     private RsaProactiveSharing rsaProactiveSharing;
     private ProactiveRsaShareholder proactiveRsaShareholder;
+    private KyberShareholder kyberShareholder;
 
     public ApvssShareholder(final String secretName, final KeyLoader keyLoader,
                             final FifoAtomicBroadcastChannel channel, final int index, final int n, final int k) {
@@ -1354,6 +1356,13 @@ public class ApvssShareholder {
         //}
     }
 
+    public void setKyberShareholder(KyberShareholder kyberShareholder) {
+        this.sharingType = SharingType.KYBER_STORED;
+        SharingState state = this.getCurrentSharing();
+        state.setCreationTime(new Date());
+        this.kyberShareholder = kyberShareholder;
+    }
+
     public RsaSharing getRsaSharing() {
         return this.getCurrentSharing().getRsaSharing();
     }
@@ -1363,7 +1372,7 @@ public class ApvssShareholder {
     }
 
     public enum SharingType {
-        PEDERSEN_DKG, FELDMAN_DKG, STORED, RSA_STORED, RSA_PROACTIVE_STORED;
+        PEDERSEN_DKG, FELDMAN_DKG, STORED, RSA_STORED, RSA_PROACTIVE_STORED, KYBER_STORED;
     }
 
     // Periodic task for stubborn message delivery

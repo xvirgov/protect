@@ -2,6 +2,7 @@ package com.ibm.pross.common.util.crypto.kyber;
 
 import junit.framework.TestCase;
 import org.bouncycastle.jcajce.provider.digest.SHA3;
+import org.json.simple.JSONObject;
 import org.junit.Test;
 
 import java.security.NoSuchAlgorithmException;
@@ -13,30 +14,30 @@ import java.util.List;
 public class KyberKeyGeneratorTest extends TestCase {
 
     @Test
-    public void testKyberGenerator() throws InvalidKeySpecException, NoSuchAlgorithmException {
+    public void testKyberGeneratorEncDec() throws InvalidKeySpecException, NoSuchAlgorithmException {
         final int numServers = 30;
 
         List<KyberShareholder> kyberShareholders = KyberKeyGenerator.generateKyber(numServers);
 
         // Encrypt a message using the combined As and pks
         final SHA3.DigestSHA3 md1 = new SHA3.DigestSHA3(256);
-        md1.update(new byte[]{1,2});
+        md1.update(new byte[]{1, 2});
         byte[] m = md1.digest();
 
         final SHA3.DigestSHA3 md2 = new SHA3.DigestSHA3(256);
-        md2.update(new byte[]{2,3});
+        md2.update(new byte[]{2, 3});
         byte[] coins = md2.digest();
-        md2.update(new byte[]{1,2,3});
+        md2.update(new byte[]{1, 2, 3});
         byte[] coins1 = md2.digest();
 
         KyberCiphertext kyberCiphertext = Kyber.indcpa_enc_no_gen_mat(m, kyberShareholders.get(0).getKyberPublicParameters().getPk(), kyberShareholders.get(0).getKyberPublicParameters().getAtCombined(), coins);
 
         // generate decryption shares
         List<Kyber.Polynomial> decryptionShares = new ArrayList<>();
-        for(int i = 0; i < numServers; i++) {
+        for (int i = 0; i < numServers; i++) {
             List<Kyber.Polynomial> c1 = new ArrayList<>();
             Kyber.Polynomial c2;
-            for(int j = 0; j < Kyber.KYBER_K; j++) {
+            for (int j = 0; j < Kyber.KYBER_K; j++) {
                 c1.add(new Kyber.Polynomial(Arrays.copyOf(kyberCiphertext.getC1().get(j).poly, kyberCiphertext.getC1().get(j).poly.length)));
             }
             c2 = new Kyber.Polynomial(Arrays.copyOf(kyberCiphertext.getC2().poly, kyberCiphertext.getC2().poly.length));
@@ -56,6 +57,27 @@ public class KyberKeyGeneratorTest extends TestCase {
 //        byte[] after = Kyber.indcpa_dec_n(kyberCiphertext, spp);
 
         assertTrue(Arrays.equals(after, m));
+    }
+
+    @Test
+    public void testKyberGeneratorJsonAndBack() throws InvalidKeySpecException, NoSuchAlgorithmException {
+        final int numServers = 30;
+
+        List<KyberShareholder> kyberShareholders = KyberKeyGenerator.generateKyber(numServers);
+
+        List<JSONObject> kyberSharehooldersJson = new ArrayList<>();
+        for (int i = 0; i < numServers; i++) {
+            kyberSharehooldersJson.add(kyberShareholders.get(i).getJson());
+        }
+
+        List<KyberShareholder> kyberShareholdersAfter = new ArrayList<>();
+        for(int i = 0; i < numServers; i++) {
+            kyberShareholdersAfter.add(KyberShareholder.getParams(kyberSharehooldersJson.get(i)));
+        }
+
+        for(int i = 0; i < numServers; i++) {
+            assertTrue(kyberShareholders.get(i).equals(kyberShareholdersAfter.get(i)));
+        }
     }
 
 }

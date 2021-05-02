@@ -22,6 +22,7 @@ import com.ibm.pross.common.exceptions.http.NotFoundException;
 import com.ibm.pross.common.exceptions.http.ResourceUnavailableException;
 import com.ibm.pross.common.exceptions.http.UnauthorizedException;
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.kyber.KyberShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
@@ -58,6 +59,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
     public static final String PUBLIC_EXPONENT_VALUE = "e";
     public static final String SHARING_TYPE_VALUE = "sharingType";
     public static final String SHARING_TYPE_VALUE_PROACTIVE_RSA = "proactive-rsa";
+    public static final String SHARING_TYPE_VALUE_KYBER = "kyber";
     public static final String VERIFICATION_BASE = "v";
     public static final String VERIFICATION_KEYS = "v_";
     private static final Logger logger = LogManager.getLogger(StoreHandler.class);
@@ -193,7 +195,12 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
                     logger.error(exception);
                     throw new InternalServerException();
                 }
-            } else {
+            } else if (sharingType != null && sharingType.equals(SHARING_TYPE_VALUE_KYBER)) {
+                final KyberShareholder kyberShareholder = KyberShareholder.getParams(jsonParameters);
+                shareholder.setKyberShareholder(kyberShareholder);
+                response = "Kyber share have been stored.";
+            }
+            else {
                 shareholder.setStoredShareOfSecret(shareValue);
                 response = "s_" + serverIndex + " has been stored, DKG will use it for representing '" + secretName
                         + "' in the DKG.";

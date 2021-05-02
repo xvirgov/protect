@@ -1,5 +1,11 @@
 package com.ibm.pross.common.util.crypto.kyber;
 
+import com.google.common.primitives.Shorts;
+import org.bouncycastle.util.encoders.Base64;
+import org.json.simple.JSONObject;
+
+import java.security.cert.PolicyNode;
+import java.util.ArrayList;
 import java.util.List;
 
 public class KyberShareholder {
@@ -13,6 +19,32 @@ public class KyberShareholder {
     private KyberShareholder(KyberShareholderBuilder kyberShareholderBuilder) {
         this.kyberPublicParameters = kyberShareholderBuilder.kyberPublicParameters;
         this.secretShare = kyberShareholderBuilder.secretShare;
+    }
+
+    public JSONObject getJson() {
+        JSONObject jsonObject = new JSONObject();
+
+        for(int i = 0; i < Kyber.KYBER_K; i++) {
+            jsonObject.put("s_" + i, KyberUtils.bytesToBase64(KyberUtils.shortsToBytes(this.secretShare.get(i).poly)));
+        }
+
+        jsonObject.put("kyberPublicParameters", kyberPublicParameters.getJson());
+
+        return jsonObject;
+    }
+
+    public static KyberShareholder getParams(JSONObject jsonObject) {
+        KyberPublicParameters kyberPublicParameters = KyberPublicParameters.getParams((JSONObject) jsonObject.get("kyberPublicParameters"));
+
+        List<Kyber.Polynomial> sk = new ArrayList<>();
+        for(int i = 0; i < Kyber.KYBER_K; i++) {
+            sk.add(new Kyber.Polynomial(KyberUtils.bytesToShorts(KyberUtils.base64ToBytes((String) jsonObject.get("s_" + i)))));
+        }
+
+        return new KyberShareholderBuilder()
+                .setKyberPublicParameters(kyberPublicParameters)
+                .setSecretShare(sk)
+                .build();
     }
 
     public static class KyberShareholderBuilder {
