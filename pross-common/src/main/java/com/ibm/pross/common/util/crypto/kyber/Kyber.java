@@ -310,7 +310,7 @@ public class Kyber {
         return new Polynomial(r);
     }
 
-    static Polynomial polyvec_basemul_acc_montgomery(List<Polynomial> a, List<Polynomial> b) {
+    public static Polynomial polyvec_basemul_acc_montgomery(List<Polynomial> a, List<Polynomial> b) {
         Polynomial r = poly_basemul_montgomery(a.get(0), b.get(0));
         for (int i = 1; i < KYBER_K; i++) {
             Polynomial t = poly_basemul_montgomery(a.get(i), b.get(i));
@@ -377,7 +377,7 @@ public class Kyber {
 
         byte[] seed = new byte[Kyber.KYBER_SYMBYTES];
 
-//        new SecureRandom().nextBytes(seed);
+        new SecureRandom().nextBytes(seed);
 
         final SHA3.DigestSHA3 md = new SHA3.DigestSHA3(512);
         md.update(seed);
@@ -397,6 +397,44 @@ public class Kyber {
             e.add(poly_getnoise_eta1(noiseSeed, nonce++));
 
         polyvec_ntt(skpv);
+        polyvec_ntt(e);
+
+        List<Polynomial> pkpv = new ArrayList<>();
+        for (int i = 0; i < KYBER_K; i++) {
+            pkpv.add(polyvec_basemul_acc_montgomery(a.matrix.get(i), skpv));
+            poly_tomont(pkpv.get(i));
+        }
+
+        pkpv = polyvec_add(pkpv, e);
+        polyvec_reduce(pkpv);
+
+        return new KyberKeyPair(pkpv, skpv, hashedSeed);
+    }
+
+    public static KyberKeyPair indcpa_keypair_from_sk(Matrix a, List<Polynomial> skpv) {
+
+        byte[] seed = new byte[Kyber.KYBER_SYMBYTES];
+
+//        new SecureRandom().nextBytes(seed);
+
+        final SHA3.DigestSHA3 md = new SHA3.DigestSHA3(512);
+        md.update(seed);
+
+        byte[] hashedSeed = md.digest();
+
+//        Kyber.Matrix a = Kyber.gen_matrix(hashedSeed, false);
+
+//        List<Polynomial> skpv = new ArrayList<>();
+        List<Polynomial> e = new ArrayList<>();
+
+        byte[] noiseSeed = Arrays.copyOfRange(hashedSeed, KYBER_SYMBYTES, hashedSeed.length);
+        int nonce = 0;
+//        for (int i = 0; i < KYBER_K; i++)
+//            skpv.add(poly_getnoise_eta1(noiseSeed, nonce++));
+        for (int i = 0; i < KYBER_K; i++)
+            e.add(poly_getnoise_eta1(noiseSeed, nonce++));
+
+//        polyvec_ntt(skpv);
         polyvec_ntt(e);
 
         List<Polynomial> pkpv = new ArrayList<>();
@@ -520,46 +558,130 @@ public class Kyber {
         return poly_tomsg(mp);
     }
 
-    public static byte[] indcpa_dec_n(KyberCiphertext c, List<List<Polynomial>> skpv, List<Polynomial> sstmp) {
-
+    public static Polynomial gen_dec_share(KyberCiphertext c, List<Polynomial> ss, byte[] coins) { // FIXME: add noise
         List<Polynomial> b = c.getC1();
-        Polynomial v = c.getC2();
-
+//        Polynomial v = c.getC2();
         polyvec_ntt(b);
-//        Polynomial mp = polyvec_basemul_acc_montgomery(skpv, b);
+
+        Polynomial decShare =  polyvec_basemul_acc_montgomery(ss, b);
+
+        int nonce = ss.size();
+//        List<Polynomial> ep = new ArrayList<>();
+//        for(int i = 0; i < KYBER_K; i++)
+//            ep.add(poly_getnoise_eta2(coins, nonce++));
+        Polynomial ep = poly_getnoise_eta2(coins, nonce++);
+//        short[] pol_e = new short[KYBER_N];
+//        pol_e[4] = 1;
+//        Polynomial ep = new Polynomial(pol_e);
+
+
+//        poly_ntt(ep);
+        poly_invntt_tomont(decShare);
+
+        decShare = poly_add(decShare, ep);
+        poly_reduce(decShare);
+
+        return decShare;
+    }
+
+//    public static List<Polynomial> gen_dec_shares(KyberCiphertext c, List<List<Polynomial>> skpv) { // FIXME: add noise
+//        List<Polynomial> b = c.getC1();
+//        polyvec_ntt(b);
+//
+//        List<Polynomial> tmps = new ArrayList<>();
+//        for (List<Polynomial> polynomials : skpv) {
+//            tmps.add(polyvec_basemul_acc_montgomery(polynomials, b));
+//        }
+//
+//        return tmps;
+//    }
+
+    public static byte[] combine_dec_shares(KyberCiphertext c, List<Polynomial> decShares) {
+//        List<Polynomial> b = c.getC1();
+        Polynomial v = c.getC2();
+//        polyvec_ntt(b);
+
         Polynomial mp = new Polynomial(new short[KYBER_N]);
 
-        List<Polynomial> accuSk = new ArrayList<>();
-        for(int i = 0; i < KYBER_K;i++) {
-            accuSk.add(new Polynomial(new short[KYBER_N]));
-        }
-        for(int i = 0; i < skpv.size(); i++) {
-//            accuSk = polyvec_add(accuSk, skpv.get(i));
-            Polynomial tmp = polyvec_basemul_acc_montgomery(skpv.get(i), b);
-            mp = poly_add(mp, tmp);
+        for(int i = 0; i < decShares.size(); i++) {
+//            poly_ntt(decShares.get(i));
+            mp = poly_add(mp, decShares.get(i));
             poly_reduce(mp);
         }
-//        accuSk = polyvec_add(skpv.get(0), skpv.get(1));
 
-//        for(int i = 0; i < sstmp.size(); i++) {
-//            for(int j = 0; j < KYBER_N; j++) {
-//                if(sstmp.get(i).poly[j] != accuSk.get(i).poly[j])
-//                    System.out.println("Not equal at: " + i + ", " + j + ": " + sstmp.get(i).poly[j] + " --- " + accuSk.get(i).poly[j] + " ( " + skpv.get(0).get(i).poly[j] + " + " + skpv.get(1).get(i).poly[j] + ")");
-//            }
-////            if(!Arrays.equals(sstmp.get(i).poly, accuSk.get(i).poly))
-////                System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa");
-//        }
-
-//        mp = polyvec_basemul_acc_montgomery(accuSk, b);
-
-        poly_invntt_tomont(mp);
-
+//        poly_invntt_tomont(mp);
         mp = poly_sub(v, mp);
         poly_reduce(mp);
         poly_reduce(v);
 
         return poly_tomsg(mp);
     }
+
+    public static byte[] indcpa_dec_n(KyberCiphertext c, List<List<Polynomial>> skpv) {
+        List<Polynomial> b = c.getC1();
+
+        polyvec_ntt(b);
+
+        List<Polynomial> tmps = new ArrayList<>();
+        for (List<Polynomial> polynomials : skpv) {
+            tmps.add(polyvec_basemul_acc_montgomery(polynomials, b));
+        }
+
+        Polynomial v = c.getC2();
+        Polynomial mp = new Polynomial(new short[KYBER_N]);
+        for(int i = 0; i < skpv.size(); i++) {
+            mp = poly_add(mp, tmps.get(i));
+            poly_reduce(mp);
+        }
+
+        poly_invntt_tomont(mp);
+
+        mp = poly_sub(v, mp);
+        poly_reduce(mp);
+
+        return poly_tomsg(mp);
+    }
+
+//    public static byte[] indcpa_dec_n(KyberCiphertext c, List<List<Polynomial>> skpv) {
+//
+//        List<Polynomial> b = c.getC1();
+//        Polynomial v = c.getC2();
+//
+//        polyvec_ntt(b);
+////        Polynomial mp = polyvec_basemul_acc_montgomery(skpv, b);
+//        Polynomial mp = new Polynomial(new short[KYBER_N]);
+//
+////        List<Polynomial> accuSk = new ArrayList<>();
+////        for(int i = 0; i < KYBER_K;i++) {
+////            accuSk.add(new Polynomial(new short[KYBER_N]));
+////        }
+//        for(int i = 0; i < skpv.size(); i++) {
+////            accuSk = polyvec_add(accuSk, skpv.get(i));
+//            Polynomial tmp = polyvec_basemul_acc_montgomery(skpv.get(i), b);
+//            mp = poly_add(mp, tmp);
+//            poly_reduce(mp);
+//        }
+////        accuSk = polyvec_add(skpv.get(0), skpv.get(1));
+//
+////        for(int i = 0; i < sstmp.size(); i++) {
+////            for(int j = 0; j < KYBER_N; j++) {
+////                if(sstmp.get(i).poly[j] != accuSk.get(i).poly[j])
+////                    System.out.println("Not equal at: " + i + ", " + j + ": " + sstmp.get(i).poly[j] + " --- " + accuSk.get(i).poly[j] + " ( " + skpv.get(0).get(i).poly[j] + " + " + skpv.get(1).get(i).poly[j] + ")");
+////            }
+//////            if(!Arrays.equals(sstmp.get(i).poly, accuSk.get(i).poly))
+//////                System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa");
+////        }
+//
+////        mp = polyvec_basemul_acc_montgomery(accuSk, b);
+//
+//        poly_invntt_tomont(mp);
+//
+//        mp = poly_sub(v, mp);
+//        poly_reduce(mp);
+////        poly_reduce(v);
+//
+//        return poly_tomsg(mp);
+//    }
 
     /**
      * Decrypts encrypted shared secret (symmetric key)

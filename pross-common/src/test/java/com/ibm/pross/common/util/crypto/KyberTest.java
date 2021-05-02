@@ -147,7 +147,7 @@ public class KyberTest extends TestCase {
 
     @Test
     public void testMPCSum() {
-        int n = 1;
+        int n = 30;
 
 //        KyberKeyPair keyPair = Kyber.indcpa_keypair();
 
@@ -193,18 +193,33 @@ public class KyberTest extends TestCase {
         for(int i = 0; i < n; i++) {
             for(int j = 0; j < Kyber.KYBER_K; j++) {
                 aCombined.matrix.set(j, Kyber.polyvec_add(aCombined.matrix.get(j), as.get(i).matrix.get(j)));
-                Kyber.polyvec_reduce(aCombined.matrix.get(j));
+//                Kyber.polyvec_reduce(aCombined.matrix.get(j));
                 atCombined.matrix.set(j, Kyber.polyvec_add(atCombined.matrix.get(j), ats.get(i).matrix.get(j)));
-                Kyber.polyvec_reduce(atCombined.matrix.get(j));
+//                Kyber.polyvec_reduce(atCombined.matrix.get(j));
             }
         }
 
         for(int i = 0; i < n; i++) {
             pk = Kyber.polyvec_add(pk, keyPairs.get(i).getPk());
-            Kyber.polyvec_reduce(pk);
+//            Kyber.polyvec_reduce(pk);
             sk = Kyber.polyvec_add(sk, keyPairs.get(i).getSk());
-            Kyber.polyvec_reduce(sk);
+//            Kyber.polyvec_reduce(sk);
         }
+
+//        List<Kyber.Polynomial> pkpv = new ArrayList<>();
+//        for (int i = 0; i < Kyber.KYBER_K; i++) {
+//            pkpv.add(Kyber.polyvec_basemul_acc_montgomery(aCombined.matrix.get(i), sk));
+//            Kyber.poly_tomont(pkpv.get(i));
+////            Kyber.poly_tomont(pk.get(i));
+//        }
+
+        KyberKeyPair kyberKeyPairAfter = Kyber.indcpa_keypair_from_sk(aCombined, sk);
+
+
+//        for(int i = 0; i < Kyber.KYBER_K; i++) {
+//            assertTrue(Arrays.equals(pk.get(i).poly, pkpv.get(i).poly));
+//        }
+
 
         // Encrypt a message using the combined As and pks
         final SHA3.DigestSHA3 md1 = new SHA3.DigestSHA3(256);
@@ -215,7 +230,14 @@ public class KyberTest extends TestCase {
         md2.update(new byte[]{2,3});
         byte[] coins = md2.digest();
 
-        KyberCiphertext kyberCiphertext = Kyber.indcpa_enc_no_gen_mat(m, pk, atCombined, coins);
+        KyberCiphertext kyberCiphertext = Kyber.indcpa_enc_no_gen_mat(m, kyberKeyPairAfter.getPk(), atCombined, coins);
+
+//        List<KyberCiphertext> kyberCiphertextList = new ArrayList<>();
+//        for(int i =0; i < n; i++) {
+//            kyberCiphertextList.add(Kyber.indcpa_enc(m, keyPairs.get(i).getPk(), keyPairs.get(i).getPublicSeed(), coins));
+//        }
+
+
 //        KyberCiphertext kyberCiphertext = Kyber.indcpa_enc(m, keyPairs.get(0).getPk(), keyPairs.get(0).getPublicSeed(), coins);
 
 //        byte[] mAfter = new byte[Kyber.KYBER_SYMBYTES];
@@ -226,12 +248,23 @@ public class KyberTest extends TestCase {
 //                mAfter[j] += mAfterTmp[j];
 //            }
 //        }
-
-        byte[] after = Kyber.indcpa_dec(kyberCiphertext, sk);
-
-        for(int i = 0; i < Kyber.KYBER_SYMBYTES; i++) {
-            System.out.println(Integer.toBinaryString(m[i] & 0xFF) + " -- " + Integer.toBinaryString(after[i] & 0xFF));
+        List<List<Kyber.Polynomial>> spp = new ArrayList<>();
+        for(int i = 0; i < n; i++) {
+            spp.add(keyPairs.get(i).getSk());
         }
+
+        byte[] after = Kyber.indcpa_dec_n(kyberCiphertext, spp);
+//        byte[] after = Kyber.indcpa_dec(kyberCiphertext, sk);
+
+//        for(int i = 0; i < Kyber.KYBER_SYMBYTES; i++) {
+//            System.out.println(Integer.toBinaryString(m[i] & 0xFF) + " -- " + Integer.toBinaryString(after[i] & 0xFF));
+//        }
+
+//        for(int i = 0; i < after.length; i++) {
+//            System.out.println(m[i] + " --> " + after[i]);
+//            if(m[i] != after[i])
+//                System.out.println("-------------------------------------");
+//        }
 
         assertTrue(Arrays.equals(after, m));
     }
@@ -276,7 +309,7 @@ public class KyberTest extends TestCase {
         spp2.add(keyPair.getSk());
         spp.add(sp1);
         spp.add(sp2);
-        byte[] after_mpc = Kyber.indcpa_dec_n(kyberCiphertext, spp, keyPair.getSk());
+        byte[] after_mpc = Kyber.indcpa_dec_n(kyberCiphertext, spp);
 //        byte[] after = Kyber.indcpa_dec_n(kyberCiphertext, spp2, keyPair.getSk());
 //        byte[] after2 = Kyber.indcpa_dec_n(kyberCiphertext, sp2, 2);
         assertTrue(Arrays.equals(m, after_mpc));
