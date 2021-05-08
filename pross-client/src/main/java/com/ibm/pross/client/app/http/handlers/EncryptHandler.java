@@ -3,6 +3,7 @@ package com.ibm.pross.client.app.http.handlers;
 import com.ibm.pross.client.app.http.HttpRequestProcessor;
 import com.ibm.pross.client.app.permissions.AppPermissions;
 import com.ibm.pross.client.encryption.EciesEncryptionClient;
+import com.ibm.pross.client.encryption.KyberEncryptionClient;
 import com.ibm.pross.client.encryption.ProactiveRsaEncryptionClient;
 import com.ibm.pross.client.encryption.RsaEncryptionClient;
 import com.ibm.pross.common.config.CommonConfiguration;
@@ -40,6 +41,7 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
     public static final String RSA_CIPHER = "rsa";
     public static final String PROACTIVE_RSA_CIPHER = "proactive-rsa";
     public static final String ECIES_CIPHER = "ecies";
+    public static final String KYBER_CIPHER = "kyber";
     private static final Logger logger = LogManager.getLogger(EncryptHandler.class);
     //Path names
     public static String CLIENT_DIRECTORY = "client";
@@ -142,6 +144,17 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 
             try (final OutputStream os = exchange.getResponseBody();) {
                 final byte[] binaryResponse = proactiveRsaEncryptionClient.encryptStream(secretName, exchange.getRequestBody());
+                exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
+                os.write(binaryResponse);
+            } catch (Exception ex) {
+                logger.error(ex);
+            }
+        }
+        else if (cipher.equals(KYBER_CIPHER)) {
+            KyberEncryptionClient kyberEncryptionClient = new KyberEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey);
+
+            try (final OutputStream os = exchange.getResponseBody();) {
+                final byte[] binaryResponse = kyberEncryptionClient.encryptStream(secretName, exchange.getRequestBody());
                 exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
                 os.write(binaryResponse);
             } catch (Exception ex) {

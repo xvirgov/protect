@@ -2,6 +2,7 @@ package com.ibm.pross.client.app.http.handlers;
 
 import com.ibm.pross.client.app.http.HttpRequestProcessor;
 import com.ibm.pross.client.app.permissions.AppPermissions;
+import com.ibm.pross.client.generation.KyberKeyGenerationClient;
 import com.ibm.pross.client.generation.ProactiveRsaKeyGeneratorClient;
 import com.ibm.pross.client.generation.RsaKeyGeneratorClient;
 import com.ibm.pross.common.config.KeyLoader;
@@ -32,6 +33,7 @@ public class GenerateKeysHandler extends AuthenticatedClientRequestHandler {
     // Query values
     public static final String CIPHER_RSA = "rsa";
     public static final String CIPHER_PROACTIVE_RSA = "proactive-rsa";
+    public static final String CIPHER_KYBER = "kyber";
     private static final Logger logger = LogManager.getLogger(GenerateKeysHandler.class);
     //Path names
     public static String CLIENT_DIRECTORY = "client";
@@ -82,10 +84,12 @@ public class GenerateKeysHandler extends AuthenticatedClientRequestHandler {
             if (cipher.equals(CIPHER_RSA)) {
                 RsaKeyGeneratorClient rsaKeyGeneratorClient = new RsaKeyGeneratorClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName);
                 generationStatus = rsaKeyGeneratorClient.generateRsaKeys();
-
             } else if (cipher.equals(CIPHER_PROACTIVE_RSA)) {
                 ProactiveRsaKeyGeneratorClient rsaKeyGeneratorClient = new ProactiveRsaKeyGeneratorClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName);
                 generationStatus = rsaKeyGeneratorClient.generateRsaKeys();
+            } else if (cipher.equals(CIPHER_KYBER)) {
+                KyberKeyGenerationClient kyberKeyGenerationClient = new KyberKeyGenerationClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName);
+                generationStatus = kyberKeyGenerationClient.generateKyberKeys();
             }
         } catch (Exception ex) {
             logger.error(ex);

@@ -1363,6 +1363,10 @@ public class ApvssShareholder {
         this.kyberShareholder = kyberShareholder;
     }
 
+    public KyberShareholder getKyberShareholder() {
+        return this.kyberShareholder;
+    }
+
     public RsaSharing getRsaSharing() {
         return this.getCurrentSharing().getRsaSharing();
     }

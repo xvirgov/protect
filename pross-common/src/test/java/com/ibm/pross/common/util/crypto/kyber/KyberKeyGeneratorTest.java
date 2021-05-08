@@ -25,7 +25,7 @@ public class KyberKeyGeneratorTest extends TestCase {
         byte[] m = md1.digest();
 
         final SHA3.DigestSHA3 md2 = new SHA3.DigestSHA3(256);
-        md2.update(new byte[]{2, 3});
+        md2.update(new byte[]{2, 3,4,5,6,8});
         byte[] coins = md2.digest();
         md2.update(new byte[]{1, 2, 3});
         byte[] coins1 = md2.digest();
@@ -48,13 +48,6 @@ public class KyberKeyGeneratorTest extends TestCase {
 
         // combine decryption shares
         byte[] after = Kyber.combine_dec_shares(kyberCiphertext, decryptionShares);
-
-//        List<List<Kyber.Polynomial>> spp = new ArrayList<>();
-//        for(int i = 0; i < numServers; i++) {
-//            spp.add(kyberShareholders.get(i).getSecretShare());
-//        }
-//
-//        byte[] after = Kyber.indcpa_dec_n(kyberCiphertext, spp);
 
         assertTrue(Arrays.equals(after, m));
     }

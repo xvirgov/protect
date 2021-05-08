@@ -27,6 +27,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.kyber.Kyber;
+import com.ibm.pross.common.util.crypto.kyber.KyberPublicParameters;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.json.simple.JSONArray;
@@ -486,6 +488,118 @@ public class BaseClient {
                 int maxWait = 10;
                 while (rsaPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
                     for (Map.Entry<ProactiveRsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
+                        if (params.getValue() >= reconstructionThreshold) {
+                            logger.debug("Consistency level reached.");
+                            return params.getKey();
+                        }
+                    }
+                    logger.debug("Waiting for more servers to send config...");
+                    Thread.sleep(2000);
+                }
+
+                throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
+            } else {
+                logger.error("Number of failures exceeded the threshold");
+                executor.shutdown();
+                throw new ResourceUnavailableException();
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Interacts with the servers to determine the public key of the secret (by
+     * majority vote)
+     *
+     * @param inputPoint
+     * @return
+     * @throws ResourceUnavailableException
+     * @throws BelowThresholdException
+     */
+    @SuppressWarnings("unchecked")
+    protected KyberPublicParameters getKyberPublicParams(final String secretName)
+            throws ResourceUnavailableException, BelowThresholdException {
+
+        logger.debug("Starting retrieval of the Kyber Public params from secret " + secretName);
+
+        // Server configuration
+        final int numShareholders = this.serverConfiguration.getNumServers();
+        final int reconstructionThreshold = this.serverConfiguration.getReconstructionThreshold();
+
+        // We create a thread pool with a thread for each task and remote server
+        final ExecutorService executor = Executors.newFixedThreadPool(numShareholders - 1);
+
+        // The countdown latch tracks progress towards reaching a threshold
+        final CountDownLatch latch = new CountDownLatch(reconstructionThreshold);
+
+        logger.debug("Wait until at least " + reconstructionThreshold + " servers respond");
+
+        final AtomicInteger failureCounter = new AtomicInteger(0);
+        final int maximumFailures = (numShareholders - reconstructionThreshold);
+
+        // Each task deposits its result into this map after verifying it is correct and
+        // consistent
+
+        final Map<KyberPublicParameters, Integer> kyberPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
+
+        // Create a partial result task for everyone except ourselves
+        int serverId = 0;
+        for (final InetSocketAddress serverAddress : this.serverConfiguration.getServerAddresses()) {
+            serverId++;
+            final String serverIp = serverAddress.getAddress().getHostAddress();
+            final int serverPort = CommonConfiguration.BASE_HTTP_PORT + serverId;
+            final String linkUrl = "https://" + serverIp + ":" + serverPort + "/info?cipher=kyber&secretName=" + secretName + "&json=true";
+
+//            logger.info(linkUrl);
+
+            final int thisServerId = serverId;
+
+            // Create new task to get the secret info from the server
+            executor.submit(new PartialResultTask(this, serverId, linkUrl, kyberPublicParametersCount, latch, failureCounter,
+                    maximumFailures, 1, false) {
+                @Override
+                protected void parseJsonResult(final String json) throws Exception {
+                    logger.debug("Parsing response...");
+                    final JSONParser parser = new JSONParser();
+                    final Object obj = parser.parse(json);
+                    final JSONObject jsonObject = (JSONObject) obj;
+//
+//
+                    final Long responder = Long.parseLong(jsonObject.get("responder").toString());
+                    final JSONObject kyberPublicParametersJson = (JSONObject) jsonObject.get("kyberPublicParameters");
+
+                    if ((responder == thisServerId)) {
+                        KyberPublicParameters kyberPublicParameters = KyberPublicParameters.getParams(kyberPublicParametersJson);
+                        // Add parameters to the hashmap
+                        if (!kyberPublicParametersCount.containsKey(kyberPublicParameters)) {
+                            kyberPublicParametersCount.put(kyberPublicParameters, 1);
+                        } else {
+                            kyberPublicParametersCount.put(kyberPublicParameters, kyberPublicParametersCount.get(kyberPublicParameters) + 1);
+                        }
+
+                        // Everything checked out, increment successes
+                        latch.countDown();
+                    } else {
+                        throw new Exception("Server " + thisServerId + " sent inconsistent results");
+                    }
+
+                }
+            });
+        }
+
+        try {
+            latch.await();
+
+            // Check that we have enough results to interpolate the share
+            if (failureCounter.get() <= maximumFailures) {
+
+                executor.shutdown();
+                // Use the config which was returned by more than threshold number of servers
+
+                int maxWait = 10;
+                while (kyberPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
+                    for (Map.Entry<KyberPublicParameters, Integer> params : kyberPublicParametersCount.entrySet()) {
                         if (params.getValue() >= reconstructionThreshold) {
                             logger.debug("Consistency level reached.");
                             return params.getKey();

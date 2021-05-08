@@ -1,5 +1,6 @@
 package com.ibm.pross.client.util;
 
+import com.ibm.pross.common.util.crypto.kyber.KyberPublicParameters;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -89,6 +90,20 @@ public abstract class PartialResultTask implements Runnable {
 
     public PartialResultTask(final BaseClient baseClient, final int remoteServerId, final String requestUrl, final Map<ProactiveRsaPublicParameters, Integer> verifiedResultsCounter,
                              final CountDownLatch latch, final AtomicInteger failureCounter, final int maximumFailures, long epoch) {
+
+        this.baseClient = baseClient;
+        // Remote server info
+        this.remoteServerId = remoteServerId;
+        this.requestUrl = requestUrl;
+
+        // State management
+        this.latch = latch;
+        this.failureCounter = failureCounter;
+        this.maximumFailures = maximumFailures;
+    }
+
+    public PartialResultTask(final BaseClient baseClient, final int remoteServerId, final String requestUrl, final Map<KyberPublicParameters, Integer> verifiedResultsCounter,
+                             final CountDownLatch latch, final AtomicInteger failureCounter, final int maximumFailures, long epoch, boolean tmp) {
 
         this.baseClient = baseClient;
         // Remote server info

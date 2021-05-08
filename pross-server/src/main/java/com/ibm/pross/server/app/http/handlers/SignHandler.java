@@ -1,7 +1,6 @@
 package com.ibm.pross.server.app.http.handlers;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -9,11 +8,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.kyber.Kyber;
+import com.ibm.pross.common.util.crypto.kyber.KyberCiphertext;
+import com.ibm.pross.common.util.crypto.kyber.KyberShareholder;
+import com.ibm.pross.common.util.crypto.kyber.KyberUtils;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaProactiveSharing;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bouncycastle.jcajce.provider.digest.SHA3;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -35,6 +39,7 @@ import com.ibm.pross.server.app.http.HttpRequestProcessor;
 import com.ibm.pross.server.configuration.permissions.AccessEnforcement;
 import com.ibm.pross.server.configuration.permissions.ClientPermissions.Permissions;
 import com.sun.net.httpserver.HttpExchange;
+import org.json.simple.parser.JSONParser;
 
 /**
  * This handler performs an exponentiation using a share of a secret. Client's
@@ -92,24 +97,57 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 			throw new ResourceUnavailableException();
 		}
 
-		// Extract message from request
-		final String message = HttpRequestProcessor.getParameterValue(params, MESSAGE_FIELD);
-		if (message == null) {
-			throw new BadRequestException();
-		}
-		final BigInteger m = new BigInteger(message);
-
 		// Ensure the secret is of the supported type
-		if (!SharingType.RSA_STORED.equals(shareholder.getSharingType()) && !SharingType.RSA_PROACTIVE_STORED.equals(shareholder.getSharingType())) {
+		if (!SharingType.RSA_STORED.equals(shareholder.getSharingType()) && !SharingType.RSA_PROACTIVE_STORED.equals(shareholder.getSharingType()) && !SharingType.KYBER_STORED.equals(shareholder.getSharingType())) {
 			throw new BadRequestException();
 		}
 
 		String response;
 		if(shareholder.getSharingType().equals(SharingType.RSA_STORED)) {
+
+			// Extract message from request
+			final String message = HttpRequestProcessor.getParameterValue(params, MESSAGE_FIELD);
+			if (message == null) {
+				throw new BadRequestException();
+			}
+
+
+			final BigInteger m = new BigInteger(message);
 			response = createRsaResponse(shareholder, m);
 		}
 		else if (shareholder.getSharingType().equals(SharingType.RSA_PROACTIVE_STORED)){
+
+			// Extract message from request
+			final String message = HttpRequestProcessor.getParameterValue(params, MESSAGE_FIELD);
+			if (message == null) {
+				throw new BadRequestException();
+			}
+
+
+			final BigInteger m = new BigInteger(message);
 			response = createProactiveRsaResponse(shareholder, m);
+		}
+		else if (shareholder.getSharingType().equals(SharingType.KYBER_STORED)){
+//			response = createProactiveRsaResponse(shareholder, m);
+//			KyberCiphertext kyberCiphertext = KyberCiphertext.getCiphertext(KyberUtils.base64ToBytes(message));
+
+			// get body of message
+			JSONObject jsonParameters;
+			try (InputStream inputStream = exchange.getRequestBody();
+				 InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+				 BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
+				JSONParser parser = new JSONParser();
+				String requestBody = bufferedReader.readLine();
+				logger.info("REQUEST:::" + requestBody);
+				jsonParameters = (JSONObject) parser.parse(requestBody);
+				logger.info("PASSED HERE");
+				logger.info("GOT:::" + jsonParameters.get("message"));
+			} catch (Exception ex) {
+				logger.error(ex);
+				throw new RuntimeException(ex);
+			}
+			KyberCiphertext kyberCiphertext = KyberCiphertext.getCiphertext(KyberUtils.base64ToBytes(jsonParameters.get("message").toString()));
+			response = createKyberResponse(shareholder, kyberCiphertext);
 		}
 		else {
 			throw new BadRequestException();
@@ -260,6 +298,38 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		obj.put("compute_time_us", Long.toString(processingTimeUs));
 		obj.put("epoch", Integer.toString(proactiveRsaShareholder.getProactiveRsaPublicParameters().getEpoch()));
 		obj.put("signatureResponse", signatureResponse.getJson());
+
+		return obj.toJSONString() + "\n";
+	}
+
+	private String createKyberResponse(ApvssShareholder shareholder, KyberCiphertext ciphertext) throws NotFoundException {
+		final KyberShareholder kyberShareholder = shareholder.getKyberShareholder();
+
+		logger.info("Creating partial decryption for kyber");
+
+		// Do processing
+		final long startTime = System.nanoTime();
+		final SHA3.DigestSHA3 md2 = new SHA3.DigestSHA3(256);
+		md2.update(new byte[]{1, 2, 3});
+		byte[] coins1 = md2.digest();
+		Kyber.Polynomial decryptionShare = Kyber.gen_dec_share(ciphertext, kyberShareholder.getSecretShare(), coins1);
+//		final SignatureResponse signatureResponse = ThresholdSignatures.produceProactiveSignatureResponse(m, proactiveRsaShareholder, BigInteger.valueOf(shareholder.getIndex()));
+		final long endTime = System.nanoTime();
+
+		// Compute processing time
+		final long processingTimeUs = (endTime - startTime) / 1_000;
+
+		// Create response
+//		final int serverIndex = shareholder.getIndex();
+//		final long epoch = shareholder.getEpoch();
+
+		// Return the result in json
+		final JSONObject obj = new JSONObject();
+		obj.put("compute_time_us", Long.toString(processingTimeUs));
+//		obj.put("epoch", Integer.toString(proactiveRsaShareholder.getProactiveRsaPublicParameters().getEpoch()));
+		obj.put("signatureResponse", KyberUtils.bytesToBase64(KyberUtils.shortsToBytes(decryptionShare.poly)));
+
+		logger.info("Partial decryption for KYBER generated!!");
 
 		return obj.toJSONString() + "\n";
 	}

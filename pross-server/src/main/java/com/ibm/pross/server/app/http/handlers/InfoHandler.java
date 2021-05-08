@@ -66,6 +66,7 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
     // Query value
     public static final String CIPHER_FIELD_RSA = "rsa";
     public static final String CIPHER_FIELD_PROACTIVE_RSA = "proactive-rsa";
+    public static final String CIPHER_FIELD_KYBER = "kyber";
     public static final String CIPHER_FIELD_EC = "ec";
     private static final Logger logger = LogManager.getLogger(InfoHandler.class);
     // Fields
@@ -180,6 +181,28 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
         }
 
         return null; // TODO-thesis add support to show RSA secrets on the website
+    }
+
+    private static String getKyberPublicInfo(final ApvssShareholder shareholder, final String secretName,
+                                                    final Long epochNumber, final ServerConfiguration serverConfig, final boolean outputJson) throws BadRequestException {
+        logger.info("Retrieving local Kyber sharing information for secret " + secretName);
+
+        final int serverIndex = shareholder.getIndex();
+
+        if (outputJson) {
+            // Just return the epoch, and public key
+
+            // Return the result in json
+            final JSONObject obj = new JSONObject(); // TODO-now PublicRsaParams -> json
+            obj.put("responder", Integer.valueOf(serverIndex).toString());
+            obj.put("kyberPublicParameters", shareholder.getKyberShareholder().getKyberPublicParameters().getJson());
+
+            logger.info("[DONE]");
+
+            return obj.toJSONString() + "\n";
+        }
+
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -447,6 +470,10 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
         else if (cipher != null && cipher.equalsIgnoreCase(CIPHER_FIELD_PROACTIVE_RSA)) {
             logger.info("Getting proactive RSA public info...");
             response = getProactiveRSAPublicInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);
+        }
+        else if (cipher != null && cipher.equalsIgnoreCase(CIPHER_FIELD_KYBER)) {
+            logger.info("Getting Kyber public info...");
+            response = getKyberPublicInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);
         }
         else {
             response = getSecretInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);

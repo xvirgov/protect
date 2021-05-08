@@ -558,7 +558,9 @@ public class Kyber {
         return poly_tomsg(mp);
     }
 
-    public static Polynomial gen_dec_share(KyberCiphertext c, List<Polynomial> ss, byte[] coins) { // FIXME: add noise
+    public static Polynomial gen_dec_share(KyberCiphertext c, List<Polynomial> ss, byte[] coins) {
+
+        System.out.println("gen_dec_sharegen_dec_sharegen_dec_sharegen_dec_sharegen_dec_sharegen_dec_sharegen_dec_share");
         List<Polynomial> b = c.getC1();
 //        Polynomial v = c.getC2();
         polyvec_ntt(b);
