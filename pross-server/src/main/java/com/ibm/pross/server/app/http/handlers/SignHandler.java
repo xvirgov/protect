@@ -146,8 +146,11 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 				logger.error(ex);
 				throw new RuntimeException(ex);
 			}
+			logger.info("HERE1");
 			KyberCiphertext kyberCiphertext = KyberCiphertext.getCiphertext(KyberUtils.base64ToBytes(jsonParameters.get("message").toString()));
+			logger.info("HERE2");
 			response = createKyberResponse(shareholder, kyberCiphertext);
+			logger.info("HERE3");
 		}
 		else {
 			throw new BadRequestException();

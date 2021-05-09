@@ -23,6 +23,7 @@ import com.ibm.pross.common.util.shamir.Polynomials;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bouncycastle.crypto.digests.SHAKEDigest;
 import org.bouncycastle.jcajce.provider.digest.SHA3;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -119,26 +120,120 @@ public class KyberEncryptionClient extends BaseClient {
 //
 //            logger.info("Encryption process finished");
 
-            final SHA3.DigestSHA3 md1 = new SHA3.DigestSHA3(256);
-            md1.update(new byte[]{1, 2});
-            byte[] m = md1.digest();
+        try {
+            // random, hashed m
+            logger.info("Generating randmo m...");
+            byte[] m = new byte[Kyber.KYBER_SYMBYTES];
+            SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+            random.nextBytes(m);
 
-            logger.info("ENCRETING:: " + Arrays.toString(m));
+            SHA3.DigestSHA3 mdH = new SHA3.DigestSHA3(256);
+            mdH.update(m);
+            m = mdH.digest();
+            logger.info("[DONE]");
 
-            final SHA3.DigestSHA3 md2 = new SHA3.DigestSHA3(256);
-            md2.update(new byte[]{2, 3});
-            byte[] coins = md2.digest();
-            md2.update(new byte[]{1, 2, 3});
-            byte[] coins1 = md2.digest();
+            // H(pk)
+            logger.info("Hashing pk...");
+            mdH.reset();
+            for(int i = 0; i < kyberPublicParameters.getPk().size(); i++) {
+                mdH.update(KyberUtils.shortsToBytes(kyberPublicParameters.getPk().get(i).poly));
+            }
+            byte[] hashedPk = mdH.digest();
+            logger.info("[DONE]");
 
-            KyberCiphertext kyberCiphertext = Kyber.indcpa_enc_no_gen_mat(m, kyberPublicParameters.getPk(), kyberPublicParameters.getAtCombined(), coins);
+            // K||r = G(m || H(pk))
+            logger.info("Hashing m with pk...");
+            SHA3.DigestSHA3 mdG = new SHA3.DigestSHA3(512);
+            mdG.update(Parse.concatenate(m, hashedPk));
+            byte[] kr = mdG.digest();
 
-            return kyberCiphertext.toByteArray();
+            byte[] K1 = Arrays.copyOfRange(kr, 0, Kyber.KYBER_SYMBYTES);
+            byte[] r = Arrays.copyOfRange(kr,  Kyber.KYBER_SYMBYTES, kr.length);
+            logger.info("[DONE]");
+
+            // c := Kyber.CPAPKE.Enc(pk,m,r)
+            logger.info("Encrypting random m...");
+            KyberCiphertext kyberCiphertext = Kyber.indcpa_enc_no_gen_mat(m, kyberPublicParameters.getPk(), kyberPublicParameters.getAtCombined(), r);
+            logger.info("[DONE]");
+
+            // H(c)
+            logger.info("Hashing ciphertext...");
+            mdH.reset();
+            mdH.update(kyberCiphertext.toByteArray());
+//            for(int i = 0; i < kyberCiphertext.getC1().size(); i++) {
+//                mdH.update(KyberUtils.shortsToBytes(kyberCiphertext.getC1().get(i).poly));
+//            }
+//            mdH.update(KyberUtils.shortsToBytes(kyberCiphertext.getC2().poly));
+            byte[] hc = mdH.digest();
+            logger.info("[DONE]");
+
+            // K := KDF(K1 || H(C))
+            logger.info("Using KDF to generate key...");
+            byte[] K1_HC = Parse.concatenate(K1, hc);
+            SHAKEDigest kdf = new SHAKEDigest(256);
+            kdf.update(K1_HC, 0, K1_HC.length);
+            byte[] K = new byte[Kyber.KYBER_SYMBYTES];
+            kdf.doFinal(K, 0, Kyber.KYBER_SYMBYTES);
+            logger.info("[DONE]");
+
+            logger.info("KDF BEFORE::: " + Arrays.toString(K));
+
+            // use K to encrypt secret
+            byte[] iv = new byte[GCM_IV_LENGTH / 8];
+            logger.info("Initialising iv...");
+            random.nextBytes(iv);
+            logger.info("[DONE]");
+
+            SecretKeySpec secretKeySpec = new SecretKeySpec(K, "AES");
+
+            logger.info("Encrypting data using AES-GCM...");
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmParameterSpec);
+            byte[] encrypted = cipher.doFinal(message);
+            logger.info("[DONE]");
+
+            logger.info("ECRYPTED PLAINTEXT:: " + Arrays.toString(encrypted));
+
+            logger.info("Concatenating iv and encrypted data to create a result of AES-GCM encryption...");
+            byte[] result = new byte[encrypted.length + iv.length];
+            System.arraycopy(iv, 0, result, 0, iv.length);
+            System.arraycopy(encrypted, 0, result, iv.length, encrypted.length);
+            logger.info("[DONE]");
+
+            logger.info("Computing hash of plaintext...");
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            final byte[] hash = digest.digest(message);
+            logger.info("[DONE]");
+
+            logger.info("ENCRYPTED PLAINTEXT::: " + Arrays.toString(encrypted));
+            logger.info("KEY::: " + Arrays.toString(K));
+            logger.info("IV::: " + Arrays.toString(iv));
+            logger.info("PLAINTEXT::: " + Arrays.toString(message));
+
+
+            byte[] concatenatedAesParams = Parse.concatenate(result, hash);
+
+            // concat encryption of m, and AES encryption of plaintext
+
+//            final SHA3.DigestSHA3 md1 = new SHA3.DigestSHA3(256);
+//            md1.update(new byte[]{1, 2, 4, 5, 6, 7});
+//            byte[] m = md1.digest();
+//
+//            logger.info("ENCRETING:: " + Arrays.toString(m));
+//
+//            final SHA3.DigestSHA3 md2 = new SHA3.DigestSHA3(256);
+//            md2.update(new byte[]{2, 3});
+//            byte[] coins = md2.digest();
+//            md2.update(new byte[]{1, 2, 3});
+//            byte[] coins1 = md2.digest();
+
+            return Parse.concatenate(concatenatedAesParams, kyberCiphertext.toByteArray());
 //            return Parse.concatenate(kyberCiphertext.toByteArray());
-//        } catch (GeneralSecurityException e) {
-//            logger.error(e);
-//            throw new RuntimeException(e);
-//        }
+        } catch (GeneralSecurityException e) {
+            logger.error(e);
+            throw new RuntimeException(e);
+        }
 
     }
 
@@ -199,20 +294,87 @@ public class KyberEncryptionClient extends BaseClient {
 //        final byte[] aesCiphertextData = combined[1];
 //        final byte[] plaintextHash = combined[2];
 
-        KyberCiphertext kyberCiphertext = KyberCiphertext.getCiphertext(ciphertextData);
+        byte[][] parts = Parse.splitArrays(ciphertextData);
+
+        //        final byte[] aesCiphertextData = combined[1];
+//        final byte[] plaintextHash = combined[2];
+
+        byte[][] concatenatedAesParams = Parse.splitArrays(parts[0]);
+        byte[] aesCiphertextData = concatenatedAesParams[0];
+        byte[] plaintextHash = concatenatedAesParams[1];
+
+        KyberCiphertext kyberCiphertext = KyberCiphertext.getCiphertext(parts[1]);
 
         // Get partial decryption shares
 //        final List<SignatureResponse> decryptionShares = requestPartialRsaDecryptions(encryptedPaddedSecretKey, rsaPublicParameters.getEpoch(), serverConfiguration, secretName)
 //                .stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
-        final List<Kyber.Polynomial> decryptionShares = requestPartialKyberDecryptions(ciphertextData, kyberPublicParameters, serverConfiguration, secretName)
+        final List<Kyber.Polynomial> decryptionShares = requestPartialKyberDecryptions(parts[1], kyberPublicParameters, serverConfiguration, secretName)
                 .stream().map(obj -> (Kyber.Polynomial) obj).collect(Collectors.toList());
 
         byte[] combined = Kyber.combine_dec_shares(kyberCiphertext, decryptionShares);
 
-        logger.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
-        logger.info("DECRYPTED:: " + Arrays.toString(combined));
+        // H(pk)
+        SHA3.DigestSHA3 mdH = new SHA3.DigestSHA3(256);
+        mdH.reset();
+        for(int i = 0; i < kyberPublicParameters.getPk().size(); i++) {
+            mdH.update(KyberUtils.shortsToBytes(kyberPublicParameters.getPk().get(i).poly));
+        }
+        byte[] hashedPk = mdH.digest();
 
-        logger.info("Decryption shares generated");
+        // K||r = G(m || H(pk))
+        SHA3.DigestSHA3 mdG = new SHA3.DigestSHA3(512);
+        mdG.update(Parse.concatenate(combined, hashedPk));
+        byte[] kr = mdG.digest();
+
+        byte[] K1 = Arrays.copyOfRange(kr, 0, Kyber.KYBER_SYMBYTES);
+//        byte[] r = Arrays.copyOfRange(kr,  Kyber.KYBER_SYMBYTES, kr.length);
+
+        // H(c)
+        mdH.reset();
+        mdH.update(kyberCiphertext.toByteArray());
+        byte[] hc = mdH.digest();
+
+        // K := KDF(K1 || H(C))
+        byte[] K1_HC = Parse.concatenate(K1, hc);
+        SHAKEDigest kdf = new SHAKEDigest(256);
+        kdf.update(K1_HC, 0, K1_HC.length);
+        byte[] K = new byte[Kyber.KYBER_SYMBYTES];
+        kdf.doFinal(K, 0, Kyber.KYBER_SYMBYTES);
+
+        // decrypt using AES
+        // Get decrypted parameters of AES
+        final byte[] ivDec = Arrays.copyOfRange(aesCiphertextData, 0, GCM_IV_LENGTH / 8);
+        final byte[] encryptedDataDec = Arrays.copyOfRange(aesCiphertextData, GCM_IV_LENGTH / 8, aesCiphertextData.length);
+
+        SecretKey secretKeySpecDec = new SecretKeySpec(K, "AES");
+
+        logger.info("Decrypting data using retrieved values...");
+        Cipher cipherDec = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec gcmParameterSpecDec = new GCMParameterSpec(GCM_TAG_LENGTH, ivDec);
+        cipherDec.init(Cipher.DECRYPT_MODE, secretKeySpecDec, gcmParameterSpecDec);
+        byte[] resultPlaintext = cipherDec.doFinal(encryptedDataDec);
+        logger.info("[DONE]");
+
+        logger.info("DECRYPTING::: " + Arrays.toString(encryptedDataDec));
+        logger.info("KEY::: " + Arrays.toString(K));
+        logger.info("IV::: " + Arrays.toString(ivDec));
+        logger.info("RECOEVERD::: " + Arrays.toString(resultPlaintext));
+
+        logger.info("Checking hash of recovered plaintext...");
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        final byte[] hash = digest.digest(resultPlaintext);
+        if (!Arrays.equals(hash, plaintextHash)) {
+            throw new RuntimeException("Hashes of plaintexts don't match!");
+        }
+        logger.info("[DONE]");
+
+        return resultPlaintext;
+
+
+//        logger.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
+//        logger.info("DECRYPTED:: " + Arrays.toString(combined));
+//
+//        logger.info("Decryption shares generated");
 
         // Perform validation of decryption shares
 //        List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
@@ -263,7 +425,7 @@ public class KyberEncryptionClient extends BaseClient {
 //        }
 //        logger.info("[DONE]");
 
-        return combined;
+//        return combined;
     }
 
     private List<Object> requestPartialKyberDecryptions(final byte[] message, KyberPublicParameters kyberPublicParameters, final ServerConfiguration serverConfiguration, String secretName) throws ResourceUnavailableException {
@@ -297,7 +459,7 @@ public class KyberEncryptionClient extends BaseClient {
 
             JSONObject jMessage = new JSONObject();
 
-            jMessage.put("message",  KyberUtils.bytesToBase64(message));
+            jMessage.put("message", KyberUtils.bytesToBase64(message));
 
             // Create new task to get the partial exponentiation result from the server
             executor.submit(new PartialResultTask(this, serverId, linkUrl, jMessage.toJSONString() + "\n", "POST", verifiedResults, latch, failureCounter,
@@ -322,10 +484,10 @@ public class KyberEncryptionClient extends BaseClient {
                     // epoch
 //                    if ((signatureResponse.getServerIndex().equals(BigInteger.valueOf(thisServerId)))) {
 
-                        verifiedResults.add(decryptionShare);
+                    verifiedResults.add(decryptionShare);
 
-                        // Everything checked out, increment successes
-                        latch.countDown();
+                    // Everything checked out, increment successes
+                    latch.countDown();
 //                    } else {
 //                        throw new Exception(
 //                                "Server " + thisServerId + " sent inconsistent results (likely during epoch change)");
@@ -359,11 +521,11 @@ public class KyberEncryptionClient extends BaseClient {
 //        ProactiveRsaPublicParameters rsaPublicParameters = this.getProactiveRsaPublicParams(secretName);
         KyberPublicParameters kyberPublicParameters = this.getKyberPublicParams(secretName);
 
-//        final byte[] plaintextData = IOUtils.toByteArray(inputStream);
+        final byte[] plaintextData = IOUtils.toByteArray(inputStream);
 
-        final SHA3.DigestSHA3 md1 = new SHA3.DigestSHA3(256);
-        md1.update(new byte[]{1, 2});
-        byte[] plaintextData = md1.digest();
+//        final SHA3.DigestSHA3 md1 = new SHA3.DigestSHA3(256);
+//        md1.update(new byte[]{1, 2});
+//        byte[] plaintextData = md1.digest();
 
         final byte[] hybridCiphertext = kyberEncrypt(plaintextData, kyberPublicParameters);
 
