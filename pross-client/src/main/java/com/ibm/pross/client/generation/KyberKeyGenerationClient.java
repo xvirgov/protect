@@ -92,7 +92,7 @@ public class KyberKeyGenerationClient extends BaseClient {
         final ExecutorService executor = Executors.newFixedThreadPool(numShareholders - 1);
 
         // The countdown latch tracks progress towards reaching a threshold
-        final CountDownLatch latch = new CountDownLatch(reconstructionThreshold);
+        final CountDownLatch latch = new CountDownLatch(numShareholders); // n-out-of-n
         final AtomicInteger failureCounter = new AtomicInteger(0);
         final int maximumFailures = 0; // only n-out-of-n
 

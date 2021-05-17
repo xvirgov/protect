@@ -138,19 +138,19 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 				 BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
 				JSONParser parser = new JSONParser();
 				String requestBody = bufferedReader.readLine();
-				logger.info("REQUEST:::" + requestBody);
+//				logger.info("REQUEST:::" + requestBody);
 				jsonParameters = (JSONObject) parser.parse(requestBody);
-				logger.info("PASSED HERE");
-				logger.info("GOT:::" + jsonParameters.get("message"));
+//				logger.info("PASSED HERE");
+//				logger.info("GOT:::" + jsonParameters.get("message"));
 			} catch (Exception ex) {
 				logger.error(ex);
 				throw new RuntimeException(ex);
 			}
-			logger.info("HERE1");
+//			logger.info("HERE1");
 			KyberCiphertext kyberCiphertext = KyberCiphertext.getCiphertext(KyberUtils.base64ToBytes(jsonParameters.get("message").toString()));
-			logger.info("HERE2");
+//			logger.info("HERE2");
 			response = createKyberResponse(shareholder, kyberCiphertext);
-			logger.info("HERE3");
+//			logger.info("HERE3");
 		}
 		else {
 			throw new BadRequestException();
@@ -308,7 +308,7 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 	private String createKyberResponse(ApvssShareholder shareholder, KyberCiphertext ciphertext) throws NotFoundException {
 		final KyberShareholder kyberShareholder = shareholder.getKyberShareholder();
 
-		logger.info("Creating partial decryption for kyber");
+		logger.debug("Creating partial decryption for kyber");
 
 		// Do processing
 		final long startTime = System.nanoTime();
@@ -332,7 +332,7 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 //		obj.put("epoch", Integer.toString(proactiveRsaShareholder.getProactiveRsaPublicParameters().getEpoch()));
 		obj.put("signatureResponse", KyberUtils.bytesToBase64(KyberUtils.shortsToBytes(decryptionShare.poly)));
 
-		logger.info("Partial decryption for KYBER generated!!");
+		logger.debug("Partial decryption for KYBER generated!!");
 
 		return obj.toJSONString() + "\n";
 	}

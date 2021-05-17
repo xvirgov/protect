@@ -176,7 +176,7 @@ public class KyberEncryptionClient extends BaseClient {
             kdf.doFinal(K, 0, Kyber.KYBER_SYMBYTES);
             logger.info("[DONE]");
 
-            logger.info("KDF BEFORE::: " + Arrays.toString(K));
+//            logger.info("KDF BEFORE::: " + Arrays.toString(K));
 
             // use K to encrypt secret
             byte[] iv = new byte[GCM_IV_LENGTH / 8];
@@ -193,7 +193,7 @@ public class KyberEncryptionClient extends BaseClient {
             byte[] encrypted = cipher.doFinal(message);
             logger.info("[DONE]");
 
-            logger.info("ECRYPTED PLAINTEXT:: " + Arrays.toString(encrypted));
+//            logger.info("ECRYPTED PLAINTEXT:: " + Arrays.toString(encrypted));
 
             logger.info("Concatenating iv and encrypted data to create a result of AES-GCM encryption...");
             byte[] result = new byte[encrypted.length + iv.length];
@@ -205,12 +205,6 @@ public class KyberEncryptionClient extends BaseClient {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             final byte[] hash = digest.digest(message);
             logger.info("[DONE]");
-
-            logger.info("ENCRYPTED PLAINTEXT::: " + Arrays.toString(encrypted));
-            logger.info("KEY::: " + Arrays.toString(K));
-            logger.info("IV::: " + Arrays.toString(iv));
-            logger.info("PLAINTEXT::: " + Arrays.toString(message));
-
 
             byte[] concatenatedAesParams = Parse.concatenate(result, hash);
 
@@ -308,12 +302,17 @@ public class KyberEncryptionClient extends BaseClient {
         // Get partial decryption shares
 //        final List<SignatureResponse> decryptionShares = requestPartialRsaDecryptions(encryptedPaddedSecretKey, rsaPublicParameters.getEpoch(), serverConfiguration, secretName)
 //                .stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
+        logger.info("Requesting partial decryptions...");
         final List<Kyber.Polynomial> decryptionShares = requestPartialKyberDecryptions(parts[1], kyberPublicParameters, serverConfiguration, secretName)
                 .stream().map(obj -> (Kyber.Polynomial) obj).collect(Collectors.toList());
+        logger.info("[DONE]");
 
+        logger.info("Combining decryption shares...");
         byte[] combined = Kyber.combine_dec_shares(kyberCiphertext, decryptionShares);
+        logger.info("[DONE]");
 
         // H(pk)
+        logger.info("Generating key...");
         SHA3.DigestSHA3 mdH = new SHA3.DigestSHA3(256);
         mdH.reset();
         for(int i = 0; i < kyberPublicParameters.getPk().size(); i++) {
@@ -340,6 +339,7 @@ public class KyberEncryptionClient extends BaseClient {
         kdf.update(K1_HC, 0, K1_HC.length);
         byte[] K = new byte[Kyber.KYBER_SYMBYTES];
         kdf.doFinal(K, 0, Kyber.KYBER_SYMBYTES);
+        logger.info("[DONE]");
 
         // decrypt using AES
         // Get decrypted parameters of AES
@@ -354,11 +354,6 @@ public class KyberEncryptionClient extends BaseClient {
         cipherDec.init(Cipher.DECRYPT_MODE, secretKeySpecDec, gcmParameterSpecDec);
         byte[] resultPlaintext = cipherDec.doFinal(encryptedDataDec);
         logger.info("[DONE]");
-
-        logger.info("DECRYPTING::: " + Arrays.toString(encryptedDataDec));
-        logger.info("KEY::: " + Arrays.toString(K));
-        logger.info("IV::: " + Arrays.toString(ivDec));
-        logger.info("RECOEVERD::: " + Arrays.toString(resultPlaintext));
 
         logger.info("Checking hash of recovered plaintext...");
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -473,7 +468,7 @@ public class KyberEncryptionClient extends BaseClient {
                     final JSONObject jsonObject = (JSONObject) obj;
 //                    final long epoch = Long.parseLong(jsonObject.get("epoch").toString());
 
-                    logger.info("ResponseeeeeeEE: " + jsonObject.get("signatureResponse").toString());
+//                    logger.info("ResponseeeeeeEE: " + jsonObject.get("signatureResponse").toString());
 
                     final String signatureResponseJson = jsonObject.get("signatureResponse").toString();
 
@@ -516,7 +511,7 @@ public class KyberEncryptionClient extends BaseClient {
     }
 
     public byte[] encryptStream(final String secretName, InputStream inputStream) throws BelowThresholdException, ResourceUnavailableException, IOException {
-        logger.info("Starting Kyber encryption with secret " + secretName);
+        logger.info("Starting Kyber encryption with secret " + secretName + "...");
 
 //        ProactiveRsaPublicParameters rsaPublicParameters = this.getProactiveRsaPublicParams(secretName);
         KyberPublicParameters kyberPublicParameters = this.getKyberPublicParams(secretName);
@@ -529,7 +524,7 @@ public class KyberEncryptionClient extends BaseClient {
 
         final byte[] hybridCiphertext = kyberEncrypt(plaintextData, kyberPublicParameters);
 
-        logger.info("[DONE]");
+        logger.info("[ENCRYPTION FINISHED]");
 
         return hybridCiphertext;
     }
@@ -546,7 +541,7 @@ public class KyberEncryptionClient extends BaseClient {
         // Decrypt the ciphertext with RSA-AES
         byte[] resultPlaintext = kyberDecrypt(ciphertextData, kyberPublicParameters, serverConfiguration, secretName);
 
-        logger.info("Decryption process finished");
+        logger.info("[DECRYPTION FINISHED]");
 
         return resultPlaintext;
     }

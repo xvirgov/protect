@@ -224,7 +224,7 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 //		String response = exchange.getRequestURI().getQuery();
 //		String response = exchange.getRequestBody().toString();
 
-        // tested with: sudo curl -k -F "data=@/home/xvirgov/tmp"   --cacert ca-key-clients --cert client/certs/cert-administrator --key client/keys/private-administrator https://localhost:8080/encrypt?oooooooooooooooooooooooooo=aa --output tmp
+        // tested with:  curl -k -F "data=@/home/xvirgov/tmp"   --cacert ca-key-clients --cert client/certs/cert-administrator --key client/keys/private-administrator https://localhost:8080/encrypt?oooooooooooooooooooooooooo=aa --output tmp
 
 
 //		StringBuilder stringBuilder = new StringBuilder(4096);
