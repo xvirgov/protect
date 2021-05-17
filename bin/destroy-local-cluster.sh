@@ -46,11 +46,11 @@ done
 eval_input "$IMAGE_TAG"
 
 # Perform the cleanup
-CONTAINER_TAGS=$(sudo docker ps -a -q --filter="ancestor=$IMAGE_TAG")
+CONTAINER_TAGS=$( docker ps -a -q --filter="ancestor=$IMAGE_TAG")
 
 for TAG in $CONTAINER_TAGS
 do
-	sudo docker container stop "$TAG" && \
-	sudo docker container rm "$TAG" ||
+	 docker container stop "$TAG" && \
+	 docker container rm "$TAG" ||
 	exit 1
 done

@@ -75,7 +75,7 @@ echo "[docker image name   : \"$IMAGE_NAME\"],"
 echo "[docker inet address : \"$DOCKER_NET_IP\"]"
 
 # Build docker image for client and server apps
-sudo docker build -t "$IMAGE_NAME" .
+ docker build -t "$IMAGE_NAME" .
 
 # Create a common config file
 echo "num_servers = $NODES_NR" > common.config
@@ -88,9 +88,9 @@ i=1
 CONTAINERS=()
 while [ $i -le "$NODES_NR" ]
 do
-	CONTAINER_ID=$(sudo docker run -d -p 127.0.0.1:$((PORT_BASE + i)):$((PORT_BASE + i)) -p $((APP_PORT_BASE + 10*i)):$((APP_PORT_BASE + 10*i))  -p $((APP_PORT_BASE + 10*i + 1)):$((APP_PORT_BASE + 10*i + 1)) --hostname "${IMAGE_NAME}_$i" -i -t "$IMAGE_NAME" /bin/bash &)
+	CONTAINER_ID=$( docker run -d -p 127.0.0.1:$((PORT_BASE + i)):$((PORT_BASE + i)) -p $((APP_PORT_BASE + 10*i)):$((APP_PORT_BASE + 10*i))  -p $((APP_PORT_BASE + 10*i + 1)):$((APP_PORT_BASE + 10*i + 1)) --hostname "${IMAGE_NAME}_$i" -i -t "$IMAGE_NAME" /bin/bash &)
 	echo "Container $CONTAINER_ID is running a server ID:$i"
-	CONTAINER_IP=$(sudo docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER_ID")
+	CONTAINER_IP=$( docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER_ID")
 	echo "server.$i = $CONTAINER_IP:$((APP_PORT_BASE + 10*i))" >> common.config
 	printf "IP:%s," "$CONTAINER_IP" >> ssl-extensions-x509.cnf-tmp
 	CONTAINERS+=("$CONTAINER_ID")
@@ -134,9 +134,9 @@ done
 i=1
 while [ $i -le "$NODES_NR" ]
 do
-	sudo docker cp $CONFIG_DIR-$i "${CONTAINERS[$((i-1))]}":/protect/config
-	sudo docker cp ../pross-server/target/pross-server-1.0-SNAPSHOT.jar "${CONTAINERS[$((i-1))]}":/protect/pross-server-1.0-SNAPSHOT.jar
-	sudo docker exec "${CONTAINERS[$((i-1))]}" java -classpath /protect/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.ServerApplication /protect/config/server $i &
+	 docker cp $CONFIG_DIR-$i "${CONTAINERS[$((i-1))]}":/protect/config
+	 docker cp ../pross-server/target/pross-server-1.0-SNAPSHOT.jar "${CONTAINERS[$((i-1))]}":/protect/pross-server-1.0-SNAPSHOT.jar
+	 docker exec "${CONTAINERS[$((i-1))]}" java -classpath /protect/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.ServerApplication /protect/config/server $i &
 	echo "Server $i was started"
 	rm -rf $CONFIG_DIR-$i
   i=$((i+1))
@@ -157,9 +157,9 @@ cp $CONFIG_DIR/server/keys/public* $CLIENT_CONFIG_DIR/server/keys
 
 
 ## Start client application
-CONTAINER_ID=$(sudo docker run -d -p 127.0.0.1:$PORT_BASE:$PORT_BASE -p $APP_PORT_BASE:$APP_PORT_BASE --hostname "${IMAGE_NAME}_c" --label client_host -i -t "${IMAGE_NAME}" /bin/bash &)
+CONTAINER_ID=$( docker run -d -p 127.0.0.1:$PORT_BASE:$PORT_BASE -p $APP_PORT_BASE:$APP_PORT_BASE --hostname "${IMAGE_NAME}_c" --label client_host -i -t "${IMAGE_NAME}" /bin/bash &)
 echo "Container $CONTAINER_ID is running a client app"
-#CONTAINER_IP=$(sudo docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER_ID")
-sudo docker cp  $CLIENT_CONFIG_DIR "$CONTAINER_ID":/protect/config
-sudo docker cp ../pross-client/target/pross-client-1.0-SNAPSHOT.jar "$CONTAINER_ID":/protect/pross-client-1.0-SNAPSHOT.jar
-sudo docker exec "$CONTAINER_ID" java -classpath /protect/pross-client-1.0-SNAPSHOT.jar com.ibm.pross.client.app.ClientApplication /protect/config administrator &
+#CONTAINER_IP=$( docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER_ID")
+ docker cp  $CLIENT_CONFIG_DIR "$CONTAINER_ID":/protect/config
+ docker cp ../pross-client/target/pross-client-1.0-SNAPSHOT.jar "$CONTAINER_ID":/protect/pross-client-1.0-SNAPSHOT.jar
+ docker exec "$CONTAINER_ID" java -classpath /protect/pross-client-1.0-SNAPSHOT.jar com.ibm.pross.client.app.ClientApplication /protect/config administrator &
