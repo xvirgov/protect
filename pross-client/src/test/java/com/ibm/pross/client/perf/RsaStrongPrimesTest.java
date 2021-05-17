@@ -7,8 +7,8 @@ import java.io.*;
 import java.math.BigInteger;
 
 public class RsaStrongPrimesTest {
-//    final int[] lengths = new int[]{3072, 7680, 15360};
-    final int[] lengths = new int[]{512, 1024};
+    final int[] lengths = new int[]{3072, 7680, 15360};
+//    final int[] lengths = new int[]{512, 1024};
     long total, start, end;
     int iterations = 10;
 
