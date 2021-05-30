@@ -123,13 +123,13 @@ Once downloaded the entire project can be compiled into two self-contained jar f
 
 ```bash
 # Determine latest versions of available packages
-$ sudo apt-get-update
+$  apt-get-update
 
 # Required for building and running
-$ sudo apt-get install openjdk-8-jdk-headless maven
+$  apt-get install openjdk-8-jdk-headless maven
 
 # Required for examples below
-$ sudo apt-get install git python curl jq html2text openssl
+$  apt-get install git python curl jq html2text openssl
 ```
 
 #### Compiling
