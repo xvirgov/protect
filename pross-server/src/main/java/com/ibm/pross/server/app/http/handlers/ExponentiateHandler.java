@@ -8,6 +8,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
+import com.ibm.pross.common.util.RandomNumberGenerator;
+import com.ibm.pross.common.util.crypto.ecc.EcCurve;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureResponse;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureShareProof;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
+import com.ibm.pross.common.util.serialization.Parse;
+import com.ibm.pross.server.app.avpss.SharingState;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -34,6 +43,8 @@ import com.sun.net.httpserver.HttpExchange;
  */
 @SuppressWarnings("restriction")
 public class ExponentiateHandler extends AuthenticatedClientRequestHandler {
+
+	private static final Logger logger = LogManager.getLogger(ExponentiateHandler.class);
 
 	public static final Permissions REQUEST_PERMISSION = Permissions.EXPONENTIATE;
 
@@ -108,10 +119,55 @@ public class ExponentiateHandler extends AuthenticatedClientRequestHandler {
 			throw new BadRequestException();
 		}
 
+		SharingState sharingState = shareholder.getSharing(shareholder.getEpoch());
+
+//		logger.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+//		logger.info(sharingState.getSharePublicKeys());
+//		logger.info(sharingState.getVerifications());
+//		logger.info("verif key:" + sharingState.getVerifications().get(shareholder.getIndex()));
+//		logger.info("recomputed verif key:" + CommonConfiguration.CURVE.multiply(CommonConfiguration.CURVE.getG(), sharingState.getShare1().getY()));
+//		logger.info("index: " + shareholder.getIndex());
+//		logger.info("s: " + sharingState.getShare1().getY());
+//		logger.info("G: " + CommonConfiguration.CURVE.getG());
+//		logger.info("sG: " + CommonConfiguration.CURVE.multiply(CommonConfiguration.g, sharingState.getShare1().getY()));
+//		logger.info("verif: " +  sharingState.getVerifications().get(shareholder.getIndex()));
+//		logger.info("all keys: " +  sharingState.getVerifications());
+//		logger.info("number of verif keys: " + sharingState.getVerifications().size());
+//		logger.info("number of verif keys: " + sharingState.getVerifications().get(0).getX());
+//		logger.info("number of verif keys: " + sharingState.getVerifications().get(0).getY());
+//		for(int i = 0; i < sharingState.getVerifications().size(); i++) {
+//			System.out.println(sharingState.getVerifications().get(i).getX() + " : " + sharingState.getVerifications().get(i).getY());
+//		}
+
+//		EcCurve curve = CommonConfiguration.CURVE;
+//
+//		System.out.println("Index: " + shareholder.getIndex());
+//		System.out.println("verif: " + curve.multiply(curve.getG(), sharingState.getShare1().getY()));
+
 		// Do processing
 		final long startTime = System.nanoTime();
 		final EcPoint result = doExponentiation(shareholder, basePoint);
 		final long endTime = System.nanoTime();
+
+		// Create proof c = H(G, R, s_i.G, s_i.R, r.G, rR)
+
+		EcPoint G = CommonConfiguration.g;
+		EcPoint R = basePoint;
+		BigInteger r = RandomNumberGenerator.generateRandomInteger(CommonConfiguration.CURVE.getR());
+		BigInteger si = sharingState.getShare1().getY();
+
+		EcPoint siG = CommonConfiguration.CURVE.multiply(G, si);
+		EcPoint siR = CommonConfiguration.CURVE.multiply(R, si);
+		EcPoint rG = CommonConfiguration.CURVE.multiply(G, r);
+		EcPoint rR = CommonConfiguration.CURVE.multiply(R, r);
+
+		byte[] cBytes = Parse.concatenate(G, R, siG, siR, rG, rR);
+
+		BigInteger c = ThresholdSignatures.hashToInteger(cBytes, ThresholdSignatures.HASH_MOD);
+		BigInteger z = si.multiply(c).add(r);
+
+		SignatureShareProof decryptionProof = new SignatureShareProof(c, z);
+
 
 		// Compute processing time
 		final long processingTimeUs = (endTime - startTime) / 1_000;
@@ -136,6 +192,7 @@ public class ExponentiateHandler extends AuthenticatedClientRequestHandler {
 			outputPoint.add(result.getX().toString());
 			outputPoint.add(result.getY().toString());
 			obj.put("result_point", outputPoint);
+			obj.put("dec_proof", decryptionProof.getJson());
 
 			obj.put("compute_time_us", new Long(processingTimeUs));
 

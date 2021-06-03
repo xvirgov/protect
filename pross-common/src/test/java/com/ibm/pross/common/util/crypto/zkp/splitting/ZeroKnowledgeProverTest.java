@@ -1,7 +1,5 @@
 package com.ibm.pross.common.util.crypto.zkp.splitting;
 
-import static org.junit.Assert.fail;
-
 import java.math.BigInteger;
 
 import org.junit.Assert;
@@ -14,6 +12,8 @@ import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.crypto.ecc.EcCurve;
 import com.ibm.pross.common.util.crypto.ecc.EcPoint;
+
+import static org.junit.Assert.*;
 
 public class ZeroKnowledgeProverTest {
 
@@ -43,7 +43,33 @@ public class ZeroKnowledgeProverTest {
 		boolean valid = ZeroKnowledgeProver.verifyProof(C0, zkp);
 		System.out.println("Verified proof: " + valid);
 
-		Assert.assertTrue(valid);
+		assertTrue(valid);
+	}
+
+	@Test
+	public void testNizk() {
+		final EcCurve curve = CommonConfiguration.CURVE;
+
+		final EcPoint G = CommonConfiguration.g;
+		final EcPoint h = CommonConfiguration.h;
+
+		final BigInteger c = RandomNumberGenerator.generateRandomInteger(curve.getR());
+		final BigInteger r = RandomNumberGenerator.generateRandomInteger(curve.getR());
+		final BigInteger si = RandomNumberGenerator.generateRandomInteger(curve.getR());
+
+		BigInteger z = si.multiply(c).add(r).mod(curve.getR());
+
+		EcPoint G1 = curve.multiply(G, r);
+
+		BigInteger minus_cki = c.multiply(si).multiply(BigInteger.valueOf(-1)).mod(curve.getR());
+
+		EcPoint G21 = curve.multiply(G, z);
+		EcPoint G22 = curve.multiply(G,minus_cki);
+
+		EcPoint G2 = curve.addPoints(G21, G22);
+
+		assertTrue(G1.getX().equals(G2.getX()));
+		assertTrue(G1.getY().equals(G2.getY()));
 	}
 
 
@@ -122,7 +148,4 @@ public class ZeroKnowledgeProverTest {
 		
 		System.out.println("Total time (ms): " + timeNs / (((long)iterations) * 1_000_000.0));
 	}
-	
-
-	
 }

@@ -231,8 +231,12 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
 
             for (int i = 1; i <= shareholder.getN(); i++) {
                 final JSONArray verificationPoint = new JSONArray();
+//                verificationPoint.add(shareholder.getSharing(epochNumber).getVerifications().get(i).getX().toString());
+//                verificationPoint.add(shareholder.getSharing(epochNumber).getVerifications().get(i).getY().toString());
                 verificationPoint.add(shareholder.getSharePublicKey(i).getX().toString());
                 verificationPoint.add(shareholder.getSharePublicKey(i).getY().toString());
+
+//                logger.info("verificationPoint " + i + " :::::::::::::::::: " + verificationPoint);
                 obj.put("share_verification_key_" + i, verificationPoint);
             }
 

@@ -22,6 +22,7 @@ public class SharingState {
 	// Public Values to verify consistency of sharing
 	protected final ZeroKnowledgeProof[] receivedProofs;
 	private final SortedMap<Integer, EcPoint> qualifiedProofs;
+	private final SortedMap<Integer, EcPoint> verifications;
 	private final EcPoint[] sharePublicKeys; // g^s_i for i = 0 to n (inclusive)
 	private EcPoint[] feldmanValues; // g^a_i for i = 0 to k-1 (inclusive)
 
@@ -71,6 +72,7 @@ public class SharingState {
 		/** Variables to track splitting proofs **/
 		this.receivedProofs = new ZeroKnowledgeProof[n];
 		this.qualifiedProofs = new TreeMap<>();
+		this.verifications = new TreeMap<>();
 		this.sharePublicKeys = new EcPoint[n + 1]; // position 0 = g^s
 		this.feldmanValues = new EcPoint[k];
 
@@ -162,6 +164,10 @@ public class SharingState {
 
 	public SortedMap<Integer, EcPoint> getQualifiedProofs() {
 		return qualifiedProofs;
+	}
+
+	public SortedMap<Integer, EcPoint> getVerifications() {
+		return verifications;
 	}
 
 	public EcPoint[] getSharePublicKeys() {

@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
+import com.ibm.pross.client.util.EciesPublicParams;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -154,19 +155,20 @@ public class ReadWriteClient extends BaseClient {
 		// Verify DKG
 		// Get public keys from the server
 		logger.info("Accessing public key for secret: " + this.secretName + "... ");
-		final SimpleEntry<List<EcPoint>, Long> publicKeyAndEpoch = this.getServerVerificationKeys(secretName);
-		logger.info(" (done)");
-		final List<EcPoint> publicKeys = publicKeyAndEpoch.getKey();
-		logger.info("Stored Public key for secret:    " + publicKeys.get(0));
-		boolean secretsMatch = publicKeyOfSecret.equals(publicKeys.get(0));
-		;
-
-		if (secretsMatch) {
-			logger.info("DKG complete. Secret is now stored and available for reading.");
-		} else {
-			System.err.println("DKG complete but stored result does not match what we attempted to store.");
-			System.exit(-1);
-		}
+//		final SimpleEntry<List<EcPoint>, Long> publicKeyAndEpoch = this.getServerVerificationKeys(secretName);
+//		final EciesPublicParams publicKeyAndEpoch = this.getServerVerificationKeys(secretName);
+//		logger.info(" (done)");
+//		final List<EcPoint> publicKeys = publicKeyAndEpoch.getPublicKey();
+//		logger.info("Stored Public key for secret:    " + publicKeys.get(0));
+//		boolean secretsMatch = publicKeyOfSecret.equals(publicKeys.get(0));
+//		;
+//
+//		if (secretsMatch) {
+//			logger.info("DKG complete. Secret is now stored and available for reading.");
+//		} else {
+//			System.err.println("DKG complete but stored result does not match what we attempted to store.");
+//			System.exit(-1);
+//		}
 
 	}
 
@@ -185,29 +187,29 @@ public class ReadWriteClient extends BaseClient {
 		// Print status
 		logger.info("-----------------------------------------------------------");
 
-		// Get public keys from the server
-		logger.info("Accessing public key for secret: " + this.secretName + "... ");
-		final SimpleEntry<List<EcPoint>, Long> publicKeyAndEpoch = this.getServerVerificationKeys(secretName);
-		logger.info(" (done)");
-		final List<EcPoint> publicKeys = publicKeyAndEpoch.getKey();
-		logger.info("Stored Public key for secret:    " + publicKeys.get(0));
-		;
-
-		// Attempt recovery of the stored secret
-		logger.info("Reading shares to decode secret: " + this.secretName);
-		final BigInteger recoveredSecret = this.readShares(publicKeys);
-		final EcPoint publicKeyOfSecret = CommonConfiguration.CURVE.multiply(CommonConfiguration.g, recoveredSecret);
-		logger.info("Public key of recvered secret = " + publicKeyOfSecret);
-		boolean secretsMatch = publicKeyOfSecret.equals(publicKeys.get(0));
-		logger.info("done.");
-		;
-
-		if (secretsMatch) {
-			logger.info("Value of secret: " + recoveredSecret);
-		} else {
-			System.err.println("Failed to recover secret");
-			System.exit(-1);
-		}
+//		// Get public keys from the server
+//		logger.info("Accessing public key for secret: " + this.secretName + "... ");
+//		final SimpleEntry<List<EcPoint>, Long> publicKeyAndEpoch = this.getServerVerificationKeys(secretName);
+//		logger.info(" (done)");
+//		final List<EcPoint> publicKeys = publicKeyAndEpoch.getKey();
+//		logger.info("Stored Public key for secret:    " + publicKeys.get(0));
+//		;
+//
+//		// Attempt recovery of the stored secret
+//		logger.info("Reading shares to decode secret: " + this.secretName);
+//		final BigInteger recoveredSecret = this.readShares(publicKeys);
+//		final EcPoint publicKeyOfSecret = CommonConfiguration.CURVE.multiply(CommonConfiguration.g, recoveredSecret);
+//		logger.info("Public key of recvered secret = " + publicKeyOfSecret);
+//		boolean secretsMatch = publicKeyOfSecret.equals(publicKeys.get(0));
+//		logger.info("done.");
+//		;
+//
+//		if (secretsMatch) {
+//			logger.info("Value of secret: " + recoveredSecret);
+//		} else {
+//			System.err.println("Failed to recover secret");
+//			System.exit(-1);
+//		}
 	}
 
 	public static void main(final String args[]) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException,

@@ -26,8 +26,6 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
-import com.ibm.pross.common.util.SecretShare;
-import com.ibm.pross.common.util.crypto.kyber.Kyber;
 import com.ibm.pross.common.util.crypto.kyber.KyberPublicParameters;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -180,7 +178,7 @@ public class BaseClient {
      * @throws BelowThresholdException
      */
     @SuppressWarnings("unchecked")
-    protected SimpleEntry<List<EcPoint>, Long> getServerVerificationKeys(final String secretName)
+    protected EciesPublicParams getServerVerificationKeys(final String secretName)
             throws ResourceUnavailableException, BelowThresholdException {
 
         // Server configuration
@@ -199,6 +197,7 @@ public class BaseClient {
         // consistent
         // TODO: Add verification via proofs
         final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
+        final Map<EciesPublicParams, Integer> publicParams = Collections.synchronizedMap(new HashMap<>());
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -217,6 +216,9 @@ public class BaseClient {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
 
+//                    logger.info("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
+//                    logger.info(json);
+
                     // Parse JSON
                     final JSONParser parser = new JSONParser();
                     final Object obj = parser.parse(json);
@@ -228,12 +230,18 @@ public class BaseClient {
                     final JSONArray publicKeyPoint = (JSONArray) jsonObject.get("public_key");
                     final BigInteger x = new BigInteger((String) publicKeyPoint.get(0));
                     final BigInteger y = new BigInteger((String) publicKeyPoint.get(1));
+
+                    EcPoint publicKey = new EcPoint(x, y);
+                    SortedMap<Integer, EcPoint> verificationValues = new TreeMap<>();
+
                     verificationKeys.add(new EcPoint(x, y));
                     for (int i = 1; i <= numShareholders; i++) {
                         final JSONArray verificationKey = (JSONArray) jsonObject.get("share_verification_key_" + i);
                         final BigInteger x2 = new BigInteger((String) verificationKey.get(0));
                         final BigInteger y2 = new BigInteger((String) verificationKey.get(1));
                         verificationKeys.add(new EcPoint(x2, y2));
+
+                        verificationValues.put(i, new EcPoint(x2, y2));
                     }
 
                     // Store parsed result
@@ -241,6 +249,17 @@ public class BaseClient {
 
                         // Store result for later processing
                         collectedResults.add(new SimpleEntry<List<EcPoint>, Long>(verificationKeys, epoch));
+
+                        EciesPublicParams eciesPublicParams = new EciesPublicParams(verificationValues, publicKey, epoch);
+
+//                        logger.info("Public params for ECIES " + eciesPublicParams);
+
+                        if (!publicParams.containsKey(eciesPublicParams)) {
+                            publicParams.put(eciesPublicParams, 1);
+                        } else {
+                            publicParams.put(eciesPublicParams, publicParams.get(eciesPublicParams) + 1);
+                        }
+
 
                         // Everything checked out, increment successes
                         latch.countDown();
@@ -265,8 +284,21 @@ public class BaseClient {
 
                 executor.shutdown();
 
-                return (SimpleEntry<List<EcPoint>, Long>) getConsistentConfiguration(collectedResults,
-                        reconstructionThreshold);
+                int maxWait = 10;
+                while (publicParams.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
+                    for (Map.Entry<EciesPublicParams, Integer> params : publicParams.entrySet()) {
+                        if (params.getValue() >= reconstructionThreshold) {
+                            logger.debug("Consistency level reached.");
+                            return params.getKey();
+                        }
+                    }
+                    logger.debug("Waiting for more servers to send config...");
+                    Thread.sleep(2000);
+                }
+
+
+//                return (SimpleEntry<List<EcPoint>, Long>) getConsistentConfiguration(collectedResults,
+//                        reconstructionThreshold);
             } else {
                 executor.shutdown();
                 throw new ResourceUnavailableException();
@@ -274,6 +306,7 @@ public class BaseClient {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+        return null;
     }
 
     /**

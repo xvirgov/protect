@@ -14,6 +14,7 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.SortedMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,6 +25,11 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.net.ssl.HttpsURLConnection;
 
+import com.ibm.pross.client.util.EciesPublicParams;
+import com.ibm.pross.common.util.RandomNumberGenerator;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureShareProof;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
+import com.ibm.pross.common.util.serialization.Parse;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -92,10 +98,13 @@ public class EciesEncryptionClient extends BaseClient {
 
 		// Get public key and current epoch from the server
 		logger.info("Accessing public key for secret: " + this.secretName + "... ");
-		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+//		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+		final EciesPublicParams shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+
+//		shareVerificationKeysAndEpoch.getValue()
 		logger.info(" (done)");
-		final EcPoint publicKey = shareVerificationKeysAndEpoch.getKey().get(0);
-		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
+		final EcPoint publicKey = shareVerificationKeysAndEpoch.getPublicKey();
+		final long currentEpoch = shareVerificationKeysAndEpoch.getEpoch();
 		logger.info("Public key for secret:    " + publicKey);
 		logger.info("Current epoch for secret: " + currentEpoch);
 
@@ -143,16 +152,17 @@ public class EciesEncryptionClient extends BaseClient {
 
 		// Get public key and current epoch from the server
 		logger.info("Accessing public key for secret: " + this.secretName + "... ");
-		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+//		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+		final EciesPublicParams shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
 		logger.info(" (done)");
-		final EcPoint publicKey = shareVerificationKeysAndEpoch.getKey().get(0);
-		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
+		final EcPoint publicKey = shareVerificationKeysAndEpoch.getPublicKey();
+		final long currentEpoch = shareVerificationKeysAndEpoch.getEpoch();
 		logger.info("Public key for secret:    " + publicKey);
 		logger.info("Current epoch for secret: " + currentEpoch);
 
 		// Get public key and current epoch from the server
 		logger.info("Performing threshold exponentiation on public value using: " + this.secretName + "... ");
-		final EcPoint exponentiationResult = this.exponentiatePoint(publicValue, currentEpoch);
+		final EcPoint exponentiationResult = this.exponentiatePoint(publicValue, currentEpoch, null);
 		logger.info(" (done)");
 		logger.info("Shared secret obtained:    " + exponentiationResult);
 
@@ -182,10 +192,11 @@ public class EciesEncryptionClient extends BaseClient {
 
 		// Get public key and current epoch from the server
 		logger.info("Accessing public key for secret: " + this.secretName + "... ");
-		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+//		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+		final EciesPublicParams shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
 //		logger.info(" (done)");
-		final EcPoint publicKey = shareVerificationKeysAndEpoch.getKey().get(0);
-		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
+		final EcPoint publicKey = shareVerificationKeysAndEpoch.getPublicKey();
+		final long currentEpoch = shareVerificationKeysAndEpoch.getEpoch();
 
 		// Reading
 //		logger.info("Reading input file: " + this.inputFile + "... ");
@@ -243,16 +254,17 @@ public class EciesEncryptionClient extends BaseClient {
 
 		// Get public key and current epoch from the server
 //		logger.info("Accessing public key for secret: " + this.secretName + "... ");
-		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+//		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+		final EciesPublicParams shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
 //		logger.info(" (done)");
-		final EcPoint publicKey = shareVerificationKeysAndEpoch.getKey().get(0);
-		final long currentEpoch = shareVerificationKeysAndEpoch.getValue();
+		final EcPoint publicKey = shareVerificationKeysAndEpoch.getPublicKey();
+		final long currentEpoch = shareVerificationKeysAndEpoch.getEpoch();
 //		logger.info("Public key for secret:    " + publicKey);
 //		logger.info("Current epoch for secret: " + currentEpoch);
 
 		// Get public key and current epoch from the server
 		logger.info("Performing threshold exponentiation on public value using: " + this.secretName + "... ");
-		final EcPoint exponentiationResult = this.exponentiatePoint(publicValue, currentEpoch);
+		final EcPoint exponentiationResult = this.exponentiatePoint(publicValue, currentEpoch, shareVerificationKeysAndEpoch.getVerificationValues());
 //		logger.info(" (done)");
 //		logger.info("Shared secret obtained:    " + exponentiationResult);
 
@@ -356,7 +368,7 @@ public class EciesEncryptionClient extends BaseClient {
 	 * @return
 	 * @throws ResourceUnavailableException
 	 */
-	private EcPoint exponentiatePoint(final EcPoint inputPoint, final long expectedEpoch)
+	private EcPoint exponentiatePoint(final EcPoint inputPoint, final long expectedEpoch, SortedMap<Integer, EcPoint> verificationValues)
 			throws ResourceUnavailableException {
 
 		logger.info("Initiating exponentiation on each shareholder...");
@@ -434,14 +446,47 @@ public class EciesEncryptionClient extends BaseClient {
 					final BigInteger x = new BigInteger((String) resultPoint.get(0));
 					final BigInteger y = new BigInteger((String) resultPoint.get(1));
 
+					final SignatureShareProof signatureShareProof = SignatureShareProof.getInstance((JSONObject) jsonObject.get("dec_proof"));
+
+//					logger.info("Received proof::: " + signatureShareProof.getJson().toString());
+
+					// Check received proof: c' = H(G, R, si.G, si.R, z.G - c.si.G, z.R - c.si.R)
+
+					logger.info("Performing verification of a decryption share...");
+					BigInteger z = signatureShareProof.getZ();
+					BigInteger c = signatureShareProof.getC();
+
+					EcPoint G = CommonConfiguration.g;
+					EcPoint R = inputPoint;
+
+					EcPoint siG = verificationValues.get(responder.intValue());
+					EcPoint siR = new EcPoint(x, y);
+
+					EcPoint zG = CommonConfiguration.CURVE.multiply(CommonConfiguration.g, z);
+					EcPoint mcsiG = CommonConfiguration.CURVE.multiply(siG, c.multiply(BigInteger.valueOf(-1)).mod(CommonConfiguration.CURVE.getR()));
+					EcPoint zG_mcsiG = CommonConfiguration.CURVE.addPoints(zG, mcsiG);
+
+					EcPoint zR = CommonConfiguration.CURVE.multiply(R, z);
+					EcPoint mcsiR = CommonConfiguration.CURVE.multiply(siR, c.multiply(BigInteger.valueOf(-1)).mod(CommonConfiguration.CURVE.getR()));
+					EcPoint zR_mcsiR = CommonConfiguration.CURVE.addPoints(zR, mcsiR);
+
+					byte[] cBytes = Parse.concatenate(G, R, siG, siR, zG_mcsiG, zR_mcsiR);
+					BigInteger cPrime = ThresholdSignatures.hashToInteger(cBytes, ThresholdSignatures.HASH_MOD);
+
+//					logger.info("===========================================================================");
+//					logger.info("Recieved: " + c);
+//					logger.info("computed: " + cPrime);
+
+//					if(!c.equals(cPrime))
+
 					// Verify result
 					// TODO: Separate results by their epoch, wait for enough results of the same
 					// epoch
 					// TOOD: Implement retry if epoch mismatch and below threshold
-					if ((responder == thisServerId) && (epoch == expectedEpoch)) {
+					if ((responder == thisServerId) && (epoch == expectedEpoch) && (c.equals(cPrime))) {
 
-						// FIXME: Do verification of the results (using proofs)
-						final EcPoint partialResult = new EcPoint(x, y);
+						logger.info("Decryption share from server " + responder + " is consistent");
+						final EcPoint partialResult = siR;
 
 						// Store result for later processing
 						verifiedResults.add(new DerivationResult(BigInteger.valueOf(responder), partialResult));

@@ -321,7 +321,7 @@ public class ApvssShareholder {
             final PublicSharingPayload payload = new PublicSharingPayload(publicSharing);
             final String channelName = this.secretName;
             final Message publicSharingMessage = new Message(channelName, this.index, payload);
-            logger.info(publicSharingMessage);
+//            logger.info(publicSharingMessage);
             this.channel.send(publicSharingMessage);
 
             return true;
@@ -918,6 +918,31 @@ public class ApvssShareholder {
             return;
         }
 
+//        // maybe worse perf
+//        if(sharingState.getVerifications().size() == 0) {
+//            BigInteger s = sharingState.getShare1().getY();
+////            logger.info("index: " + index);
+////            logger.info("s: " + s);
+////            logger.info("G: " + curve.getG());
+////            logger.info("sG: " + curve.multiply(curve.getG(), s));
+//            sharingState.getVerifications().put(index, curve.multiply(CommonConfiguration.g, s));
+////            logger.info("sG: " + sharingState.getVerifications());
+//        }
+//
+//        if(senderIndex == index) {
+//            logger.info("COMPUTTTEE:: " +  curve.multiply(CommonConfiguration.g, sharingState.getShare1().getY()));
+//            logger.info("PROOOOOOOF:: " +   proof.getA0());
+//        }
+//
+//        final BigInteger x = BigInteger.valueOf(senderIndex);
+//        final EcPoint shareCommitment = PublicSharingGenerator.interpolatePedersonCommitments(x,
+//                sharingState.getPedersenCommitments());
+//        if (ZeroKnowledgeProver.verifyProof(shareCommitment, proof) && senderIndex != index) {
+//            sharingState.getVerifications().put(senderIndex, proof.getA0());
+//        }
+
+//        logger.info("xxxx " + sharingState.getVerifications());
+
         // Ignore this proof, we've already received enough
         if (sharingState.getQualifiedProofs().size() < this.k) {
 
@@ -991,6 +1016,9 @@ public class ApvssShareholder {
 
         // Print secret verification key
         logger.info("Secret Verification key: g^{s}   =  " + sharingState.getSharePublicKeys()[0]);
+//        logger.info("---------------------------------------------------------------------------------------------------------------------------------------");
+//        logger.info("Secret Verification key: g^{s_i}   =  " + curve.multiply(CommonConfiguration.g, sharingState.getShare1().getY()));
+
 
         // Print share verification keys
         for (int i = 1; i <= n; i++) {
@@ -1132,8 +1160,8 @@ public class ApvssShareholder {
         // Verify we have the correct share (by comparing against public key
         final EcPoint sharePublicKey1 = curve.multiply(g, share1Y);
 
-        logger.info("Share1: " + share1Y);
-        logger.info("Share2: " + share2Y);
+//        logger.info("Share1: " + share1Y);
+//        logger.info("Share2: " + share2Y);
 
         if (!sharePublicKey1.equals(sharingState.getSharePublicKeys()[this.index])) {
             logger.error(sharePublicKey1);
