@@ -71,9 +71,9 @@ public class ThresholdRsaScalabilityTest {
         // First line - indices on x axis - number of agents
         String firstLine = "";
         for (int numServers = minAgents; numServers <= maxAgents; numServers += step) {
-            firstLine = firstLine.concat(String.valueOf(numServers));
-            if(numServers < maxAgents-1)
+            if(numServers > minAgents)
                 firstLine = firstLine.concat(",");
+            firstLine = firstLine.concat(String.valueOf(numServers));
         }
         firstLine = firstLine.concat("\n");
 
