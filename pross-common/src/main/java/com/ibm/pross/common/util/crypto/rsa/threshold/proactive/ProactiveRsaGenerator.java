@@ -38,20 +38,30 @@ public class ProactiveRsaGenerator {
 
     public static List<ProactiveRsaShareholder> generateProactiveRsa(final int numServers, final int threshold,
                                                                      final int keyBitSize, final BigInteger r,
-                                                                     final int tau)
-            throws NoSuchAlgorithmException, InvalidKeySpecException {
+                                                                     final int tau) throws InvalidKeySpecException, NoSuchAlgorithmException {
         logger.info("Generating Proactive-RSA keys with max bit size: " + keyBitSize);
         final int primeLength = (keyBitSize / 2);
 
         logger.info("Generating p...");
         final BigInteger p = Primes.generateSafePrime(primeLength);
-        final BigInteger pPrime = Primes.getSophieGermainPrime(p);
         logger.info("[DONE]");
 
         logger.info("Generating q...");
         final BigInteger q = Primes.generateSafePrime(primeLength);
-        final BigInteger qPrime = Primes.getSophieGermainPrime(q);
         logger.info("[DONE]");
+
+        return generateProactiveRsa(numServers, threshold, keyBitSize, r, tau, p, q);
+    }
+
+    public static List<ProactiveRsaShareholder> generateProactiveRsa(final int numServers, final int threshold,
+                                                                     final int keyBitSize, final BigInteger r,
+                                                                     final int tau, BigInteger p, BigInteger q)
+            throws NoSuchAlgorithmException, InvalidKeySpecException {
+        logger.info("Generating Proactive-RSA keys with max bit size: " + keyBitSize);
+        final int primeLength = (keyBitSize / 2);
+
+        final BigInteger pPrime = Primes.getSophieGermainPrime(p);
+        final BigInteger qPrime = Primes.getSophieGermainPrime(q);
 
         logger.info("Computing moduli...");
         final BigInteger m = pPrime.multiply(qPrime);

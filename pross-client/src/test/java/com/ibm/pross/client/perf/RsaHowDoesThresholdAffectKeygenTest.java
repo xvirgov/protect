@@ -27,9 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertTrue;
-
-public class ThresholdRsaScalabilityTest {
+public class RsaHowDoesThresholdAffectKeygenTest {
     /*** Important stats
      * increasing number of agents increases generation time
      * the variation is not important - shown in prev graphs
@@ -63,20 +61,23 @@ public class ThresholdRsaScalabilityTest {
     List<Double> thresChoice = Arrays.asList(0.5, 0.75, 1.0);
     long start, end;
     int maxAgents = 30;
-    int minAgents = 3;
-    int step = 1;
+    int minAgents = 10;
+    int step = 10;
 
     @Test
-    public void testOverallRsAKeyGen() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
-        File file1 = new File("rsa-gen-overall-scale.csv");
+    public void testOverallThresh() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
+        File file1 = new File("rsa-gen-thresh.csv");
         file1.delete();
 
-        // First line - indices on x axis - number of agents
+        // 3076 bits
+        BigInteger p = primes.get(0);
+        BigInteger q = primes.get(1);
+
         String firstLine = "";
-        for (int numServers = minAgents; numServers <= maxAgents; numServers += step) {
-            if (numServers > minAgents)
+        for (int thres = 10; thres <= 100; thres = thres + 10) {
+            if (thres > 10)
                 firstLine = firstLine.concat(",");
-            firstLine = firstLine.concat(String.valueOf(numServers));
+            firstLine = firstLine.concat(String.valueOf(thres));
         }
         firstLine = firstLine.concat("\n");
 
@@ -84,191 +85,40 @@ public class ThresholdRsaScalabilityTest {
             bw.write(firstLine);
         }
 
-        //
-        for (int s = 0; s < primes.size(); s = s + 2) {
-            System.out.println("Prime size: " + primes.get(s).bitLength() * 2);
-            for (int numServers = minAgents; numServers <= maxAgents; numServers += step) {
-                int threshold = (int) (numServers * 0.75);
-                BigInteger n = primes.get(s).multiply(primes.get(s + 1));
-                BigInteger totient = primes.get(s).subtract(BigInteger.ONE).multiply(primes.get(s + 1).subtract(BigInteger.ONE));
+        for (int numServers = 10; numServers <= maxAgents; numServers += 10) {
+            for (int thres = 10; thres <= 100; thres = thres + 10) {
+                int threshold = (int) ((double) numServers * ((double) thres / 100));
 
                 BigInteger accu = BigInteger.ZERO;
-
                 for (int it = 0; it < total_iterations; it++) {
 
                     start = System.nanoTime();
-
-                    final BigInteger e = BigInteger.valueOf(65537);
-                    if (e.longValue() <= numServers) {
-                        throw new IllegalArgumentException("e must be greater than the number of servers!");
-                    }
-
-                    // Create standard RSA Public key pair
-                    final RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(n, e);
-                    final KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-                    final RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(publicKeySpec);
-
-                    // Create standard RSA Private key
-                    final BigInteger realD = Exponentiation.modInverse(e, totient);
-                    final RSAPrivateKeySpec privateKeySpec = new RSAPrivateKeySpec(n, realD);
-                    final RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory.generatePrivate(privateKeySpec);
-
-                    // Range parameter R = n.(r+1).N.2^{tau + 1}
-                    BigInteger R = BigInteger.valueOf(numServers)
-                            .multiply(ProactiveRsaGenerator.DEFAULT_PARAMETER_R.add(BigInteger.ONE))
-                            .multiply(n).multiply(BigInteger.valueOf(2).pow(ProactiveRsaGenerator.DEFAULT_TAU + 1));
-
-                    // Generate additive shares
-                    List<SecretShare> additiveShares = new ArrayList<>();
-                    for (int i = 0; i < numServers; i++) {
-                        additiveShares.add(new SecretShare(BigInteger.valueOf(i + 1), RandomNumberGenerator.generateRandomInteger(R.multiply(BigInteger.valueOf(2)))));
-                    }
-                    BigInteger d_pub = realD.subtract(additiveShares.stream().map(SecretShare::getY).reduce(BigInteger::add).get());
-
-                    // Generator of verification values for additive shares - random square (of order phi(n)/4)
-                    final BigInteger sqrtG = RandomNumberGenerator.generateRandomInteger(n);
-                    final BigInteger g = sqrtG.modPow(BigInteger.valueOf(2), n);
-
-                    // Generate additive verification values g^{d_i}
-                    List<SecretShare> additiveVerificationKeys = new ArrayList<>();
-                    for (int i = 0; i < additiveShares.size(); i++) {
-                        additiveVerificationKeys.add(new SecretShare(BigInteger.valueOf(i + 1), g.modPow(additiveShares.get(i).getY(), n)));
-                    }
-
-                    // L = numServers!
-                    BigInteger L = Polynomials.factorial(BigInteger.valueOf(numServers));
-                    // tauHat = tau + 2 + log r
-                    int tauHat = BigInteger.valueOf(ProactiveRsaGenerator.DEFAULT_TAU).add(BigInteger.valueOf(2)).add(BigInteger.valueOf(ProactiveRsaGenerator.DEFAULT_PARAMETER_R.bitLength())).intValue();
-                    // coeffR = t.L^{2}.R.2^{tauHat}
-                    BigInteger coeffR = BigInteger.valueOf(threshold).multiply(L.pow(2)).multiply(R).multiply(BigInteger.valueOf(2).pow(tauHat));
-
-                    List<List<SecretShare>> shamirAdditiveShares = new ArrayList<>();
-                    List<List<SecretShare>> feldmanAdditiveVerificationValues = new ArrayList<>();
-
-                    // For each additive share d_i...
-                    for (int i = 0; i < numServers; i++) {
-
-                        List<BigInteger> coefficients = RandomNumberGenerator.generateRandomArray(BigInteger.valueOf(threshold), coeffR);
-                        coefficients.set(0, additiveShares.get(i).getY().multiply(L));
-
-                        // Create shamir shares
-                        List<SecretShare> shamirShares = new ArrayList<>();
-                        for (int j = 0; j < numServers; j++) {
-                            shamirShares.add(Polynomials.evaluatePolynomial(coefficients, BigInteger.valueOf(j + 1), n));
-                        }
-                        shamirAdditiveShares.add(shamirShares);
-
-                        // Generate verification values
-                        feldmanAdditiveVerificationValues.add(Shamir.generateFeldmanValues(coefficients, g, n));
-
-                    }
-
-                    end = System.nanoTime();
-
-//                    System.out.println(end - start);
-
-                    if (it > startIter) {
-                        accu = accu.add(BigInteger.valueOf(end - start));
-//                        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-//                            if (it > startIter + 1)
-//                                bw.write(",");
-//
-//                            bw.write(String.valueOf(end - start));
-//
-//                            if (it == total_iterations - 1)
-//                                bw.write("\n");
-//                        }
-                    }
-                }
-
-                try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-                    if (numServers > minAgents)
-                        bw.write(",");
-
-                    bw.write(String.valueOf(accu.divide(BigInteger.valueOf(iterations))));
-
-                    if (numServers == maxAgents)
-                        bw.write("\n");
-                }
-                System.out.println(numServers + " : " + accu.divide(BigInteger.valueOf(iterations)));
-            }
-        }
-    }
-
-    @Test
-    public void testOverallRsaEnc() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
-        File file1 = new File("rsa-gen-overall-scale.csv");
-        file1.delete();
-
-        byte[] plaintext = "hahahahahhahahha".getBytes();
-
-        for (int s = 0; s < primes.size(); s = s + 2) {
-            BigInteger p = primes.get(s);
-            BigInteger q = primes.get(s + 1);
-            List<ProactiveRsaShareholder> shareholders;
-            shareholders = ProactiveRsaGenerator.generateProactiveRsa(3,
-                    3,
-                    p.bitLength() * 2,
+                    ProactiveRsaGenerator.generateProactiveRsa(numServers,
+                    threshold,
+                    3076,
                     ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
                     ProactiveRsaGenerator.DEFAULT_TAU,
                     p,
                     q);
+                    end = System.nanoTime();
 
-            ProactiveRsaPublicParameters publicParameters = shareholders.get(0).getProactiveRsaPublicParameters();
-
-            BigInteger accu = BigInteger.ZERO;
-            for (int it = 0; it < total_iterations; it++) {
-
-                start = System.nanoTime();
-                byte[] ciphertext = ProactiveRsaEncryptionClient.rsaAesEncrypt(plaintext, publicParameters.getPublicKey().getPublicExponent(), publicParameters.getPublicKey().getModulus());
-                end = System.nanoTime();
-
-                if (it > startIter) {
-                    accu = accu.add(BigInteger.valueOf(end - start));
+                    if (it > startIter) {
+                        accu = accu.add(BigInteger.valueOf(end - start));
+                    }
                 }
+
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+                    if (thres > 10)
+                        bw.write(",");
+
+                    bw.write(String.valueOf(accu.divide(BigInteger.valueOf(iterations))));
+
+                    if (thres == 100)
+                        bw.write("\n");
+                }
+
             }
-
-            System.out.println("Average: " + accu.divide(BigInteger.valueOf(iterations)));
-
         }
     }
 
-//    @Test
-//    public void testOverallRsaEnc() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
-//        File file1 = new File("rsa-gen-overall-scale.csv");
-//        file1.delete();
-//
-//        byte[] plaintext = "hahahahahhahahha".getBytes();
-//
-//        for (int s = 0; s < primes.size(); s = s + 2) {
-//            BigInteger p = primes.get(s);
-//            BigInteger q = primes.get(s + 1);
-//            List<ProactiveRsaShareholder> shareholders;
-//            shareholders = ProactiveRsaGenerator.generateProactiveRsa(3,
-//                    3,
-//                    p.bitLength() * 2,
-//                    ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
-//                    ProactiveRsaGenerator.DEFAULT_TAU,
-//                    p,
-//                    q);
-//
-//            ProactiveRsaPublicParameters publicParameters = shareholders.get(0).getProactiveRsaPublicParameters();
-//
-//            BigInteger accu = BigInteger.ZERO;
-//            for (int it = 0; it < total_iterations; it++) {
-//
-//                byte[] ciphertext = ProactiveRsaEncryptionClient.rsaAesEncrypt(plaintext, publicParameters.getPublicKey().getPublicExponent(), publicParameters.getPublicKey().getModulus());
-//                start = System.nanoTime();
-////                byte[] recovered = ProactiveRsaEncryptionClient.rsaAesDecrypt(ciphertext, publicParameters.getPublicKey().getPublicExponent(), publicParameters.getPublicKey().getModulus());
-//                end = System.nanoTime();
-//
-//                if (it > startIter) {
-//                    accu = accu.add(BigInteger.valueOf(end - start));
-//                }
-//            }
-//
-//            System.out.println("Average: " + accu.divide(BigInteger.valueOf(iterations)));
-//
-//        }
-//    }
 }
