@@ -128,13 +128,13 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
     public static BigInteger recoverPlaintext(final BigInteger ciphertext,
                                               final List<SignatureResponse> signatureResponses, final ProactiveRsaPublicParameters rsaPublicParameters,
-                                              final ServerConfiguration serverConfiguration) throws BadArgumentException {
+                                              final int threshold) throws BadArgumentException {
 
         logger.info("recoverPlaintext");
 
         // Extract values from configuration
         final BigInteger n = rsaPublicParameters.getPublicKey().getModulus();
-        final int threshold = serverConfiguration.getReconstructionThreshold();
+//        final int threshold = serverConfiguration.getReconstructionThreshold();
 
         // Determine coordinates
         List<BigInteger> xCoords = new ArrayList<>();
@@ -210,7 +210,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         logger.info("[DONE]");
 
         // Decrypt symmetric key with threshold RSA
-        final byte[] recoveredPaddedSymmetricKey = recoverPlaintext(encryptedPaddedSecretKey, validatedDecryptionShares, rsaPublicParameters, serverConfiguration).toByteArray();
+        final byte[] recoveredPaddedSymmetricKey = recoverPlaintext(encryptedPaddedSecretKey, validatedDecryptionShares, rsaPublicParameters, serverConfiguration.getReconstructionThreshold()).toByteArray();
 
         logger.debug("RECOVERED SECRET: " + Arrays.toString(recoveredPaddedSymmetricKey));
         logger.debug("Encrypted data: " + aesCiphertextData.length);

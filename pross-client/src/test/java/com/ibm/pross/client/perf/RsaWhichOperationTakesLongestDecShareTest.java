@@ -1,34 +1,28 @@
 package com.ibm.pross.client.perf;
 
 import com.ibm.pross.client.encryption.ProactiveRsaEncryptionClient;
-import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.RandomNumberGenerator;
-import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
-import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
-import com.ibm.pross.common.util.shamir.Polynomials;
-import com.ibm.pross.common.util.shamir.Shamir;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureResponse;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
 import org.junit.Test;
 
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPrivateKeySpec;
-import java.security.spec.RSAPublicKeySpec;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
-public class RsaHowDoesEncryptionDependOnKeySizeTest {
-
+public class RsaWhichOperationTakesLongestDecShareTest {
     final int[] lengths = new int[]{3072, 4096, 7680};
 
     final BigInteger q_1536 = new BigInteger("2204891267454406652752310792683612450589537116917669323326891552347311938457100093581537827967081762234346471785288172616055126145282058996171039893000920659260237462752654077366498800638090932954205866161262102127830134273067358456895870059827560985624189538879164833147413832837629447428619755701673033346131071337204195691486238627439671691627431768763496188874175179839962733773722192089888595660254512265958883024849971593123212531270826834468228350351604859");
@@ -48,7 +42,7 @@ public class RsaHowDoesEncryptionDependOnKeySizeTest {
             new BigInteger("7192373397972528237878022974182747204164180767914113883909861061448951446187598757547433396636212796232738224490833704567264514139110309353805014139355959393881112824716075369742500434311684971594791283316037179618024138409722403838547990289089556990509429078307878953773395228909188335504556832735120737760725627375992484136574372638388869782606509756378463019589385573157400363923553930669594289621219678486838070760460949999721551714708826176874831684398315773139930717609650490953860482898917512267583719052855947256025633094259312218559002459707884800902006611416603270616480167205303374916680420492087151842816105606230397859142191859003647706014791914505659282523064281655975323260799431294007862067026314344693997859898730290865054677016446784951006678858763219190492425727943637215178797465902609744043713541115992797619186174354242943545363363395043761369010062769672262443775653098529414514590757198242953398173452419606869091043816151577052791182121669166477220149030368821049961260893511480734175193369713676123952459905595525352760896606501794824308765196799161896336359153502606109044502022289097274384365213840987264569925881462568401258179"));
     final List<BigInteger> moduli = Arrays.asList(p_1536.multiply(q_1536), p_2048.multiply(q_2048), p_3840.multiply(q_3840));
     final List<BigInteger> totients = Arrays.asList(p_1536.subtract(BigInteger.ONE).multiply(q_1536.subtract(BigInteger.ONE)), p_2048.subtract(BigInteger.ONE).multiply(q_2048.subtract(BigInteger.ONE)), p_3840.subtract(BigInteger.ONE).multiply(q_3840.subtract(BigInteger.ONE)));
-    final int total_iterations = 50000;
+    final int total_iterations = 1100;
     final int startIter = 100;
     final int iterations = total_iterations - startIter;
     final BigInteger e = BigInteger.valueOf(65537);
@@ -58,49 +52,126 @@ public class RsaHowDoesEncryptionDependOnKeySizeTest {
     int maxAgents = 30;
     int minAgents = 3;
     int step = 1;
+    int numServers = 10;
+    int threshold = 7;
 
     @Test
-    public void testOverallRsaEnc() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
-        File file1 = new File("rsa-enc-overall.csv");
+    public void testDecryptionShareLongest() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
+        File file1 = new File("rsa-dec-share-longest.csv");
         file1.delete();
 
-        byte[] plaintext = "hahahahahhahahha".getBytes();
+        // 3076 bits
+        BigInteger p = primes.get(0);
+        BigInteger q = primes.get(1);
 
-        for (int s = 0; s < primes.size(); s = s + 2) {
-            BigInteger p = primes.get(s);
-            BigInteger q = primes.get(s + 1);
-            List<ProactiveRsaShareholder> shareholders;
-            shareholders = ProactiveRsaGenerator.generateProactiveRsa(3,
-                    3,
-                    p.bitLength() * 2,
-                    ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
-                    ProactiveRsaGenerator.DEFAULT_TAU,
-                    p,
-                    q);
+        List<ProactiveRsaShareholder> proactiveRsaShareholders = ProactiveRsaGenerator.generateProactiveRsa(numServers,
+                threshold,
+                p.bitLength() * 2,
+                ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
+                ProactiveRsaGenerator.DEFAULT_TAU,
+                p,
+                q);
 
-            ProactiveRsaPublicParameters publicParameters = shareholders.get(0).getProactiveRsaPublicParameters();
+        ProactiveRsaShareholder proactiveRsaShareholder = proactiveRsaShareholders.get(0);
+        BigInteger index = BigInteger.ONE;
 
-            StringBuilder stringBuilder = new StringBuilder();
-            for (int it = 0; it < total_iterations; it++) {
+        byte[] message = new byte[p.bitLength() * 2 / 8];
+        new Random().nextBytes(message);
+        BigInteger inputMessage = new BigInteger(message);
 
-                start = System.nanoTime();
-                byte[] ciphertext = ProactiveRsaEncryptionClient.rsaAesEncrypt(plaintext, publicParameters.getPublicKey().getPublicExponent(), publicParameters.getPublicKey().getModulus());
-                end = System.nanoTime();
+        StringBuilder line = new StringBuilder();
 
-                if (it > startIter) {
-                    stringBuilder.append(",");
-                }
-                if( it >= startIter) {
-                    stringBuilder.append(end-start);
-                }
-            }
-            stringBuilder.append("\n");
+        final BigInteger privateKeyShare = proactiveRsaShareholder.getS_i();
+        final BigInteger L = proactiveRsaShareholder.getProactiveRsaPublicParameters().getL();
+        BigInteger modulus = proactiveRsaShareholder.getProactiveRsaPublicParameters().getPublicKey().getModulus();
+        BigInteger signatureShare = null;
 
-            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-                bw.write(stringBuilder.toString());
-            }
+        // 1. Generate decryption share
+        for (int it = 0; it < total_iterations; it++) {
+            start = System.nanoTime();
 
+            signatureShare = inputMessage.modPow(L.multiply(privateKeyShare), modulus);
+
+            end = System.nanoTime();
+
+            if (it > startIter)
+                line.append(",");
+            if (it >= startIter)
+                line.append(end - start);
         }
-    }
+        line.append("\n");
 
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+            bw.write(line.toString());
+        }
+
+        line.setLength(0);
+
+        // 1. Generate NIZK proof
+        for (int it = 0; it < total_iterations; it++) {
+            start = System.nanoTime();
+
+            final BigInteger r = RandomNumberGenerator.generateRandomInteger(modulus.bitLength() + 2 * ThresholdSignatures.HASH_LEN);
+            final BigInteger g = proactiveRsaShareholder.getProactiveRsaPublicParameters().getG();
+
+            BigInteger c = ThresholdSignatures.computeC(inputMessage, signatureShare, L, modulus, g, r);
+            BigInteger z = privateKeyShare.multiply(c).add(r);
+
+            end = System.nanoTime();
+
+            if (it > startIter)
+                line.append(",");
+            if (it >= startIter)
+                line.append(end - start);
+        }
+        line.append("\n");
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+            bw.write(line.toString());
+        }
+
+        line.setLength(0);
+
+
+//        for (int s = 0; s < primes.size(); s = s + 2) {
+//            BigInteger p = primes.get(s);
+//            BigInteger q = primes.get(s + 1);
+//            List<ProactiveRsaShareholder> shareholders;
+//            shareholders = ProactiveRsaGenerator.generateProactiveRsa(3,
+//                    3,
+//                    p.bitLength() * 2,
+//                    ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
+//                    ProactiveRsaGenerator.DEFAULT_TAU,
+//                    p,
+//                    q);
+//
+//
+//            byte[] message = new byte[p.bitLength()*2/8];
+//            new Random().nextBytes(message);
+//
+//
+//            StringBuilder stringBuilder = new StringBuilder();
+//            for (int it = 0; it < total_iterations; it++) {
+//
+//                start = System.nanoTime();
+//
+//                SignatureResponse signatureResponse = ThresholdSignatures.produceProactiveSignatureResponse(new BigInteger(message), shareholders.get(0), BigInteger.ONE);
+//
+//                end = System.nanoTime();
+//
+//                if (it > startIter) {
+//                    stringBuilder.append(",");
+//                }
+//                if( it >= startIter) {
+//                    stringBuilder.append(end-start);
+//                }
+//            }
+//            stringBuilder.append("\n");
+//
+//            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+//                bw.write(stringBuilder.toString());
+//            }
+//
+//        }
+    }
 }
