@@ -107,9 +107,9 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
             byte[] paddedSecretKey = OaepUtil.pad(secretKey.getEncoded(), RsaSharing.DEFAULT_RSA_KEY_SIZE, HASH_LENGTH);
 
-            logger.debug("BEFORE ENCRYPTION: " + Arrays.toString(paddedSecretKey));
-
-            logger.info("Modulus: " + modulus.toString(2).length());
+//            logger.debug("BEFORE ENCRYPTION: " + Arrays.toString(paddedSecretKey));
+//
+//            logger.info("Modulus: " + modulus.toString(2).length());
 
             // Encrypt symmetric key with RSA
             logger.info("Encrypting AES key with threshold RSA...");
