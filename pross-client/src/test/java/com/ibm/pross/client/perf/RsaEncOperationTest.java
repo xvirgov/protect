@@ -1,19 +1,38 @@
 package com.ibm.pross.client.perf;
 
+import com.ibm.pross.client.encryption.ProactiveRsaEncryptionClient;
+import com.ibm.pross.common.util.Exponentiation;
+import com.ibm.pross.common.util.Primes;
+import com.ibm.pross.common.util.RandomNumberGenerator;
+import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.OaepUtil;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
+import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
+import com.ibm.pross.common.util.shamir.Polynomials;
+import com.ibm.pross.common.util.shamir.Shamir;
 import org.junit.Test;
 
+import javax.crypto.*;
+import javax.crypto.spec.GCMParameterSpec;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.NoSuchAlgorithmException;
+import java.security.*;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPrivateKeySpec;
+import java.security.spec.RSAPublicKeySpec;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
-public class RsaHowDoesKeySizeAffectsOverallKeygenTest {
+public class RsaEncOperationTest {
     /*** Important stats
      * increasing number of agents increases generation time
      * the variation is not important - shown in prev graphs
@@ -39,102 +58,180 @@ public class RsaHowDoesKeySizeAffectsOverallKeygenTest {
             new BigInteger("7192373397972528237878022974182747204164180767914113883909861061448951446187598757547433396636212796232738224490833704567264514139110309353805014139355959393881112824716075369742500434311684971594791283316037179618024138409722403838547990289089556990509429078307878953773395228909188335504556832735120737760725627375992484136574372638388869782606509756378463019589385573157400363923553930669594289621219678486838070760460949999721551714708826176874831684398315773139930717609650490953860482898917512267583719052855947256025633094259312218559002459707884800902006611416603270616480167205303374916680420492087151842816105606230397859142191859003647706014791914505659282523064281655975323260799431294007862067026314344693997859898730290865054677016446784951006678858763219190492425727943637215178797465902609744043713541115992797619186174354242943545363363395043761369010062769672262443775653098529414514590757198242953398173452419606869091043816151577052791182121669166477220149030368821049961260893511480734175193369713676123952459905595525352760896606501794824308765196799161896336359153502606109044502022289097274384365213840987264569925881462568401258179"));
     final List<BigInteger> moduli = Arrays.asList(p_1536.multiply(q_1536), p_2048.multiply(q_2048), p_3840.multiply(q_3840));
     final List<BigInteger> totients = Arrays.asList(p_1536.subtract(BigInteger.ONE).multiply(q_1536.subtract(BigInteger.ONE)), p_2048.subtract(BigInteger.ONE).multiply(q_2048.subtract(BigInteger.ONE)), p_3840.subtract(BigInteger.ONE).multiply(q_3840.subtract(BigInteger.ONE)));
-    final int total_iterations = 500;
-    final int startIter = 10;
-    final int iterations = total_iterations - startIter;
+    final int iterations = Integer.parseInt(System.getProperty("iterations"));
+    final int startIter = 5;
+    final int total_iterations =  iterations + startIter;
     final BigInteger e = BigInteger.valueOf(65537);
     List<Integer> numServersChoice = Arrays.asList(10, 20, 30);
     List<Double> thresChoice = Arrays.asList(0.5, 0.75, 1.0);
     long start, end;
     int maxAgents = 30;
-    int minAgents = 10;
-    int step = 10;
+    int minAgents = 3;
+    int step = 1;
     int numServers = 10;
     int threshold = 7;
+    List<Integer> messageSizes = Arrays.asList(32, 1024, 1048576);
 
     @Test
-    public void testOverallThresh() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
-        File file1 = new File("rsa-gen-keysize.csv");
-        file1.delete();
+    public void testEncPerfOperations() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, BadPaddingException, IllegalBlockSizeException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException {
 
-        for (int s = 0; s < primes.size(); s = s + 2) {
-            BigInteger p = primes.get(s);
-            BigInteger q = primes.get(s + 1);
+        // 3076 bits
+        BigInteger p = primes.get(0);
+        BigInteger q = primes.get(1);
 
-            StringBuilder stringBuilder = new StringBuilder();
+        List<ProactiveRsaShareholder> proactiveRsaShareholders = ProactiveRsaGenerator.generateProactiveRsa(numServers,
+                threshold,
+                p.bitLength() * 2,
+                ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
+                ProactiveRsaGenerator.DEFAULT_TAU,
+                p,
+                q);
+        ProactiveRsaPublicParameters proactiveRsaPublicParameters = proactiveRsaShareholders.get(0).getProactiveRsaPublicParameters();
+
+        BigInteger exponent = proactiveRsaPublicParameters.getPublicKey().getPublicExponent();
+        BigInteger modulus = proactiveRsaPublicParameters.getPublicKey().getModulus();
+
+//        byte[] message = "hahhahahhahha".getBytes();
+
+        for (int messageSize : messageSizes) {
+            byte[] message = new byte[messageSize];
+            new Random().nextBytes(message);
+
+            File file1 = new File("RsaEncOperationTest-" + messageSize + ".csv");
+            file1.delete();
+
+            StringBuilder line = new StringBuilder();
+
+
+            // 1. Generate symmetric key
+            byte[] iv = null;
+            SecretKey secretKey = null;
             for (int it = 0; it < total_iterations; it++) {
                 start = System.nanoTime();
-                ProactiveRsaGenerator.generateProactiveRsa(numServers,
-                        threshold,
-                        p.bitLength()*2,
-                        ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
-                        ProactiveRsaGenerator.DEFAULT_TAU,
-                        p,
-                        q);
+
+                iv = new byte[ProactiveRsaEncryptionClient.GCM_IV_LENGTH / 8];
+
+                // Create a random source
+                SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+
+                // Initialise iv and salt
+                random.nextBytes(iv);
+
+                // Initialise random and generate session key
+                KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+                keyGenerator.init(ProactiveRsaEncryptionClient.AES_KEY_SIZE, random);
+                secretKey = keyGenerator.generateKey();
+
                 end = System.nanoTime();
 
-                if(it > startIter)
-                    stringBuilder.append(",");
+                if (it > startIter)
+                    line.append(",");
+                if (it >= startIter)
+                    line.append(end - start);
+            }
+            line.append("\n");
 
-                if(it >= startIter)
-                    stringBuilder.append(end-start);
-            }
-            stringBuilder.append("\n");
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-                bw.write(stringBuilder.toString());
+                bw.write(line.toString());
             }
+
+            line.setLength(0);
+
+            // 2. Encrypt message using symmetric cipher
+            for (int it = 0; it < total_iterations; it++) {
+                start = System.nanoTime();
+
+                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+                GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(ProactiveRsaEncryptionClient.GCM_TAG_LENGTH, iv);
+                cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmParameterSpec);
+                byte[] encrypted = cipher.doFinal(message);
+
+                byte[] result = new byte[encrypted.length + iv.length];
+                System.arraycopy(iv, 0, result, 0, iv.length);
+                System.arraycopy(encrypted, 0, result, iv.length, encrypted.length);
+
+                end = System.nanoTime();
+
+                if (it > startIter)
+                    line.append(",");
+                if (it >= startIter)
+                    line.append(end - start);
+            }
+            line.append("\n");
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+                bw.write(line.toString());
+            }
+
+            line.setLength(0);
+
+            byte[] paddedSecretKey = null;
+            // 3. Pad the symmetric key using OAEP
+            for (int it = 0; it < total_iterations; it++) {
+                start = System.nanoTime();
+
+                paddedSecretKey = OaepUtil.pad(secretKey.getEncoded(), RsaSharing.DEFAULT_RSA_KEY_SIZE, ProactiveRsaEncryptionClient.HASH_LENGTH);
+
+                end = System.nanoTime();
+
+                if (it > startIter)
+                    line.append(",");
+                if (it >= startIter)
+                    line.append(end - start);
+            }
+            line.append("\n");
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+                bw.write(line.toString());
+            }
+
+            line.setLength(0);
+
+            // 4. Encrypt padded key using RSA public parameters
+            for (int it = 0; it < total_iterations; it++) {
+                start = System.nanoTime();
+
+                final byte[] symmetricKeyCiphertext = Exponentiation.modPow(new BigInteger(1, paddedSecretKey), exponent, modulus).toByteArray();
+
+                end = System.nanoTime();
+
+                if (it > startIter)
+                    line.append(",");
+                if (it >= startIter)
+                    line.append(end - start);
+            }
+            line.append("\n");
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+                bw.write(line.toString());
+            }
+
+            line.setLength(0);
+
+            // 5. Compute hash of the message
+            for (int it = 0; it < total_iterations; it++) {
+                start = System.nanoTime();
+
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                final byte[] hash = digest.digest(message);
+
+                end = System.nanoTime();
+
+                if (it > startIter)
+                    line.append(",");
+                if (it >= startIter)
+                    line.append(end - start);
+            }
+            line.append("\n");
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+                bw.write(line.toString());
+            }
+
+            line.setLength(0);
         }
 
-//        // 3076 bits
-//        BigInteger p = primes.get(0);
-//        BigInteger q = primes.get(1);
-//
-//        String firstLine = "";
-//        for (int thres = 10; thres <= 100; thres = thres + 10) {
-//            if (thres > 10)
-//                firstLine = firstLine.concat(",");
-//            firstLine = firstLine.concat(String.valueOf(thres));
-//        }
-//        firstLine = firstLine.concat("\n");
-//
-//        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-//            bw.write(firstLine);
-//        }
-//
-//        for (int numServers = 10; numServers <= maxAgents; numServers += 10) {
-//            for (int thres = 10; thres <= 100; thres = thres + 10) {
-//                int threshold = (int) ((double) numServers * ((double) thres / 100));
-//
-//                BigInteger accu = BigInteger.ZERO;
-//                for (int it = 0; it < total_iterations; it++) {
-//
-//                    start = System.nanoTime();
-//                    ProactiveRsaGenerator.generateProactiveRsa(numServers,
-//                    threshold,
-//                    3076,
-//                    ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
-//                    ProactiveRsaGenerator.DEFAULT_TAU,
-//                    p,
-//                    q);
-//                    end = System.nanoTime();
-//
-//                    if (it > startIter) {
-//                        accu = accu.add(BigInteger.valueOf(end - start));
-//                    }
-//                }
-//
-//                try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-//                    if (thres > 10)
-//                        bw.write(",");
-//
-//                    bw.write(String.valueOf(accu.divide(BigInteger.valueOf(iterations))));
-//
-//                    if (thres == 100)
-//                        bw.write("\n");
-//                }
-//
-//            }
-//        }
+
     }
 
 }

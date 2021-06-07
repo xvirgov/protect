@@ -1,7 +1,6 @@
 package com.ibm.pross.client.perf;
 
 import com.ibm.pross.client.encryption.ProactiveRsaEncryptionClient;
-import com.ibm.pross.common.config.ServerConfiguration;
 import com.ibm.pross.common.util.crypto.rsa.OaepUtil;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
@@ -30,7 +29,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class RsaWhichOperationTakesLongestDecCombineTest {
+public class RsaDecCombineThresTest {
+    /*** Important stats
+     * increasing number of agents increases generation time
+     * the variation is not important - shown in prev graphs
+     * how the gen time differs for different key sizes
+     */
 
     final int[] lengths = new int[]{3072, 4096, 7680};
 
@@ -51,176 +55,117 @@ public class RsaWhichOperationTakesLongestDecCombineTest {
             new BigInteger("7192373397972528237878022974182747204164180767914113883909861061448951446187598757547433396636212796232738224490833704567264514139110309353805014139355959393881112824716075369742500434311684971594791283316037179618024138409722403838547990289089556990509429078307878953773395228909188335504556832735120737760725627375992484136574372638388869782606509756378463019589385573157400363923553930669594289621219678486838070760460949999721551714708826176874831684398315773139930717609650490953860482898917512267583719052855947256025633094259312218559002459707884800902006611416603270616480167205303374916680420492087151842816105606230397859142191859003647706014791914505659282523064281655975323260799431294007862067026314344693997859898730290865054677016446784951006678858763219190492425727943637215178797465902609744043713541115992797619186174354242943545363363395043761369010062769672262443775653098529414514590757198242953398173452419606869091043816151577052791182121669166477220149030368821049961260893511480734175193369713676123952459905595525352760896606501794824308765196799161896336359153502606109044502022289097274384365213840987264569925881462568401258179"));
     final List<BigInteger> moduli = Arrays.asList(p_1536.multiply(q_1536), p_2048.multiply(q_2048), p_3840.multiply(q_3840));
     final List<BigInteger> totients = Arrays.asList(p_1536.subtract(BigInteger.ONE).multiply(q_1536.subtract(BigInteger.ONE)), p_2048.subtract(BigInteger.ONE).multiply(q_2048.subtract(BigInteger.ONE)), p_3840.subtract(BigInteger.ONE).multiply(q_3840.subtract(BigInteger.ONE)));
-    final int total_iterations = 1100;
-    final int startIter = 100;
-    final int iterations = total_iterations - startIter;
+    final int iterations = Integer.parseInt(System.getProperty("iterations"));
+    final int startIter = 5;
+    final int total_iterations =  iterations + startIter;
     final BigInteger e = BigInteger.valueOf(65537);
     List<Integer> numServersChoice = Arrays.asList(10, 20, 30);
     List<Double> thresChoice = Arrays.asList(0.5, 0.75, 1.0);
     long start, end;
     int maxAgents = 30;
-    int minAgents = 3;
-    int step = 1;
-    int threshold = 7;
-    int numServers = 10;
+    int minAgents = 10;
+    int step = 10;
 
     @Test
-    public void testOverallRsaDec() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException, InvalidKeyException, BadArgumentException {
-        File file1 = new File("rsa-dec-combine-longest.csv");
+    public void testOverallCombineThresh() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, BadArgumentException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException, InvalidKeyException {
+        File file1 = new File("RsaDecCombineThresTest.csv");
         file1.delete();
 
         byte[] plaintext = "hahahahahhahahha".getBytes();
 
+        // 3076 bits
         BigInteger p = primes.get(0);
         BigInteger q = primes.get(1);
-        List<ProactiveRsaShareholder> shareholders;
-        shareholders = ProactiveRsaGenerator.generateProactiveRsa(numServers,
-                threshold,
-                p.bitLength() * 2,
-                ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
-                ProactiveRsaGenerator.DEFAULT_TAU,
-                p,
-                q);
 
-        ProactiveRsaPublicParameters publicParameters = shareholders.get(0).getProactiveRsaPublicParameters();
+        String firstLine = "";
+        for (int thres = 10; thres <= 100; thres = thres + 10) {
+            if (thres > 10)
+                firstLine = firstLine.concat(",");
+            firstLine = firstLine.concat(String.valueOf(thres));
+        }
+        firstLine = firstLine.concat("\n");
 
-        byte[] ciphertext = ProactiveRsaEncryptionClient.rsaAesEncrypt(plaintext, publicParameters.getPublicKey().getPublicExponent(), publicParameters.getPublicKey().getModulus());
-
-        final byte[][] combined = Parse.splitArrays(ciphertext);
-        BigInteger encryptedPaddedSecretKey = new BigInteger(1, combined[0]);
-        final byte[] aesCiphertextData = combined[1];
-        final byte[] plaintextHash = combined[2];
-
-
-        List<SignatureResponse> signatureResponses = new ArrayList<>();
-        for(int i = 1; i <= threshold; i++) {
-            signatureResponses.add(ThresholdSignatures.produceProactiveSignatureResponse(encryptedPaddedSecretKey, shareholders.get(i-1), BigInteger.valueOf(i)));
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+            bw.write(firstLine);
         }
 
-        StringBuilder line = new StringBuilder();
+        for (int numServers = 10; numServers <= maxAgents; numServers += 10) {
+            for (int thres = 10; thres <= 100; thres = thres + 10) {
+                int threshold = (int) ((double) numServers * ((double) thres / 100));
 
-        // 1. Verify proofs
-        for (int it = 0; it < total_iterations; it++) {
-            start = System.nanoTime();
 
-            // validate decryption shares
-            for(int i = 1; i <= threshold; i++) {
-                ProactiveRsaEncryptionClient.validateDecryptionShare(encryptedPaddedSecretKey, signatureResponses.get(i-1), shareholders.get(i-1).getProactiveRsaPublicParameters());
+                List<ProactiveRsaShareholder> shareholders;
+                shareholders = ProactiveRsaGenerator.generateProactiveRsa(numServers,
+                        threshold,
+                        p.bitLength() * 2,
+                        ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
+                        ProactiveRsaGenerator.DEFAULT_TAU,
+                        p,
+                        q);
+
+                ProactiveRsaPublicParameters publicParameters = shareholders.get(0).getProactiveRsaPublicParameters();
+
+                byte[] ciphertext = ProactiveRsaEncryptionClient.rsaAesEncrypt(plaintext, publicParameters.getPublicKey().getPublicExponent(), publicParameters.getPublicKey().getModulus());
+
+                final byte[][] combined = Parse.splitArrays(ciphertext);
+                BigInteger encryptedPaddedSecretKey = new BigInteger(1, combined[0]);
+                final byte[] aesCiphertextData = combined[1];
+                final byte[] plaintextHash = combined[2];
+
+
+                List<SignatureResponse> signatureResponses = new ArrayList<>();
+                for (int i = 1; i <= threshold; i++) {
+                    signatureResponses.add(ThresholdSignatures.produceProactiveSignatureResponse(encryptedPaddedSecretKey, shareholders.get(i - 1), BigInteger.valueOf(i)));
+                }
+
+                BigInteger accu = BigInteger.ZERO;
+                for (int it = 0; it < total_iterations; it++) {
+
+                    start = System.nanoTime();
+
+                    // validate decryption shares
+                    for (int i = 1; i <= threshold; i++) {
+                        ProactiveRsaEncryptionClient.validateDecryptionShare(encryptedPaddedSecretKey, signatureResponses.get(i - 1), shareholders.get(i - 1).getProactiveRsaPublicParameters());
+                    }
+
+                    // Decrypt symmetric key with threshold RSA
+                    byte[] recoveredPaddedSymmetricKey = ProactiveRsaEncryptionClient.recoverPlaintext(encryptedPaddedSecretKey, signatureResponses, shareholders.get(0).getProactiveRsaPublicParameters(), threshold).toByteArray();
+
+                    // Get decrypted parameters of AES
+                    final byte[] ivDec = Arrays.copyOfRange(aesCiphertextData, 0, ProactiveRsaEncryptionClient.GCM_IV_LENGTH / 8);
+                    final byte[] encryptedDataDec = Arrays.copyOfRange(aesCiphertextData, ProactiveRsaEncryptionClient.GCM_IV_LENGTH / 8, aesCiphertextData.length);
+
+                    // Reverse OAEP padding on decrypted AES key
+                    final byte[] recoveredSymmetricKey = OaepUtil.unpad(recoveredPaddedSymmetricKey, RsaSharing.DEFAULT_RSA_KEY_SIZE, ProactiveRsaEncryptionClient.HASH_LENGTH);
+                    SecretKey secretKeySpecDec = new SecretKeySpec(recoveredSymmetricKey, 0, recoveredSymmetricKey.length, "AES");
+
+                    Cipher cipherDec = Cipher.getInstance("AES/GCM/NoPadding");
+                    GCMParameterSpec gcmParameterSpecDec = new GCMParameterSpec(ProactiveRsaEncryptionClient.GCM_TAG_LENGTH, ivDec);
+                    cipherDec.init(Cipher.DECRYPT_MODE, secretKeySpecDec, gcmParameterSpecDec);
+                    byte[] resultPlaintext = cipherDec.doFinal(encryptedDataDec);
+
+                    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                    final byte[] hash = digest.digest(resultPlaintext);
+
+                    end = System.nanoTime();
+
+                    if (it > startIter) {
+                        accu = accu.add(BigInteger.valueOf(end - start));
+                    }
+                }
+
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+                    if (thres > 10)
+                        bw.write(",");
+
+                    bw.write(String.valueOf(accu.divide(BigInteger.valueOf(iterations))));
+
+                    if (thres == 100)
+                        bw.write("\n");
+                }
+
             }
-
-            end = System.nanoTime();
-
-            if (it > startIter)
-                line.append(",");
-            if (it >= startIter)
-                line.append(end - start);
         }
-        line.append("\n");
-
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-            bw.write(line.toString());
-        }
-
-        line.setLength(0);
-
-        byte[] recoveredPaddedSymmetricKey = null;
-
-        // 2. Combine decryption shares
-        for (int it = 0; it < total_iterations; it++) {
-            start = System.nanoTime();
-
-            recoveredPaddedSymmetricKey = ProactiveRsaEncryptionClient.recoverPlaintext(encryptedPaddedSecretKey, signatureResponses, shareholders.get(0).getProactiveRsaPublicParameters(), threshold).toByteArray();
-
-            end = System.nanoTime();
-
-            if (it > startIter)
-                line.append(",");
-            if (it >= startIter)
-                line.append(end - start);
-        }
-        line.append("\n");
-
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-            bw.write(line.toString());
-        }
-
-        line.setLength(0);
-
-        byte[] recoveredSymmetricKey = null;
-        // 3. Unpad decrypted symmetric key
-        for (int it = 0; it < total_iterations; it++) {
-            start = System.nanoTime();
-
-            recoveredSymmetricKey = OaepUtil.unpad(recoveredPaddedSymmetricKey, RsaSharing.DEFAULT_RSA_KEY_SIZE, ProactiveRsaEncryptionClient.HASH_LENGTH);
-
-            end = System.nanoTime();
-
-            if (it > startIter)
-                line.append(",");
-            if (it >= startIter)
-                line.append(end - start);
-        }
-        line.append("\n");
-
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-            bw.write(line.toString());
-        }
-
-        line.setLength(0);
-
-        byte[] resultPlaintext = null;
-
-        // 4. Decrypt ciphertext using the symmetric key
-        for (int it = 0; it < total_iterations; it++) {
-            start = System.nanoTime();
-
-            final byte[] ivDec = Arrays.copyOfRange(aesCiphertextData, 0, ProactiveRsaEncryptionClient.GCM_IV_LENGTH / 8);
-            final byte[] encryptedDataDec = Arrays.copyOfRange(aesCiphertextData, ProactiveRsaEncryptionClient.GCM_IV_LENGTH / 8, aesCiphertextData.length);
-
-            // Reverse OAEP padding on decrypted AES key
-            SecretKey secretKeySpecDec = new SecretKeySpec(recoveredSymmetricKey, 0, recoveredSymmetricKey.length, "AES");
-
-            Cipher cipherDec = Cipher.getInstance("AES/GCM/NoPadding");
-            GCMParameterSpec gcmParameterSpecDec = new GCMParameterSpec(ProactiveRsaEncryptionClient.GCM_TAG_LENGTH, ivDec);
-            cipherDec.init(Cipher.DECRYPT_MODE, secretKeySpecDec, gcmParameterSpecDec);
-            resultPlaintext = cipherDec.doFinal(encryptedDataDec);
-
-            end = System.nanoTime();
-
-            if (it > startIter)
-                line.append(",");
-            if (it >= startIter)
-                line.append(end - start);
-        }
-        line.append("\n");
-
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-            bw.write(line.toString());
-        }
-
-        line.setLength(0);
-
-        // 5. Check integrity
-        for (int it = 0; it < total_iterations; it++) {
-            start = System.nanoTime();
-
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            final byte[] hash = digest.digest(resultPlaintext);
-
-            end = System.nanoTime();
-
-            if (it > startIter)
-                line.append(",");
-            if (it >= startIter)
-                line.append(end - start);
-        }
-        line.append("\n");
-
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-            bw.write(line.toString());
-        }
-
-        line.setLength(0);
     }
 
 }

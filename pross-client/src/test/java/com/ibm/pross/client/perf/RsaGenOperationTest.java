@@ -1,35 +1,31 @@
 package com.ibm.pross.client.perf;
 
-import com.ibm.pross.client.encryption.ProactiveRsaEncryptionClient;
-import com.ibm.pross.common.util.crypto.rsa.OaepUtil;
+import com.ibm.pross.common.util.Exponentiation;
+import com.ibm.pross.common.util.Primes;
+import com.ibm.pross.common.util.RandomNumberGenerator;
+import com.ibm.pross.common.util.SecretShare;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
-import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
-import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
-import com.ibm.pross.common.util.crypto.rsa.threshold.sign.client.RsaSharing;
-import com.ibm.pross.common.util.crypto.rsa.threshold.sign.data.SignatureResponse;
-import com.ibm.pross.common.util.crypto.rsa.threshold.sign.exceptions.BadArgumentException;
-import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
-import com.ibm.pross.common.util.serialization.Parse;
+import com.ibm.pross.common.util.shamir.Polynomials;
+import com.ibm.pross.common.util.shamir.Shamir;
 import org.junit.Test;
 
-import javax.crypto.*;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
+import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPrivateKeySpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class RsaHowDoesThresholdAffectDecCombineTest {
+public class RsaGenOperationTest {
     /*** Important stats
      * increasing number of agents increases generation time
      * the variation is not important - shown in prev graphs
@@ -55,9 +51,9 @@ public class RsaHowDoesThresholdAffectDecCombineTest {
             new BigInteger("7192373397972528237878022974182747204164180767914113883909861061448951446187598757547433396636212796232738224490833704567264514139110309353805014139355959393881112824716075369742500434311684971594791283316037179618024138409722403838547990289089556990509429078307878953773395228909188335504556832735120737760725627375992484136574372638388869782606509756378463019589385573157400363923553930669594289621219678486838070760460949999721551714708826176874831684398315773139930717609650490953860482898917512267583719052855947256025633094259312218559002459707884800902006611416603270616480167205303374916680420492087151842816105606230397859142191859003647706014791914505659282523064281655975323260799431294007862067026314344693997859898730290865054677016446784951006678858763219190492425727943637215178797465902609744043713541115992797619186174354242943545363363395043761369010062769672262443775653098529414514590757198242953398173452419606869091043816151577052791182121669166477220149030368821049961260893511480734175193369713676123952459905595525352760896606501794824308765196799161896336359153502606109044502022289097274384365213840987264569925881462568401258179"));
     final List<BigInteger> moduli = Arrays.asList(p_1536.multiply(q_1536), p_2048.multiply(q_2048), p_3840.multiply(q_3840));
     final List<BigInteger> totients = Arrays.asList(p_1536.subtract(BigInteger.ONE).multiply(q_1536.subtract(BigInteger.ONE)), p_2048.subtract(BigInteger.ONE).multiply(q_2048.subtract(BigInteger.ONE)), p_3840.subtract(BigInteger.ONE).multiply(q_3840.subtract(BigInteger.ONE)));
-    final int total_iterations = 110; // the don't have a big spread - see other graphs
-    final int startIter = 10;
-    final int iterations = total_iterations - startIter;
+    final int iterations = Integer.parseInt(System.getProperty("iterations"));
+    final int startIter = 5;
+    final int total_iterations =  iterations + startIter;
     final BigInteger e = BigInteger.valueOf(65537);
     List<Integer> numServersChoice = Arrays.asList(10, 20, 30);
     List<Double> thresChoice = Arrays.asList(0.5, 0.75, 1.0);
@@ -65,107 +61,160 @@ public class RsaHowDoesThresholdAffectDecCombineTest {
     int maxAgents = 30;
     int minAgents = 10;
     int step = 10;
+    int numServers = 10;
+    int threshold = 7;
 
     @Test
-    public void testOverallCombineThresh() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, BadArgumentException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException, InvalidKeyException {
-        File file1 = new File("rsa-dec-combine-thresh.csv");
+    public void testOverallThresh() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
+        File file1 = new File("RsaGenOperationTest.csv");
         file1.delete();
-
-        byte[] plaintext = "hahahahahhahahha".getBytes();
 
         // 3076 bits
         BigInteger p = primes.get(0);
         BigInteger q = primes.get(1);
 
-        String firstLine = "";
-        for (int thres = 10; thres <= 100; thres = thres + 10) {
-            if (thres > 10)
-                firstLine = firstLine.concat(",");
-            firstLine = firstLine.concat(String.valueOf(thres));
+        StringBuilder line = new StringBuilder();
+
+        BigInteger realD = BigInteger.ZERO;
+        BigInteger m = BigInteger.ZERO;
+        BigInteger n = BigInteger.ZERO;
+        BigInteger e = BigInteger.ZERO;
+        BigInteger g = BigInteger.ZERO;
+
+        // 1. RSA keypair, verification key
+        for (int it = 0; it < total_iterations; it++) {
+            start = System.nanoTime();
+
+            final BigInteger pPrime = Primes.getSophieGermainPrime(p);
+            final BigInteger qPrime = Primes.getSophieGermainPrime(q);
+
+            m = pPrime.multiply(qPrime);
+            n = p.multiply(q);
+
+            e = BigInteger.valueOf(65537);
+
+            final RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(n, e);
+            final KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            final RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(publicKeySpec);
+
+            // Create standard RSA Private key
+            final BigInteger totient = p.subtract(BigInteger.ONE).multiply(q.subtract(BigInteger.ONE));
+            realD = Exponentiation.modInverse(e, totient);
+            final RSAPrivateKeySpec privateKeySpec = new RSAPrivateKeySpec(n, realD);
+            final RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory.generatePrivate(privateKeySpec);
+
+            final BigInteger sqrtG = RandomNumberGenerator.generateRandomInteger(n);
+            g = sqrtG.modPow(BigInteger.valueOf(2), n);
+            end = System.nanoTime();
+
+            if (it > startIter)
+                line.append(",");
+            if (it >= startIter)
+                line.append(end - start);
         }
-        firstLine = firstLine.concat("\n");
+        line.append("\n");
 
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-            bw.write(firstLine);
+            bw.write(line.toString());
         }
 
-        for (int numServers = 10; numServers <= maxAgents; numServers += 10) {
-            for (int thres = 10; thres <= 100; thres = thres + 10) {
-                int threshold = (int) ((double) numServers * ((double) thres / 100));
+        line.setLength(0);
 
+        BigInteger R = BigInteger.valueOf(numServers).multiply(ProactiveRsaGenerator.DEFAULT_PARAMETER_R.add(BigInteger.ONE)).multiply(n).multiply(BigInteger.valueOf(2).pow(ProactiveRsaGenerator.DEFAULT_TAU + 1));
 
-                List<ProactiveRsaShareholder> shareholders;
-                shareholders = ProactiveRsaGenerator.generateProactiveRsa(numServers,
-                        threshold,
-                        p.bitLength() * 2,
-                        ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
-                        ProactiveRsaGenerator.DEFAULT_TAU,
-                        p,
-                        q);
-
-                ProactiveRsaPublicParameters publicParameters = shareholders.get(0).getProactiveRsaPublicParameters();
-
-                byte[] ciphertext = ProactiveRsaEncryptionClient.rsaAesEncrypt(plaintext, publicParameters.getPublicKey().getPublicExponent(), publicParameters.getPublicKey().getModulus());
-
-                final byte[][] combined = Parse.splitArrays(ciphertext);
-                BigInteger encryptedPaddedSecretKey = new BigInteger(1, combined[0]);
-                final byte[] aesCiphertextData = combined[1];
-                final byte[] plaintextHash = combined[2];
-
-
-                List<SignatureResponse> signatureResponses = new ArrayList<>();
-                for (int i = 1; i <= threshold; i++) {
-                    signatureResponses.add(ThresholdSignatures.produceProactiveSignatureResponse(encryptedPaddedSecretKey, shareholders.get(i - 1), BigInteger.valueOf(i)));
-                }
-
-                BigInteger accu = BigInteger.ZERO;
-                for (int it = 0; it < total_iterations; it++) {
-
-                    start = System.nanoTime();
-
-                    // validate decryption shares
-                    for (int i = 1; i <= threshold; i++) {
-                        ProactiveRsaEncryptionClient.validateDecryptionShare(encryptedPaddedSecretKey, signatureResponses.get(i - 1), shareholders.get(i - 1).getProactiveRsaPublicParameters());
-                    }
-
-                    // Decrypt symmetric key with threshold RSA
-                    byte[] recoveredPaddedSymmetricKey = ProactiveRsaEncryptionClient.recoverPlaintext(encryptedPaddedSecretKey, signatureResponses, shareholders.get(0).getProactiveRsaPublicParameters(), threshold).toByteArray();
-
-                    // Get decrypted parameters of AES
-                    final byte[] ivDec = Arrays.copyOfRange(aesCiphertextData, 0, ProactiveRsaEncryptionClient.GCM_IV_LENGTH / 8);
-                    final byte[] encryptedDataDec = Arrays.copyOfRange(aesCiphertextData, ProactiveRsaEncryptionClient.GCM_IV_LENGTH / 8, aesCiphertextData.length);
-
-                    // Reverse OAEP padding on decrypted AES key
-                    final byte[] recoveredSymmetricKey = OaepUtil.unpad(recoveredPaddedSymmetricKey, RsaSharing.DEFAULT_RSA_KEY_SIZE, ProactiveRsaEncryptionClient.HASH_LENGTH);
-                    SecretKey secretKeySpecDec = new SecretKeySpec(recoveredSymmetricKey, 0, recoveredSymmetricKey.length, "AES");
-
-                    Cipher cipherDec = Cipher.getInstance("AES/GCM/NoPadding");
-                    GCMParameterSpec gcmParameterSpecDec = new GCMParameterSpec(ProactiveRsaEncryptionClient.GCM_TAG_LENGTH, ivDec);
-                    cipherDec.init(Cipher.DECRYPT_MODE, secretKeySpecDec, gcmParameterSpecDec);
-                    byte[] resultPlaintext = cipherDec.doFinal(encryptedDataDec);
-
-                    MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                    final byte[] hash = digest.digest(resultPlaintext);
-
-                    end = System.nanoTime();
-
-                    if (it > startIter) {
-                        accu = accu.add(BigInteger.valueOf(end - start));
-                    }
-                }
-
-                try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-                    if (thres > 10)
-                        bw.write(",");
-
-                    bw.write(String.valueOf(accu.divide(BigInteger.valueOf(iterations))));
-
-                    if (thres == 100)
-                        bw.write("\n");
-                }
-
+        List<SecretShare> additiveShares = new ArrayList<>();
+        // 2. Additive shares
+        for (int it = 0; it < total_iterations; it++) {
+            start = System.nanoTime();
+            for (int i = 0; i < numServers; i++) {
+                additiveShares.add(new SecretShare(BigInteger.valueOf(i + 1), RandomNumberGenerator.generateRandomInteger(R.multiply(BigInteger.valueOf(2)))));
             }
+            BigInteger d_pub = realD.subtract(additiveShares.stream().map(SecretShare::getY).reduce(BigInteger::add).get());
+
+
+            end = System.nanoTime();
+
+            if (it > startIter)
+                line.append(",");
+            if (it >= startIter)
+                line.append(end - start);
         }
+        line.append("\n");
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+            bw.write(line.toString());
+        }
+
+        line.setLength(0);
+
+        // 3. Public verification values
+        List<SecretShare> additiveVerificationKeys = new ArrayList<>();
+        for (int it = 0; it < total_iterations; it++) {
+            start = System.nanoTime();
+
+            for (int i = 0; i < additiveShares.size(); i++) {
+                additiveVerificationKeys.add(new SecretShare(BigInteger.valueOf(i + 1), g.modPow(additiveShares.get(i).getY(), n)));
+            }
+
+            end = System.nanoTime();
+
+            if (it > startIter)
+                line.append(",");
+            if (it >= startIter)
+                line.append(end - start);
+        }
+        line.append("\n");
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+            bw.write(line.toString());
+        }
+
+        line.setLength(0);
+
+        // L = numServers!
+        BigInteger L = Polynomials.factorial(BigInteger.valueOf(numServers));
+        // tauHat = tau + 2 + log r
+        int tauHat = BigInteger.valueOf(ProactiveRsaGenerator.DEFAULT_TAU).add(BigInteger.valueOf(2)).add(BigInteger.valueOf(ProactiveRsaGenerator.DEFAULT_PARAMETER_R.bitLength())).intValue();
+        // coeffR = t.L^{2}.R.2^{tauHat}
+        BigInteger coeffR = BigInteger.valueOf(threshold).multiply(L.pow(2)).multiply(R).multiply(BigInteger.valueOf(2).pow(tauHat));
+
+        // 4. Feldman's VSS values
+        for (int it = 0; it < total_iterations; it++) {
+            start = System.nanoTime();
+            List<List<SecretShare>> shamirAdditiveShares = new ArrayList<>();
+            List<List<SecretShare>> feldmanAdditiveVerificationValues = new ArrayList<>();
+
+            // For each additive share d_i...
+            for (int i = 0; i < numServers; i++) {
+
+                List<BigInteger> coefficients = RandomNumberGenerator.generateRandomArray(BigInteger.valueOf(threshold), coeffR);
+                coefficients.set(0, additiveShares.get(i).getY().multiply(L));
+
+                // Create shamir shares
+                List<SecretShare> shamirShares = new ArrayList<>();
+                for (int j = 0; j < numServers; j++) {
+                    shamirShares.add(Polynomials.evaluatePolynomial(coefficients, BigInteger.valueOf(j + 1), n));
+                }
+                shamirAdditiveShares.add(shamirShares);
+
+                // Generate verification values
+                feldmanAdditiveVerificationValues.add(Shamir.generateFeldmanValues(coefficients, g, n));
+            }
+
+            end = System.nanoTime();
+
+            if (it > startIter)
+                line.append(",");
+            if (it >= startIter)
+                line.append(end - start);
+        }
+        line.append("\n");
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+            bw.write(line.toString());
+        }
+
+        line.setLength(0);
     }
 
 }
