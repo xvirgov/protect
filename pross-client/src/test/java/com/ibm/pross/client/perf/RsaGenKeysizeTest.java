@@ -84,57 +84,6 @@ public class RsaGenKeysizeTest {
                 bw.write(stringBuilder.toString());
             }
         }
-
-//        // 3076 bits
-//        BigInteger p = primes.get(0);
-//        BigInteger q = primes.get(1);
-//
-//        String firstLine = "";
-//        for (int thres = 10; thres <= 100; thres = thres + 10) {
-//            if (thres > 10)
-//                firstLine = firstLine.concat(",");
-//            firstLine = firstLine.concat(String.valueOf(thres));
-//        }
-//        firstLine = firstLine.concat("\n");
-//
-//        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-//            bw.write(firstLine);
-//        }
-//
-//        for (int numServers = 10; numServers <= maxAgents; numServers += 10) {
-//            for (int thres = 10; thres <= 100; thres = thres + 10) {
-//                int threshold = (int) ((double) numServers * ((double) thres / 100));
-//
-//                BigInteger accu = BigInteger.ZERO;
-//                for (int it = 0; it < total_iterations; it++) {
-//
-//                    start = System.nanoTime();
-//                    ProactiveRsaGenerator.generateProactiveRsa(numServers,
-//                    threshold,
-//                    3076,
-//                    ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
-//                    ProactiveRsaGenerator.DEFAULT_TAU,
-//                    p,
-//                    q);
-//                    end = System.nanoTime();
-//
-//                    if (it > startIter) {
-//                        accu = accu.add(BigInteger.valueOf(end - start));
-//                    }
-//                }
-//
-//                try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-//                    if (thres > 10)
-//                        bw.write(",");
-//
-//                    bw.write(String.valueOf(accu.divide(BigInteger.valueOf(iterations))));
-//
-//                    if (thres == 100)
-//                        bw.write("\n");
-//                }
-//
-//            }
-//        }
     }
 
 }

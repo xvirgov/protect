@@ -149,7 +149,7 @@ public class RsaDecCombineThresTest {
 
                     end = System.nanoTime();
 
-                    if (it > startIter) {
+                    if (it >= startIter) {
                         accu = accu.add(BigInteger.valueOf(end - start));
                     }
                 }

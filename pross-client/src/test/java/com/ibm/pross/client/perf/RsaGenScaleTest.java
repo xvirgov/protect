@@ -84,90 +84,28 @@ public class RsaGenScaleTest {
             bw.write(firstLine);
         }
 
-        //
         for (int s = 0; s < primes.size(); s = s + 2) {
-            System.out.println("Prime size: " + primes.get(s).bitLength() * 2);
+            BigInteger p = primes.get(s);
+            BigInteger q = primes.get(s+1);
             for (int numServers = minAgents; numServers <= maxAgents; numServers += step) {
                 int threshold = (int) (numServers * 0.75);
-                BigInteger n = primes.get(s).multiply(primes.get(s + 1));
-                BigInteger totient = primes.get(s).subtract(BigInteger.ONE).multiply(primes.get(s + 1).subtract(BigInteger.ONE));
 
                 BigInteger accu = BigInteger.ZERO;
-
                 for (int it = 0; it < total_iterations; it++) {
 
                     start = System.nanoTime();
 
-
-
-//                    final BigInteger e = BigInteger.valueOf(65537);
-//                    if (e.longValue() <= numServers) {
-//                        throw new IllegalArgumentException("e must be greater than the number of servers!");
-//                    }
-//
-//                    // Create standard RSA Public key pair
-//                    final RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(n, e);
-//                    final KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-//                    final RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(publicKeySpec);
-//
-//                    // Create standard RSA Private key
-//                    final BigInteger realD = Exponentiation.modInverse(e, totient);
-//                    final RSAPrivateKeySpec privateKeySpec = new RSAPrivateKeySpec(n, realD);
-//                    final RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory.generatePrivate(privateKeySpec);
-//
-//                    // Range parameter R = n.(r+1).N.2^{tau + 1}
-//                    BigInteger R = BigInteger.valueOf(numServers)
-//                            .multiply(ProactiveRsaGenerator.DEFAULT_PARAMETER_R.add(BigInteger.ONE))
-//                            .multiply(n).multiply(BigInteger.valueOf(2).pow(ProactiveRsaGenerator.DEFAULT_TAU + 1));
-//
-//                    // Generate additive shares
-//                    List<SecretShare> additiveShares = new ArrayList<>();
-//                    for (int i = 0; i < numServers; i++) {
-//                        additiveShares.add(new SecretShare(BigInteger.valueOf(i + 1), RandomNumberGenerator.generateRandomInteger(R.multiply(BigInteger.valueOf(2)))));
-//                    }
-//                    BigInteger d_pub = realD.subtract(additiveShares.stream().map(SecretShare::getY).reduce(BigInteger::add).get());
-//
-//                    // Generator of verification values for additive shares - random square (of order phi(n)/4)
-//                    final BigInteger sqrtG = RandomNumberGenerator.generateRandomInteger(n);
-//                    final BigInteger g = sqrtG.modPow(BigInteger.valueOf(2), n);
-//
-//                    // Generate additive verification values g^{d_i}
-//                    List<SecretShare> additiveVerificationKeys = new ArrayList<>();
-//                    for (int i = 0; i < additiveShares.size(); i++) {
-//                        additiveVerificationKeys.add(new SecretShare(BigInteger.valueOf(i + 1), g.modPow(additiveShares.get(i).getY(), n)));
-//                    }
-//
-//                    // L = numServers!
-//                    BigInteger L = Polynomials.factorial(BigInteger.valueOf(numServers));
-//                    // tauHat = tau + 2 + log r
-//                    int tauHat = BigInteger.valueOf(ProactiveRsaGenerator.DEFAULT_TAU).add(BigInteger.valueOf(2)).add(BigInteger.valueOf(ProactiveRsaGenerator.DEFAULT_PARAMETER_R.bitLength())).intValue();
-//                    // coeffR = t.L^{2}.R.2^{tauHat}
-//                    BigInteger coeffR = BigInteger.valueOf(threshold).multiply(L.pow(2)).multiply(R).multiply(BigInteger.valueOf(2).pow(tauHat));
-//
-//                    List<List<SecretShare>> shamirAdditiveShares = new ArrayList<>();
-//                    List<List<SecretShare>> feldmanAdditiveVerificationValues = new ArrayList<>();
-//
-//                    // For each additive share d_i...
-//                    for (int i = 0; i < numServers; i++) {
-//
-//                        List<BigInteger> coefficients = RandomNumberGenerator.generateRandomArray(BigInteger.valueOf(threshold), coeffR);
-//                        coefficients.set(0, additiveShares.get(i).getY().multiply(L));
-//
-//                        // Create shamir shares
-//                        List<SecretShare> shamirShares = new ArrayList<>();
-//                        for (int j = 0; j < numServers; j++) {
-//                            shamirShares.add(Polynomials.evaluatePolynomial(coefficients, BigInteger.valueOf(j + 1), n));
-//                        }
-//                        shamirAdditiveShares.add(shamirShares);
-//
-//                        // Generate verification values
-//                        feldmanAdditiveVerificationValues.add(Shamir.generateFeldmanValues(coefficients, g, n));
-//
-//                    }
+                    ProactiveRsaGenerator.generateProactiveRsa(numServers,
+                            threshold,
+                            3076,
+                            ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
+                            ProactiveRsaGenerator.DEFAULT_TAU,
+                            p,
+                            q);
 
                     end = System.nanoTime();
 
-                    if (it > startIter) {
+                    if (it >= startIter) {
                         accu = accu.add(BigInteger.valueOf(end - start));
                     }
                 }
