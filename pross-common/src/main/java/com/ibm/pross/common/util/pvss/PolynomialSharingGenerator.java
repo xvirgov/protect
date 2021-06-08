@@ -29,7 +29,7 @@ public class PolynomialSharingGenerator {
         coefficients.set(0, additiveShare.multiply(L));
 
         for (int j = 0; j < numServers; j++) {
-            shamirShares.add(Polynomials.evaluatePolynomial(coefficients, BigInteger.valueOf(j + 1), modulus)); // TODO don't use modulus here maybe
+            shamirShares.add(Polynomials.evaluatePolynomial(coefficients, BigInteger.valueOf(j + 1), modulus));
         }
 
         List<SecretShare> b_i = new ArrayList<>(Shamir.generateFeldmanValues(coefficients, g, modulus));

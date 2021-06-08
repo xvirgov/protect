@@ -32,7 +32,6 @@ java -classpath ../../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.
 # User config
 echo "[prf-secret]
 administrator       = generate,delete,disable,enable,info,exponentiate,read,store,recover,sign
-
 [my-secret]
 administrator       = generate,delete,disable,enable,info,exponentiate,read,store,recover,sign
 [rsa-secret]
