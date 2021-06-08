@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 
 NODES_NR=$1
 CONFIG_DIR=$2
