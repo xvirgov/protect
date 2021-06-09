@@ -29,8 +29,7 @@ import org.json.simple.parser.JSONParser;
 import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.security.*;
@@ -325,12 +324,21 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
     public byte[] encryptStream(final String secretName, InputStream inputStream) throws BelowThresholdException, ResourceUnavailableException, IOException {
         logger.info("Starting proactive RSA encryption with secret " + secretName);
+        long start, end;
 
+        start = System.nanoTime();
         ProactiveRsaPublicParameters rsaPublicParameters = this.getProactiveRsaPublicParams(secretName);
+        end = System.nanoTime();
+
+        logger.info("PerfMeas:RsaInfoGet:" + (end - start));
 
         final byte[] plaintextData = IOUtils.toByteArray(inputStream);
 
+        start = System.nanoTime();
         final byte[] hybridCiphertext = rsaAesEncrypt(plaintextData, rsaPublicParameters.getPublicKey().getPublicExponent(), rsaPublicParameters.getPublicKey().getModulus());
+        end = System.nanoTime();
+
+        logger.info("PerfMeas:RsaEncEnd:" + (end - start));
 
         logger.info("[DONE]");
 
@@ -339,15 +347,23 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
     public byte[] decryptStream(final String secretName, InputStream inputStream) throws IOException, BelowThresholdException, ResourceUnavailableException, BadArgumentException, BadPaddingException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException {
         logger.info("Starting RSA decryption with secret " + secretName + "...");
+        long start, end;
 
         // Store byte input stream into array
         final byte[] ciphertextData = IOUtils.toByteArray(inputStream);
 
         // Get RSA public parameters
+        start = System.nanoTime();
         ProactiveRsaPublicParameters proactiveRsaEncryptionClient = this.getProactiveRsaPublicParams(secretName);
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaInfoGet:" + (end - start));
 
+        start = System.nanoTime();
         // Decrypt the ciphertext with RSA-AES
         byte[] resultPlaintext = rsaAesDecrypt(ciphertextData, proactiveRsaEncryptionClient, serverConfiguration, secretName);
+        end = System.nanoTime();
+
+        logger.info("PerfMeas:RsaDecEnd:" + (end - start));
 
         logger.info("Decryption process finished");
 

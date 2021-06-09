@@ -70,6 +70,8 @@ public class ExponentiateHandler extends AuthenticatedClientRequestHandler {
 	public void authenticatedClientHandle(final HttpExchange exchange, final String username) throws IOException,
 			UnauthorizedException, NotFoundException, BadRequestException, ResourceUnavailableException {
 
+		logger.info("Decryption request has been received");
+
 		// Extract secret name from request
 		final String queryString = exchange.getRequestURI().getQuery();
 		final Map<String, List<String>> params = HttpRequestProcessor.parseQueryString(queryString);
@@ -204,6 +206,8 @@ public class ExponentiateHandler extends AuthenticatedClientRequestHandler {
 					+ "' from epoch " + epoch + "\n";
 		}
 		final byte[] binaryResponse = response.getBytes(StandardCharsets.UTF_8);
+
+		logger.info("Sending results of exponentiation and proof...");
 
 		// Write headers
 		exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);

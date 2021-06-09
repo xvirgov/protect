@@ -185,6 +185,7 @@ public class EciesEncryptionClient extends BaseClient {
 
 	public byte[] encryptStream() throws BadPaddingException, IllegalBlockSizeException, ClassNotFoundException,
 			IOException, ResourceUnavailableException, BelowThresholdException {
+		long start, end;
 		logger.info("Beginning ECIES encryption...");
 		// Print status
 //		logger.info("-----------------------------------------------------------");
@@ -193,15 +194,19 @@ public class EciesEncryptionClient extends BaseClient {
 		// Get public key and current epoch from the server
 		logger.info("Accessing public key for secret: " + this.secretName + "... ");
 //		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+		start = System.nanoTime();
 		final EciesPublicParams shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
 //		logger.info(" (done)");
 		final EcPoint publicKey = shareVerificationKeysAndEpoch.getPublicKey();
 		final long currentEpoch = shareVerificationKeysAndEpoch.getEpoch();
+		end = System.nanoTime();
+		logger.info("PerfMeas:EciesInfoGet:" + (end - start));
 
 		// Reading
 //		logger.info("Reading input file: " + this.inputFile + "... ");
 //		final byte[] plaintextData = Files.readAllBytes(inputFile.toPath());
 //		final byte[] plaintextData = inputStream.readAllBytes();
+
 		final byte[] plaintextData = IOUtils.toByteArray(inputStream);
 
 
@@ -210,7 +215,12 @@ public class EciesEncryptionClient extends BaseClient {
 
 		// Perform ECIES encryption
 //		logger.info("Performing ECIES encryption of file content... ");
+		start = System.nanoTime();
 		final byte[] ciphertext = EciesEncryption.encrypt(plaintextData, publicKey);
+		end = System.nanoTime();
+
+		logger.info("PerfMeas:EciesEncEnd:" + (end - start));
+
 //		logger.info(" (done)");
 //		logger.info("Encrypted length " + ciphertext.length + " bytes.");
 
@@ -230,6 +240,7 @@ public class EciesEncryptionClient extends BaseClient {
 
 	public byte[] decryptStream() throws BadPaddingException, IllegalBlockSizeException, ClassNotFoundException,
 			IOException, ResourceUnavailableException, BelowThresholdException {
+		long start, end;
 
 		logger.info("Beginning ECIES decryption...");
 		// Print status
@@ -255,14 +266,20 @@ public class EciesEncryptionClient extends BaseClient {
 		// Get public key and current epoch from the server
 //		logger.info("Accessing public key for secret: " + this.secretName + "... ");
 //		final SimpleEntry<List<EcPoint>, Long> shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
+
+		start = System.nanoTime();
 		final EciesPublicParams shareVerificationKeysAndEpoch = this.getServerVerificationKeys(secretName);
 //		logger.info(" (done)");
 		final EcPoint publicKey = shareVerificationKeysAndEpoch.getPublicKey();
 		final long currentEpoch = shareVerificationKeysAndEpoch.getEpoch();
+		end = System.nanoTime();
+		logger.info("PerfMeas:EciesInfoGet:" + (end - start));
+
 //		logger.info("Public key for secret:    " + publicKey);
 //		logger.info("Current epoch for secret: " + currentEpoch);
 
 		// Get public key and current epoch from the server
+		start = System.nanoTime();
 		logger.info("Performing threshold exponentiation on public value using: " + this.secretName + "... ");
 		final EcPoint exponentiationResult = this.exponentiatePoint(publicValue, currentEpoch, shareVerificationKeysAndEpoch.getVerificationValues());
 //		logger.info(" (done)");
@@ -271,6 +288,9 @@ public class EciesEncryptionClient extends BaseClient {
 		// Perform ECIES decryption
 //		logger.info("Performing ECIES decryption of file content... ");
 		final byte[] plaintext = EciesEncryption.decrypt(ciphertextData, exponentiationResult);
+		end = System.nanoTime();
+
+		logger.info("PerfMeas:EciesDecEnd:" + (end - start));
 //		logger.info(" (done)");
 //		logger.info("Plaintext length " + plaintext.length + " bytes.");
 		;
@@ -452,7 +472,7 @@ public class EciesEncryptionClient extends BaseClient {
 
 					// Check received proof: c' = H(G, R, si.G, si.R, z.G - c.si.G, z.R - c.si.R)
 
-					logger.info("Performing verification of a decryption share...");
+					logger.info("Received a decryption share from agent " + responder);
 					BigInteger z = signatureShareProof.getZ();
 					BigInteger c = signatureShareProof.getC();
 
@@ -484,7 +504,6 @@ public class EciesEncryptionClient extends BaseClient {
 					// epoch
 					// TOOD: Implement retry if epoch mismatch and below threshold
 					if ((responder == thisServerId) && (epoch == expectedEpoch) && (c.equals(cPrime))) {
-
 						logger.info("Decryption share from server " + responder + " is consistent");
 						final EcPoint partialResult = siR;
 
@@ -508,6 +527,8 @@ public class EciesEncryptionClient extends BaseClient {
 
 			// Check that we have enough results to interpolate the share
 			if (failureCounter.get() <= maximumFailures) {
+
+				logger.info("Collected sufficient amount of shares");
 
 				List<DerivationResult> results = verifiedResults.stream().map(obj -> createDerivationResult(obj))
 						.collect(Collectors.toList());

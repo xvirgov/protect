@@ -78,11 +78,26 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
         final int numServers = serverConfiguration.getNumServers();
         final int threshold = serverConfiguration.getReconstructionThreshold();
 
+        long start, end;
+        long start_total, end_total;
+
+
+        start = System.nanoTime();
+        start_total = System.nanoTime();
         final List<ProactiveRsaShareholder> proactiveRsaShareholders = ProactiveRsaGenerator.generateProactiveRsa(numServers, threshold);
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaGenEnd:" + (end - start));
         logger.info("RSA key generation complete");
 
         logger.info("Storing RSA private key");
-        return this.storeProactiveRsaSharing(proactiveRsaShareholders);
+        start = System.nanoTime();
+        boolean stored = this.storeProactiveRsaSharing(proactiveRsaShareholders);
+        end = System.nanoTime();
+        end_total = System.nanoTime();
+        logger.info("PerfMeas:RsaStoreEnd:" + (end - start));
+        logger.info("PerfMeas:RsaGenTotal:" + (end_total - start_total));
+
+        return stored;
     }
 
     private Boolean storeProactiveRsaSharing(final List<ProactiveRsaShareholder> proactiveRsaShareholders)

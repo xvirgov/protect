@@ -113,6 +113,7 @@ fi
 
 # enc/dec
 curl -k --data-binary "@$INPUT_FILE" \
+  --max-time 20 \
   --cacert conf-tmp/ca/ca-key-clients.pem \
   --cert conf-tmp/client/certs/cert-administrator \
   --key conf-tmp/client/keys/private-administrator \

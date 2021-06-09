@@ -279,10 +279,12 @@ public class ApvssShareholder {
 
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(epoch);
+        long start, end;
 
         if (sharingState.getBroadcastSharing().compareAndSet(false, true)) {
 
             sharingState.setStartTime(System.nanoTime());
+            start = System.nanoTime();
 
             // Get shareholder public encryption keys
             final PaillierPublicKey[] publicKeys = new PaillierPublicKey[n];
@@ -317,6 +319,9 @@ public class ApvssShareholder {
                 }
             }
 
+            end = System.nanoTime();
+            logger.info("PerfMeas:EciesBroadcastSharingEnd:" + (end - start));
+
             // Create a message
             final PublicSharingPayload payload = new PublicSharingPayload(publicSharing);
             final String channelName = this.secretName;
@@ -331,9 +336,11 @@ public class ApvssShareholder {
     }
 
     public boolean refreshRsaSharing(final long epoch) {
+        long start, end;
 
         logger.info("Proactive-RSA refresh round started...");
 
+        start = System.nanoTime();
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(epoch);
 
@@ -403,6 +410,9 @@ public class ApvssShareholder {
 
         // Create a message
         final Message publicSharingMessage = new Message(this.secretName, this.index, proactiveRsaPayload);
+
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaRefreshAdditiveEnd:" + (end - start));
 
         this.channel.send(publicSharingMessage);
 
@@ -501,6 +511,9 @@ public class ApvssShareholder {
      */
     private synchronized void assembleCombinedShareByInterpolation(final long senderEpoch) {
 
+        long start, end;
+        start = System.nanoTime();
+
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
 
@@ -558,6 +571,8 @@ public class ApvssShareholder {
 
         // We have our Pedersen commitments
         sharingState.setPedersenCommitments(combinedPedersenCommitments);
+        end = System.nanoTime();
+        logger.info("PerfMeas:EciesAssembleShareEnd:" + (end - start));
 
         // Broadcast ZKP of a splitting
         broadcastZkp(senderEpoch);
@@ -645,6 +660,9 @@ public class ApvssShareholder {
 
     private synchronized void assembleAdditiveShare(final long senderEpoch) {
 
+        long start, end;
+        start = System.nanoTime();
+
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
 
@@ -686,6 +704,9 @@ public class ApvssShareholder {
         this.proactiveRsaShareholder.setD_i(new_d_i);
         this.proactiveRsaShareholder.getProactiveRsaPublicParameters().setD_pub(new_d_pub);
         this.proactiveRsaShareholder.getProactiveRsaPublicParameters().setW(newW);
+
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaRefreshAssembleAdditiveEnd:" + (end - start));
 
         broadcastPolynomialSharing(senderEpoch);
 
@@ -736,6 +757,8 @@ public class ApvssShareholder {
     }
 
     private synchronized void assemblePolynomialShare(final long senderEpoch) {
+        long start, end;
+        start = System.nanoTime();
 
         BigInteger modulus = this.proactiveRsaShareholder.getProactiveRsaPublicParameters().getPublicKey().getModulus();
 
@@ -774,6 +797,12 @@ public class ApvssShareholder {
             }
             newBAgent.add(new SecretShare(BigInteger.valueOf(i+1), result));
         }
+
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaRefreshAssemblePolynomialEnd:" + (end - start));
+        final long startTime = sharingState.getStartTime();
+        final long endVerification = System.nanoTime();
+        logger.info("PerfMeas:RsaRefreshTotalEnd:" + (endVerification - startTime));
 
         logger.info("New shamir secret share was computed");
 
@@ -830,6 +859,8 @@ public class ApvssShareholder {
 //            shamirShares.add(Polynomials.evaluatePolynomial(coefficients, BigInteger.valueOf(j + 1), modulus)); // TODO don't use modulus here maybe
 //        }
 //
+        long start, end;
+        start = System.nanoTime();
         final PaillierPublicKey[] publicKeys = new PaillierPublicKey[n];
         for (int i = 1; i <= n; i++) {
             publicKeys[i - 1] = (PaillierPublicKey) this.keyLoader.getEncryptionKey(i);
@@ -840,6 +871,9 @@ public class ApvssShareholder {
 
         // encrypt them
         final PolynomialSharingPayload polynomialSharingPayload = new PolynomialSharingPayload(PolynomialSharingGenerator.encryptPolynomialShares(polynomialSharing, publicKeys));
+
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaRefreshGeneratePolynomialEnd:" + (end - start));
 
         // send them as a message
         final Message polynomialSharingMessage = new Message(this.secretName, this.index, polynomialSharingPayload);
@@ -852,6 +886,8 @@ public class ApvssShareholder {
      */
     private void broadcastZkp(final long senderEpoch) {
 
+        long start, end;
+        start = System.nanoTime();
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
 
@@ -875,6 +911,9 @@ public class ApvssShareholder {
             // Our share is missing, send a null proof
             proof = null;
         }
+
+        end = System.nanoTime();
+        logger.info("PerfMeas:EciesGenProofEnd:" + (end - start));
 
         // Send message out
         final ZkpPayload payload = new ZkpPayload(proof);
@@ -982,6 +1021,9 @@ public class ApvssShareholder {
      */
     private synchronized void interpolatePublicKeys(final long senderEpoch) {
 
+        long start, end;
+        start = System.nanoTime();
+
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
 
@@ -1005,10 +1047,14 @@ public class ApvssShareholder {
         // Convert the share public keys to Feldman Coefficients using matrix inversion
         sharingState.setFeldmanValues(Polynomials.interpolateCoefficientsExponents(shareVerificationKeys, this.k));
 
+        end = System.nanoTime();
+        logger.info("PerfMeas:EciesInterpolatePublicEnd:" + (end - start));
+
         final long startTime = sharingState.getStartTime();
         final long endVerification = System.nanoTime();
-        logger.info("Time to establish verification keys: "
-                + (((double) (endVerification - startTime)) / 1_000_000_000.0) + " seconds");
+        logger.info("PerfMeas:EciesRefreshTotalEnd:" + (endVerification - startTime));
+//        logger.info("Time to establish verification keys: "
+//                + (((double) (endVerification - startTime)) / 1_000_000_000.0) + " seconds");
 
         // Print our share
         logger.info("Sharing Result:");

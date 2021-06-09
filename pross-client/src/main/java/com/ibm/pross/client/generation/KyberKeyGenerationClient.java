@@ -74,11 +74,25 @@ public class KyberKeyGenerationClient extends BaseClient {
         final int numServers = serverConfiguration.getNumServers();
         final int threshold = serverConfiguration.getReconstructionThreshold();
 
+        long start, end;
+        long start_total, end_total;
+
+        start = System.nanoTime();
+        start_total = System.nanoTime();
         final List<KyberShareholder> kyberShareholders = KyberKeyGenerator.generateKyber(numServers);
+        end = System.nanoTime();
+        logger.info("PerfMeas:KyberGenEnd:" + (end - start));
         logger.info("Kyber key generation completed");
 
         logger.info("Storing Kyber keys");
-        return this.storeKyberSharing(kyberShareholders);
+        start = System.nanoTime();
+        boolean stored = this.storeKyberSharing(kyberShareholders);
+        end = System.nanoTime();
+        end_total = System.nanoTime();
+
+        logger.info("PerfMeas:KyberStoreEnd:" + (end - start));
+        logger.info("PerfMeas:KyberGenTotal:" + (end_total - start_total));
+        return stored;
     }
 
     private Boolean storeKyberSharing(final List<KyberShareholder> kyberShareholders)

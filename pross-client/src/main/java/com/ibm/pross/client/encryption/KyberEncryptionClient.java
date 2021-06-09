@@ -512,9 +512,14 @@ public class KyberEncryptionClient extends BaseClient {
 
     public byte[] encryptStream(final String secretName, InputStream inputStream) throws BelowThresholdException, ResourceUnavailableException, IOException {
         logger.info("Starting Kyber encryption with secret " + secretName + "...");
+        long start, end;
 
 //        ProactiveRsaPublicParameters rsaPublicParameters = this.getProactiveRsaPublicParams(secretName);
+        start = System.nanoTime();
         KyberPublicParameters kyberPublicParameters = this.getKyberPublicParams(secretName);
+        end = System.nanoTime();
+
+        logger.info("PerfMeas:KyberInfoGet:" + (end - start));
 
         final byte[] plaintextData = IOUtils.toByteArray(inputStream);
 
@@ -522,7 +527,11 @@ public class KyberEncryptionClient extends BaseClient {
 //        md1.update(new byte[]{1, 2});
 //        byte[] plaintextData = md1.digest();
 
+        start = System.nanoTime();
         final byte[] hybridCiphertext = kyberEncrypt(plaintextData, kyberPublicParameters);
+        end = System.nanoTime();
+
+        logger.info("PerfMeas:KyberEncEnd:" + (end - start));
 
         logger.info("[ENCRYPTION FINISHED]");
 
@@ -531,15 +540,24 @@ public class KyberEncryptionClient extends BaseClient {
 
     public byte[] decryptStream(final String secretName, InputStream inputStream) throws IOException, BelowThresholdException, ResourceUnavailableException, BadArgumentException, BadPaddingException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException {
         logger.info("Starting RSA decryption with secret " + secretName + "...");
+        long start, end;
 
         // Store byte input stream into array
         final byte[] ciphertextData = IOUtils.toByteArray(inputStream);
 
         // Get Kyber public parameters
+        start = System.nanoTime();
         KyberPublicParameters kyberPublicParameters = this.getKyberPublicParams(secretName);
+        end = System.nanoTime();
+
+        logger.info("PerfMeas:KyberInfoGet:" + (end - start));
 
         // Decrypt the ciphertext with RSA-AES
+        start = System.nanoTime();
         byte[] resultPlaintext = kyberDecrypt(ciphertextData, kyberPublicParameters, serverConfiguration, secretName);
+        end = System.nanoTime();
+
+        logger.info("PerfMeas:KyberDecEnd:" + (end - start));
 
         logger.info("[DECRYPTION FINISHED]");
 
