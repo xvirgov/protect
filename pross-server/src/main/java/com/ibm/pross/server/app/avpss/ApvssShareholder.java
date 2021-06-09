@@ -683,6 +683,8 @@ public class ApvssShareholder {
             BigInteger d_i_j = PaillierCipher.decrypt(decryptionKey, receivedProactiveSharings.getD_i_j().get(this.index - 1).getY());
             BigInteger w_i_j = receivedProactiveSharings.getW_i_j().get(this.index - 1).getY();
 
+//            System.out.println("FROM " + (i+1) + " to "+ index + " decrypting: " +  receivedProactiveSharings.getD_i_j().get(this.index - 1).getY() + " ecrypted: " + d_i_j);
+
             BigInteger w_j = BigInteger.ONE;
             for(int j = 0; j < this.n; j++) {
                 w_j = w_j.multiply(sharingState.getReceivedProactiveRsaSharings().get((long) j + 1).getW_i_j().get(i).getY());
@@ -690,9 +692,17 @@ public class ApvssShareholder {
 
             newW.add(new SecretShare(BigInteger.valueOf(i+1), w_j.mod(modulus)));
 
-            if(!w_i_j.equals(g.modPow(d_i_j, modulus))) // TODO-thesis this should be moved before we try to assemble
+            if(!w_i_j.equals(g.modPow(d_i_j, modulus))) { // TODO-thesis this should be moved before we try to assemble
+//                logger.info("G: " + g);
+//                logger.info("MODULUS: " + modulus);
+//                logger.info("W_I_J FROM " + (i+1) + " to "+ index + " received " + w_i_j);
+//                logger.info("D_I_J FROM " + (i+1) + " to "+ index + " received " + d_i_j);
+//                logger.info("G^{D_I_J} FROM " + (i+1) + " to "+ index + " received " + g.modPow(d_i_j, modulus));
                 throw new RuntimeException("Verification of additive share splits failed for a share from agent " + receivedProactiveSharings.getI());
-
+            }
+//            else {
+//                logger.info( "FROM " + (i+1) + " to "+ index + "YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAS");
+//            }
             new_d_i = new_d_i.add(d_i_j);
             new_d_pub = new_d_pub.add(receivedProactiveSharings.getD_i_pub().getY());
         }

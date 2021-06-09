@@ -14,6 +14,7 @@ import java.util.Arrays;
 import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.Primes;
 import com.ibm.pross.common.util.RandomNumberGenerator;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import com.ibm.pross.common.util.shamir.ShamirShare;
@@ -25,7 +26,7 @@ public class RsaSharing {
 
 	private static final Logger logger = LogManager.getLogger(RsaSharing.class);
 
-	public static final int DEFAULT_RSA_KEY_SIZE = 1024;
+	public static final int DEFAULT_RSA_KEY_SIZE = ProactiveRsaGenerator.DEFAULT_RSA_KEY_SIZE;
 	
 	// Threshold config
 	private final int n;

@@ -20,6 +20,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -62,7 +63,12 @@ public class KeyGeneratorCli {
 		final KeyPair signingKeyPair = keyGen.generateKeyPair();
 
 		// Generate Paillier Key Pair
-		final PaillierKeyGenerator encryptionKeyGenerator = new PaillierKeyGenerator(2048);
+		int paillierKeyLength = 4096;
+		final PaillierKeyGenerator encryptionKeyGenerator = new PaillierKeyGenerator(paillierKeyLength);
+		if(paillierKeyLength < ProactiveRsaGenerator.DEFAULT_RSA_KEY_SIZE) {
+			throw new IllegalArgumentException("Paillier key be at least as big as RSA key!!");
+		}
+
 		final PaillierKeyPair paillierKeyPair = encryptionKeyGenerator.generate();
 		final KeyPair encryptionKeyPair = convertFromPaillier(paillierKeyPair);
 

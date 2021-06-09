@@ -4,6 +4,7 @@ import com.ibm.pross.common.util.Exponentiation;
 import com.ibm.pross.common.util.Primes;
 import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
 import com.ibm.pross.common.util.crypto.rsa.threshold.sign.math.ThresholdSignatures;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import com.ibm.pross.common.util.shamir.Shamir;
@@ -26,7 +27,7 @@ import java.util.List;
 
 public class RsaProactiveSharing {
 
-    public static final int DEFAULT_RSA_KEY_SIZE = 1024;
+    public static final int DEFAULT_RSA_KEY_SIZE = ProactiveRsaGenerator.DEFAULT_RSA_KEY_SIZE;
     public static final int DEFAULT_TAU = 80;
     public static final BigInteger DEFAULT_PARAMETER_R = BigInteger.valueOf(2).pow(10);
 

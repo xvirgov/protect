@@ -1,5 +1,7 @@
 #!/bin/bash
 
+LOGFILE=log.txt
+
 rm -rf extracted
 mkdir -p extracted
 
@@ -20,8 +22,36 @@ ECIES_MEASUREMENTS=(
   EciesInterpolatePublicEnd
   EciesRefreshTotalEnd)
 
+RSA_MEASUREMENTS=(
+  # Info
+  RsaInfoGet
+
+  # Gen
+  RsaStoreEnd
+  RsaGenEnd
+  RsaGenTotal
+
+  # Enc
+  RsaEncEnd
+
+  # Dec
+  RsaDecEnd
+
+  # Refresh
+  RsaRefreshAdditiveEnd
+  RsaRefreshAssembleAdditiveEnd
+  RsaRefreshGeneratePolynomialEnd
+  RsaRefreshAssemblePolynomialEnd
+  RsaRefreshTotalEnd)
+
 for (( i=0; i<${#ECIES_MEASUREMENTS[@]}; i++ ));
 do
-  ARR=$(cat log.txt | grep "PerfMeas:${ECIES_MEASUREMENTS[$i]}" | grep -Eo '[0-9]+$')
+  ARR=$(cat $LOGFILE | grep "PerfMeas:${ECIES_MEASUREMENTS[$i]}" | grep -Eo '[0-9]+$')
   echo $ARR | sed 's/ /,/g' > "extracted/${ECIES_MEASUREMENTS[$i]}.csv"
+done
+
+for (( i=0; i<${#RSA_MEASUREMENTS[@]}; i++ ));
+do
+  ARR=$(cat $LOGFILE | grep "PerfMeas:${RSA_MEASUREMENTS[$i]}" | grep -Eo '[0-9]+$')
+  echo $ARR | sed 's/ /,/g' > "extracted/${RSA_MEASUREMENTS[$i]}.csv"
 done

@@ -27,6 +27,11 @@ public class ProactiveRsaSharingGenerator {
             BigInteger additiveShare = RandomNumberGenerator.generateRandomInteger(rPrime.multiply(BigInteger.valueOf(2)));
             d_i_j.add(new SecretShare(BigInteger.valueOf(i+1), additiveShare));
             w_i_j.add(new SecretShare(BigInteger.valueOf(i+1), g.modPow(additiveShare, modulus)));
+
+//            System.out.println("G: " + g);
+//            System.out.println("MODULUS: " + modulus);
+//            System.out.println("w_i_j FROM " + index+ " to "+ (i+1) + " received " + w_i_j.get(i));
+//            System.out.println("d_i_j FROM " + index+ " to "+ (i+1) + " received " + d_i_j.get(i));
         }
 
         d_i_pub = new SecretShare(BigInteger.valueOf(index), d_i.subtract(d_i_j.stream().map(SecretShare::getY).reduce(BigInteger::add).get()));
@@ -40,6 +45,8 @@ public class ProactiveRsaSharingGenerator {
 
         for(int i = 0; i < d_i_j.size(); i++) {
             encryptedD_i_j.add(new SecretShare(BigInteger.valueOf(i+1), PaillierCipher.encrypt(shareholderKeys[i], d_i_j.get(i).getY())));
+
+//            System.out.println("TO " + (i+1) + " encrypting: " + d_i_j.get(i).getY() + " ecrypted: " + encryptedD_i_j.get(i));
         }
 
         return proactiveRsaSharing.setD_i_j(encryptedD_i_j);
