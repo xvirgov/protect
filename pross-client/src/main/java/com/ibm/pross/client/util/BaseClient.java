@@ -296,7 +296,14 @@ public class BaseClient {
                     Thread.sleep(2000);
                 }
 
+                for (Map.Entry<EciesPublicParams, Integer> params : publicParams.entrySet()) {
+                    if (params.getValue() >= reconstructionThreshold) {
+                        logger.debug("Consistency level reached.");
+                        return params.getKey();
+                    }
+                }
 
+                throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
 //                return (SimpleEntry<List<EcPoint>, Long>) getConsistentConfiguration(collectedResults,
 //                        reconstructionThreshold);
             } else {
@@ -403,6 +410,8 @@ public class BaseClient {
             // Check that we have enough results to interpolate the share
             if (failureCounter.get() <= maximumFailures) {
 
+                logger.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAASSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSs");
+
                 executor.shutdown();
                 // Use the config which was returned by more than threshold number of servers
 
@@ -416,6 +425,14 @@ public class BaseClient {
                     }
                     logger.debug("Waiting for more servers to send config...");
                     Thread.sleep(2000);
+                }
+
+                for (Map.Entry<RsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
+                    logger.info("HERRRRRRRRRRRR:: " + params.getValue() + " threshold: " + reconstructionThreshold);
+                    if (params.getValue() >= reconstructionThreshold) {
+                        logger.debug("Consistency level reached.");
+                        return params.getKey();
+                    }
                 }
 
                 throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
@@ -530,6 +547,13 @@ public class BaseClient {
                     Thread.sleep(2000);
                 }
 
+                for (Map.Entry<ProactiveRsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
+                    if (params.getValue() >= reconstructionThreshold) {
+                        logger.debug("Consistency level reached.");
+                        return params.getKey();
+                    }
+                }
+
                 throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
             } else {
                 logger.error("Number of failures exceeded the threshold");
@@ -558,7 +582,7 @@ public class BaseClient {
 
         // Server configuration
         final int numShareholders = this.serverConfiguration.getNumServers();
-        final int reconstructionThreshold = this.serverConfiguration.getReconstructionThreshold();
+        final int reconstructionThreshold = this.serverConfiguration.getNumServers();
 
         // We create a thread pool with a thread for each task and remote server
         final ExecutorService executor = Executors.newFixedThreadPool(numShareholders - 1);
@@ -640,6 +664,13 @@ public class BaseClient {
                     }
                     logger.debug("Waiting for more servers to send config...");
                     Thread.sleep(2000);
+                }
+
+                for (Map.Entry<KyberPublicParameters, Integer> params : kyberPublicParametersCount.entrySet()) {
+                    if (params.getValue() >= reconstructionThreshold) {
+                        logger.debug("Consistency level reached.");
+                        return params.getKey();
+                    }
                 }
 
                 throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
