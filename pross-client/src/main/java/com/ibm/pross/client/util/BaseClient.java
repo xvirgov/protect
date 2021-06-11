@@ -313,7 +313,6 @@ public class BaseClient {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        return null;
     }
 
     /**
