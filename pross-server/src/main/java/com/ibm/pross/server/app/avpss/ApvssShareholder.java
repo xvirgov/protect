@@ -95,14 +95,23 @@ public class ApvssShareholder {
     private ProactiveRsaShareholder proactiveRsaShareholder;
     private KyberShareholder kyberShareholder;
 
+    private final int refreshFrequency;
+
     public ApvssShareholder(final String secretName, final KeyLoader keyLoader,
-                            final FifoAtomicBroadcastChannel channel, final int index, final int n, final int k) {
-        this(secretName, keyLoader, channel, index, n, k, true);
+                            final FifoAtomicBroadcastChannel channel, final int index, final int n, final int k, final boolean sendValidCommitments) {
+        this(secretName, keyLoader, channel, index, n, k, sendValidCommitments, 60);
+    }
+
+    public ApvssShareholder(final String secretName, final KeyLoader keyLoader,
+                            final FifoAtomicBroadcastChannel channel, final int index, final int n, final int k, final int refreshFrequency) {
+        this(secretName, keyLoader, channel, index, n, k, true, refreshFrequency);
     }
 
     public ApvssShareholder(final String secretName, final KeyLoader keyLoader,
                             final FifoAtomicBroadcastChannel channel, final int index, final int n, final int k,
-                            final boolean sendValidCommitments) {
+                            final boolean sendValidCommitments, final int refreshFrequency) {
+
+        this.refreshFrequency = refreshFrequency;
 
         this.secretName = secretName;
 
@@ -1370,7 +1379,7 @@ public class ApvssShareholder {
     }
 
     public int getRefreshFrequency() {
-        return 60;
+        return refreshFrequency;
     }
 
     public SharingType getSharingType() {

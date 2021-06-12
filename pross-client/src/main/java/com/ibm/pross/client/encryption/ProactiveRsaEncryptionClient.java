@@ -183,7 +183,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         final List<SignatureResponse> decryptionShares = requestPartialRsaDecryptions(encryptedPaddedSecretKey, rsaPublicParameters.getEpoch(), serverConfiguration, secretName)
                 .stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
 
-        logger.info("Decryption shares generated");
+//        logger.info("Decryption shares generated");
 
         // Perform validation of decryption shares
         List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
@@ -206,7 +206,9 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         logger.info("[DONE]");
 
         // Decrypt symmetric key with threshold RSA
+        logger.info("Interpolating decryption shares...");
         final byte[] recoveredPaddedSymmetricKey = recoverPlaintext(encryptedPaddedSecretKey, validatedDecryptionShares, rsaPublicParameters, serverConfiguration.getReconstructionThreshold()).toByteArray();
+        logger.info("[DONE]");
 
         logger.debug("RECOVERED SECRET: " + Arrays.toString(recoveredPaddedSymmetricKey));
         logger.debug("Encrypted data: " + aesCiphertextData.length);

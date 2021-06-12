@@ -33,13 +33,14 @@ usage () {
 	echo "Usage:"
   echo "    -h                display help message"
   echo "    -n [number]       number of nodes"
-  echo "    -k [number]       threshold value"
   echo "    -t [name]         docker image name"
-  echo "Mandatory input parameters: -n, -k"
+  echo "    -k [number]       threshold value"
+  echo "    -f [number]       refresh frequency in seconds"
+  echo "Mandatory input parameters: -n, -t"
 }
 
 # Parse the arguments
-while getopts ":hn:k:t:" opt; do
+while getopts ":hn:k:t:f:" opt; do
   case ${opt} in
    h )
       usage
@@ -53,6 +54,9 @@ while getopts ":hn:k:t:" opt; do
       ;;
     t ) # Specify name of image
 	IMAGE_NAME=$OPTARG
+      ;;
+    f ) # Specify name of image
+	REFRESH_FREQUENCY=$OPTARG
       ;;
     \? )
     	error
@@ -73,12 +77,16 @@ echo "[number of nodes     : \"$NODES_NR\"],"
 echo "[threshold           : \"$THRESHOLD\"],"
 echo "[docker image name   : \"$IMAGE_NAME\"],"
 echo "[docker inet address : \"$DOCKER_NET_IP\"]"
+[ $REFRESH_FREQUENCY -gt 0 ] && \
+echo "[refresh frequency   : \"$REFRESH_FREQUENCY\"],"
 
 # Build docker image for client and server apps
- docker build -t "$IMAGE_NAME" .
+docker build -t "$IMAGE_NAME" .
 
 # Create a common config file
 echo "num_servers = $NODES_NR" > common.config
+[ $REFRESH_FREQUENCY -gt 0 ] && \
+echo "refresh_frequency=$REFRESH_FREQUENCY" >> common.config
 
 # Create ssl-extensions file
 printf "[v3_ca]\nbasicConstraints = CA:FALSE\nkeyUsage = digitalSignature, keyEncipherment\nsubjectAltName = " > ssl-extensions-x509.cnf-tmp

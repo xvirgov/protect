@@ -11,6 +11,7 @@ import java.util.List;
 public class ServerConfiguration {
 
 	private final int numServers; // N
+	private final int refreshFrequency;
 	private final int maxBftFaults; // F
 	private final int reconstructionThreshold; // K
 	private final int maxSafetyFaults; // t_S
@@ -18,13 +19,21 @@ public class ServerConfiguration {
 	private final List<InetSocketAddress> serverAddresses;
 
 	public ServerConfiguration(final int numServers, final int maxBftFaults, final int reconstructionThreshold,
-			final int maxSafetyFaults, final int maxLivenessFaults, List<InetSocketAddress> serverAddresses) {
+							   final int maxSafetyFaults, final int maxLivenessFaults, List<InetSocketAddress> serverAddresses) {
+		this(numServers, maxBftFaults, reconstructionThreshold, maxSafetyFaults, maxLivenessFaults, serverAddresses, 60);
+
+		verifyConstraints();
+	}
+
+	public ServerConfiguration(final int numServers, final int maxBftFaults, final int reconstructionThreshold,
+			final int maxSafetyFaults, final int maxLivenessFaults, List<InetSocketAddress> serverAddresses, final int refreshFrequency) {
 		this.numServers = numServers;
 		this.maxBftFaults = maxBftFaults;
 		this.reconstructionThreshold = reconstructionThreshold;
 		this.maxSafetyFaults = maxSafetyFaults;
 		this.maxLivenessFaults = maxLivenessFaults;
 		this.serverAddresses = new ArrayList<InetSocketAddress>(serverAddresses);
+		this.refreshFrequency = refreshFrequency;
 
 		verifyConstraints();
 	}
@@ -123,6 +132,10 @@ public class ServerConfiguration {
 		return maxLivenessFaults;
 	}
 
+	public int getRefreshFrequency() {
+		return refreshFrequency;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -167,7 +180,8 @@ public class ServerConfiguration {
 	public String toString() {
 		return "ServerConfiguration [numServers=" + numServers + ", maxBftFaults=" + maxBftFaults
 				+ ", reconstructionThreshold=" + reconstructionThreshold + ", maxSafetyFaults=" + maxSafetyFaults
-				+ ", maxLivenessFaults=" + maxLivenessFaults + ", serverAddresses=" + serverAddresses + "]";
+				+ ", maxLivenessFaults=" + maxLivenessFaults + ", serverAddresses=" + serverAddresses
+				+ ", refreshFrequency=" + refreshFrequency +"]";
 	}
 
 }

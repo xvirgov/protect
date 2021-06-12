@@ -11,6 +11,7 @@ import java.util.Properties;
 public class ServerConfigurationLoader {
 
 	public static final String NUM_SERVERS_KEY = "num_servers";
+	public static final String REFRESH_FREQUENCY_KEY = "refresh_frequency";
 	public static final String MAX_BFT_FAULTS_KEY = "max_bft_faults";
 	public static final String RECONSTRUCT_THRESHOLD_KEY = "reconstruction_threshold";
 	public static final String MAX_SAFETY_FAULTS_KEY = "max_safety_faults";
@@ -36,6 +37,8 @@ public class ServerConfigurationLoader {
 		// Get the reconstruction threshold from the file or from the default value
 		final int reconstructionThreshold = Integer
 				.parseInt(properties.getProperty(RECONSTRUCT_THRESHOLD_KEY, defaultReconstructionThreshold));
+
+		final int refreshFrequency = Integer.parseInt(properties.getProperty(REFRESH_FREQUENCY_KEY, "60"));
 
 		// Compute default properties from reconstructionThreshold
 		final String defaultMaxSafetyFaults = Integer.toString(reconstructionThreshold - 1);
@@ -68,7 +71,7 @@ public class ServerConfigurationLoader {
 		inputStream.close();
 
 		return new ServerConfiguration(numServers, maxBftFaults, reconstructionThreshold, maxSafetyFaults,
-				maxLivenessFaults, serverAddresses);
+				maxLivenessFaults, serverAddresses, refreshFrequency);
 	}
 
 }
