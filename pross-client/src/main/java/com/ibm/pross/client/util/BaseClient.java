@@ -581,7 +581,7 @@ public class BaseClient {
 
         // Server configuration
         final int numShareholders = this.serverConfiguration.getNumServers();
-        final int reconstructionThreshold = this.serverConfiguration.getNumServers();
+        final int reconstructionThreshold = this.serverConfiguration.getReconstructionThreshold();
 
         // We create a thread pool with a thread for each task and remote server
         final ExecutorService executor = Executors.newFixedThreadPool(numShareholders - 1);
