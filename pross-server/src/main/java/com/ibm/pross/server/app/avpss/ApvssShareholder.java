@@ -330,6 +330,7 @@ public class ApvssShareholder {
 
             end = System.nanoTime();
             logger.info("PerfMeas:EciesBroadcastSharingEnd:" + (end - start));
+            logger.info("BBBBBB SENDING FIRST MESSAGE");
 
             // Create a message
             final PublicSharingPayload payload = new PublicSharingPayload(publicSharing);
@@ -441,6 +442,8 @@ public class ApvssShareholder {
     protected synchronized void deliverPublicSharing(final long senderEpoch, final Message message)
             throws DuplicateMessageReceivedException, InvalidCiphertextException, InconsistentShareException,
             StateViolationException {
+
+        logger.info("BBBBBB FIRST MESSAGE RECEIVED");
 
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
@@ -937,6 +940,8 @@ public class ApvssShareholder {
         // Send message out
         final ZkpPayload payload = new ZkpPayload(proof);
         final String channelName = this.secretName;
+        
+        logger.info("BBBBBB SENDING SECOND MESSAGE");
         this.channel.send(new Message(channelName, this.index, payload));
     }
 
@@ -953,6 +958,8 @@ public class ApvssShareholder {
      */
     protected synchronized void deliverProofMessage(final long senderEpoch, final Message message)
             throws DuplicateMessageReceivedException, StateViolationException, InvalidZeroKnowledgeProofException {
+
+        logger.info("BBBBBB SECOND MESSAGE RECEIVED");
 
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
