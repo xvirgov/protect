@@ -89,7 +89,7 @@ eval_action "$ACTION" "$INPUT_FILE" "$OUTPUT_FILE"
 
 if [[ $ACTION == "gen" ]]
 then
-  if [[ $CIPHER == "rsa" || $CIPHER == "kyber" ]]
+  if [[ $CIPHER == "rsa" || $CIPHER == "proactive-rsa" || $CIPHER == "kyber" ]]
   then
     # rsa, kyber - honest dealer
     curl -k --cacert conf-tmp/ca/ca-key-clients.pem \
