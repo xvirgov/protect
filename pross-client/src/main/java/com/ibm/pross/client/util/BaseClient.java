@@ -666,6 +666,8 @@ public class BaseClient {
                 }
 
                 for (Map.Entry<KyberPublicParameters, Integer> params : kyberPublicParametersCount.entrySet()) {
+                    logger.info("CONSISTENCY LEVEL::: " + params.getValue());
+                    logger.info("RECONSTRUCTION THRESHOLD::: " + reconstructionThreshold);
                     if (params.getValue() >= reconstructionThreshold) {
                         logger.debug("Consistency level reached.");
                         return params.getKey();
