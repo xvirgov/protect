@@ -947,7 +947,7 @@ public class ApvssShareholder {
         final String channelName = this.secretName;
 
 
-        logger.info("Waiting some time...");
+        logger.info("Waiting some time..." + payload.toString().length());
         try {
             Thread.sleep(120_000);
         } catch (InterruptedException e) {
