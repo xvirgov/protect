@@ -38,12 +38,12 @@ eval_action() {
 
 usage() {
   echo "Usage:"
-  echo "    -h                    display help message"
-  echo "    -c [proactive-rsa|rsa|ecies|kyber]  cipher"
-  echo "    -a [gen|enc|dec]      action"
-  echo "    -s [name]             secret"
-  echo "    -i [name]             input file"
-  echo "    -o [name]             output file"
+  echo "    -h                              display help message"
+  echo "    -c [proactive-rsa|ecies|kyber]  cipher"
+  echo "    -a [gen|enc|dec]                action"
+  echo "    -s [name]                       secret"
+  echo "    -i [name]                       input file"
+  echo "    -o [name]                       output file"
   echo "Mandatory input parameters: -c, -a, -s, [-i and -o, if enc or dec action]"
 }
 
