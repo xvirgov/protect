@@ -946,6 +946,13 @@ public class ApvssShareholder {
         final ZkpPayload payload = new ZkpPayload(proof);
         final String channelName = this.secretName;
 
+
+        logger.info("Waiting some time...");
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         logger.info("BBBBBB SENDING SECOND MESSAGE");
         this.channel.send(new Message(channelName, this.index, payload));
     }
