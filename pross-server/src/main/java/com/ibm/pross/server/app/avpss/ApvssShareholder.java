@@ -949,7 +949,7 @@ public class ApvssShareholder {
 
         logger.info("Waiting some time...");
         try {
-            Thread.sleep(10000);
+            Thread.sleep(120_000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
