@@ -59,6 +59,7 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
     public static final String PUBLIC_EXPONENT_VALUE = "e";
     public static final String SHARING_TYPE_VALUE = "sharingType";
     public static final String SHARING_TYPE_VALUE_PROACTIVE_RSA = "proactive-rsa";
+    public static final String SHARING_TYPE_VALUE_RSA = "rsa";
     public static final String SHARING_TYPE_VALUE_KYBER = "kyber";
     public static final String VERIFICATION_BASE = "v";
     public static final String VERIFICATION_KEYS = "v_";
@@ -190,12 +191,36 @@ public class StoreHandler extends AuthenticatedClientRequestHandler {
                         throw new ConflictException();
                     }
 
-                    response = "proactive RSA share have been stored.";
+                    response = "proactive RSA has have been stored.";
                 } catch (NoSuchAlgorithmException | InvalidKeySpecException exception) {
                     logger.error(exception);
                     throw new InternalServerException();
                 }
-            } else if (sharingType != null && sharingType.equals(SHARING_TYPE_VALUE_KYBER)) {
+            } else if (sharingType != null && sharingType.equals(SHARING_TYPE_VALUE_RSA)) {
+                try {
+                    final ProactiveRsaShareholder proactiveRsaShareholder = ProactiveRsaShareholder.getParams(jsonParameters);
+
+                    shareholder.setProactiveRsaShareholder(proactiveRsaShareholder);
+
+                    // Start proactive RSA process
+
+//                    boolean started = shareholder.refreshRsaSharing(0);
+//
+//                    if (started) {
+////                        shareholder.waitForEpochIncrease(shareholder.getEpoch()); // wait until epoch number is increased
+//                    }
+//                    else {
+//                        logger.error("Secret was already established");
+//                        throw new ConflictException();
+//                    }
+
+                    response = "RSA share has been stored.";
+                } catch (NoSuchAlgorithmException | InvalidKeySpecException exception) {
+                    logger.error(exception);
+                    throw new InternalServerException();
+                }
+            }
+            else if (sharingType != null && sharingType.equals(SHARING_TYPE_VALUE_KYBER)) {
                 final KyberShareholder kyberShareholder = KyberShareholder.getParams(jsonParameters);
                 shareholder.setKyberShareholder(kyberShareholder);
                 response = "Kyber share have been stored.";

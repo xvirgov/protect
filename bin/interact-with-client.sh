@@ -39,7 +39,7 @@ eval_action() {
 usage() {
   echo "Usage:"
   echo "    -h                    display help message"
-  echo "    -c [rsa|ecies|kyber]  cipher"
+  echo "    -c [proactive-rsa|rsa|ecies|kyber]  cipher"
   echo "    -a [gen|enc|dec]      action"
   echo "    -s [name]             secret"
   echo "    -i [name]             input file"
@@ -85,10 +85,6 @@ eval_action "$ACTION" "$INPUT_FILE" "$OUTPUT_FILE"
 [[ $ACTION == "enc" ]] && REST_ACTION="encrypt"
 [[ $ACTION == "dec" ]] && REST_ACTION="decrypt"
 
-[[ $CIPHER == "rsa" ]] && REST_CIPHER="proactive-rsa"
-[[ $CIPHER == "ecies" ]] && REST_CIPHER="ecies"
-[[ $CIPHER == "kyber" ]] && REST_CIPHER="kyber"
-
 # Perform the rest request
 
 if [[ $ACTION == "gen" ]]
@@ -99,7 +95,7 @@ then
     curl -k --cacert conf-tmp/ca/ca-key-clients.pem \
     --cert conf-tmp/client/certs/cert-administrator \
     --key conf-tmp/client/keys/private-administrator \
-    "https://localhost:8080/generate-keys?cipher=${REST_CIPHER}&secretName=${SECRET}"
+    "https://localhost:8080/generate-keys?cipher=${CIPHER}&secretName=${SECRET}"
   else
     # ecies - dkg
     curl -k --cacert conf-tmp/ca/ca-key-clients.pem \
@@ -117,5 +113,5 @@ curl -k --data-binary "@$INPUT_FILE" \
   --cacert conf-tmp/ca/ca-key-clients.pem \
   --cert conf-tmp/client/certs/cert-administrator \
   --key conf-tmp/client/keys/private-administrator \
-  "https://localhost:8080/${REST_ACTION}?cipher=${REST_CIPHER}&secretName=${SECRET}" \
+  "https://localhost:8080/${REST_ACTION}?cipher=${CIPHER}&secretName=${SECRET}" \
   --output "$OUTPUT_FILE"

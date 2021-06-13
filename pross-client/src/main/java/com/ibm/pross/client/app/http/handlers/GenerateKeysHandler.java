@@ -82,8 +82,8 @@ public class GenerateKeysHandler extends AuthenticatedClientRequestHandler {
         boolean generationStatus = false;
         try {
             if (cipher.equals(CIPHER_RSA)) {
-                RsaKeyGeneratorClient rsaKeyGeneratorClient = new RsaKeyGeneratorClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName);
-                generationStatus = rsaKeyGeneratorClient.generateRsaKeys();
+                ProactiveRsaKeyGeneratorClient rsaKeyGeneratorClient = new ProactiveRsaKeyGeneratorClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName);
+                generationStatus = rsaKeyGeneratorClient.generateRsaKeysNoRefresh();
             } else if (cipher.equals(CIPHER_PROACTIVE_RSA)) {
                 ProactiveRsaKeyGeneratorClient rsaKeyGeneratorClient = new ProactiveRsaKeyGeneratorClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey, secretName);
                 generationStatus = rsaKeyGeneratorClient.generateRsaKeys();

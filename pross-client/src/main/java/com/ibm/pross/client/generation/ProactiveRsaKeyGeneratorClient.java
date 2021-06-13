@@ -100,6 +100,106 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
         return stored;
     }
 
+    public boolean generateRsaKeysNoRefresh() throws InvalidKeySpecException, NoSuchAlgorithmException, BelowThresholdException, ResourceUnavailableException {
+        // Get n and t
+        final int numServers = serverConfiguration.getNumServers();
+        final int threshold = serverConfiguration.getReconstructionThreshold();
+
+        long start, end;
+        long start_total, end_total;
+
+
+        start = System.nanoTime();
+        start_total = System.nanoTime();
+        final List<ProactiveRsaShareholder> proactiveRsaShareholders = ProactiveRsaGenerator.generateProactiveRsa(numServers, threshold);
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaGenEnd:" + (end - start));
+        logger.info("RSA key generation complete");
+
+        logger.info("Storing RSA private key");
+        start = System.nanoTime();
+        boolean stored = this.storeRsaSharing(proactiveRsaShareholders);
+        end = System.nanoTime();
+        end_total = System.nanoTime();
+        logger.info("PerfMeas:RsaStoreEnd:" + (end - start));
+        logger.info("PerfMeas:RsaGenTotal:" + (end_total - start_total));
+
+        return stored;
+    }
+
+    private Boolean storeRsaSharing(final List<ProactiveRsaShareholder> proactiveRsaShareholders)
+            throws ResourceUnavailableException, BelowThresholdException {
+
+        // Server configuration
+        final int numShareholders = this.serverConfiguration.getNumServers();
+        final int reconstructionThreshold = this.serverConfiguration.getReconstructionThreshold();
+
+        // We create a thread pool with a thread for each task and remote server
+        final ExecutorService executor = Executors.newFixedThreadPool(numShareholders - 1);
+
+        // The countdown latch tracks progress towards reaching a threshold
+        final CountDownLatch latch = new CountDownLatch(reconstructionThreshold);
+        final AtomicInteger failureCounter = new AtomicInteger(0);
+        final int maximumFailures = (numShareholders - reconstructionThreshold);
+
+        // Each task deposits its result into this map after verifying it is correct and
+        // consistent
+        final List<Object> successfulResults = Collections.synchronizedList(new ArrayList<>());
+
+        // Send the generator to the server
+        final BigInteger v = null;
+
+        // Create a partial result task for everyone except ourselves
+        int serverId = 0;
+        for (final InetSocketAddress serverAddress : this.serverConfiguration.getServerAddresses()) { // TODO-now agent->json
+            serverId++;
+            final String serverIp = serverAddress.getAddress().getHostAddress();
+            final int serverPort = CommonConfiguration.BASE_HTTP_PORT + serverId;
+
+            final JSONObject message = proactiveRsaShareholders.get(serverId-1).getJson();
+
+            final String linkUrl = "https://" + serverIp + ":" + serverPort + "/store" + // TODO-now move all to json body
+                    "?secretName=" + this.secretName
+                    + "&sharingType=rsa";
+
+            // Create new task to get the partial exponentiation result from the server
+            executor.submit(new PartialResultTask(this, serverId, linkUrl, message.toJSONString() + "\n", "POST", successfulResults, latch, failureCounter,
+                    maximumFailures) {
+                @Override
+                protected void parseJsonResult(final String json) throws Exception {
+
+                    // Store result for later processing
+                    successfulResults.add(Boolean.TRUE);
+
+                    // Everything checked out, increment successes
+                    latch.countDown();
+
+                }
+            });
+        }
+
+        try {
+            // Once we have K successful responses we can interpolate our share
+            latch.await();
+
+            // Check that we have enough results to interpolate the share
+            if (failureCounter.get() <= maximumFailures) {
+
+                // When complete, interpolate the result at zero (where the secret lies)
+                final Boolean wereSuccessful = (Boolean) getConsistentConfiguration(successfulResults,
+                        reconstructionThreshold);
+                executor.shutdown();
+
+                return wereSuccessful;
+            } else {
+                executor.shutdown();
+                throw new ResourceUnavailableException();
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private Boolean storeProactiveRsaSharing(final List<ProactiveRsaShareholder> proactiveRsaShareholders)
             throws ResourceUnavailableException, BelowThresholdException {
 
