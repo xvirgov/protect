@@ -128,18 +128,7 @@ public class EncryptHandler extends AuthenticatedClientRequestHandler {
 				logger.error(ex);
 			}
 		}
-        else if (cipher.equals(RSA_CIPHER)) {
-			RsaEncryptionClient rsaEncryptionClient = new RsaEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey);
-
-			try (final OutputStream os = exchange.getResponseBody();) {
-				final byte[] binaryResponse = rsaEncryptionClient.encryptStream(secretName, exchange.getRequestBody());
-				exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
-				os.write(binaryResponse);
-			} catch (Exception ex) {
-				logger.error(ex);
-			}
-		}
-        else if (cipher.equals(PROACTIVE_RSA_CIPHER)) {
+        if (cipher.equals(PROACTIVE_RSA_CIPHER) || cipher.equals(RSA_CIPHER)) {
             ProactiveRsaEncryptionClient proactiveRsaEncryptionClient = new ProactiveRsaEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey);
 
             try (final OutputStream os = exchange.getResponseBody();) {

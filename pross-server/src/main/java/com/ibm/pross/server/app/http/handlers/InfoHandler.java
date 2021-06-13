@@ -5,14 +5,12 @@ import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
-import com.ibm.pross.common.util.SecretShare;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -65,7 +63,8 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
     public static final String OUTPUT_FORMAT_FIELD = "json";
     // Query value
     public static final String CIPHER_FIELD_RSA = "rsa";
-    public static final String CIPHER_FIELD_PROACTIVE_RSA = "proactive-rsa";
+    public static final String CIPHER_FIELD_RSA_UNIFIED = "rsa";
+    public static final String CIPHER_FIELD_RSA_PROACTIVE = "proactive-rsa";
     public static final String CIPHER_FIELD_KYBER = "kyber";
     public static final String CIPHER_FIELD_EC = "ec";
     private static final Logger logger = LogManager.getLogger(InfoHandler.class);
@@ -466,14 +465,17 @@ public class InfoHandler extends AuthenticatedClientRequestHandler {
             throw new BadRequestException();
         }
 
+//        logger.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAaa cipher " + cipher);
+
         // Create response
         String response = null;
-        if (cipher != null && cipher.equalsIgnoreCase(CIPHER_FIELD_RSA)) {
-            response = getRSAPublicInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);
-        }
-        else if (cipher != null && cipher.equalsIgnoreCase(CIPHER_FIELD_PROACTIVE_RSA)) {
-            logger.info("Getting proactive RSA public info...");
+//        if (cipher != null && cipher.equalsIgnoreCase(CIPHER_FIELD_RSA)) {
+//            response = getRSAPublicInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);
+//        }
+        if (cipher != null && (cipher.equalsIgnoreCase(CIPHER_FIELD_RSA_UNIFIED) || cipher.equalsIgnoreCase(CIPHER_FIELD_RSA_PROACTIVE))) {
+            logger.info("Getting RSA public info...");
             response = getProactiveRSAPublicInfo(shareholder, secretName, epochNumber, serverConfig, outputJson);
+//            logger.info("Response: " + response);
         }
         else if (cipher != null && cipher.equalsIgnoreCase(CIPHER_FIELD_KYBER)) {
             logger.info("Getting Kyber public info...");

@@ -126,19 +126,7 @@ public class DecryptHandler extends AuthenticatedClientRequestHandler {
 				logger.error(ex);
 			}
 		}
-        else if (cipher.equals(RSA_CIPHER)) {
-			logger.debug("RSA decryption using key " + secretName);
-			RsaEncryptionClient rsaEncryptionClient = new RsaEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey);
-
-			try (final OutputStream os = exchange.getResponseBody()) {
-				final byte[] binaryResponse = rsaEncryptionClient.decryptStream(secretName, exchange.getRequestBody());
-				exchange.sendResponseHeaders(HttpStatusCode.SUCCESS, binaryResponse.length);
-				os.write(binaryResponse);
-			} catch (Exception ex) {
-				logger.error(ex);
-			}
-		}
-        else if (cipher.equals(RSA_PROACTIVE_CIPHER)) {
+        else if (cipher.equals(RSA_PROACTIVE_CIPHER) || cipher.equals(RSA_CIPHER)) {
             logger.debug("RSA decryption using key " + secretName);
             ProactiveRsaEncryptionClient proactiveRsaEncryptionClient = new ProactiveRsaEncryptionClient(serverConfiguration, caCertificates, serverKeys, clientCertificate, clientTlsKey);
 
