@@ -443,10 +443,14 @@ public class ApvssShareholder {
             throws DuplicateMessageReceivedException, InvalidCiphertextException, InconsistentShareException,
             StateViolationException {
 
-        logger.info("BBBBBB FIRST MESSAGE RECEIVED");
-
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
+        final int successes = sharingState.getSuccessCount().incrementAndGet();
+        if (successes > k) {
+            return;
+        }
+
+        logger.info("BBBBBB FIRST MESSAGE RECEIVED");
 
         // A DKG is starting, broadcast sharing if we have not already done so
         if ((senderEpoch == 0) && (this.currentEpoch.get() == 0) && (this.getSecretPublicKey() == null)) {
@@ -505,7 +509,6 @@ public class ApvssShareholder {
         }
 
         // It is valid, increment success count
-        final int successes = sharingState.getSuccessCount().incrementAndGet();
         if (successes <= k) {
             // We are still building the qual set, add it
             sharingState.getQualifiedSharings().put(senderIndex, publicSharing);
@@ -522,6 +525,8 @@ public class ApvssShareholder {
      * rather than summation)
      */
     private synchronized void assembleCombinedShareByInterpolation(final long senderEpoch) {
+
+        logger.info("assembleCombinedShareByInterpolation");
 
         long start, end;
         start = System.nanoTime();
@@ -907,7 +912,7 @@ public class ApvssShareholder {
      * public keys
      */
     private void broadcastZkp(final long senderEpoch) {
-
+        logger.info("broadcastZkp");
         long start, end;
         start = System.nanoTime();
         // Get sharing state for the current epoch
@@ -940,7 +945,7 @@ public class ApvssShareholder {
         // Send message out
         final ZkpPayload payload = new ZkpPayload(proof);
         final String channelName = this.secretName;
-        
+
         logger.info("BBBBBB SENDING SECOND MESSAGE");
         this.channel.send(new Message(channelName, this.index, payload));
     }
@@ -959,10 +964,12 @@ public class ApvssShareholder {
     protected synchronized void deliverProofMessage(final long senderEpoch, final Message message)
             throws DuplicateMessageReceivedException, StateViolationException, InvalidZeroKnowledgeProofException {
 
-        logger.info("BBBBBB SECOND MESSAGE RECEIVED");
-
         // Get sharing state for the current epoch
         final SharingState sharingState = getSharing(senderEpoch);
+        if (sharingState.getQualifiedProofs().size() > this.k) {
+            return;
+        }
+        logger.info("BBBBBB SECOND MESSAGE RECEIVED");
 
         // Ensure we have completed the sharing
         if (!sharingState.isQualSetDefined()) {
@@ -1046,7 +1053,7 @@ public class ApvssShareholder {
      * and then summing the g^x_i for all i in Qual
      */
     private synchronized void interpolatePublicKeys(final long senderEpoch) {
-
+        logger.info("interpolatePublicKeys");
         long start, end;
         start = System.nanoTime();
 
