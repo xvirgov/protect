@@ -1,5 +1,6 @@
 package com.ibm.pross.common.util.crypto.kyber;
 
+import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.serialization.Parse;
 import org.bouncycastle.crypto.digests.SHAKEDigest;
 import org.bouncycastle.jcajce.provider.digest.SHA3;
@@ -11,7 +12,7 @@ import java.util.List;
 
 public class Kyber {
 
-    public final static int KYBER_K = 4;
+    public static int KYBER_K = CommonConfiguration.KYBER_K;
     public final static int KYBER_N = 256;
     public final static int KYBER_Q = 3329;
     final static short zetas[] = new short[]{

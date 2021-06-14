@@ -1,5 +1,9 @@
 package com.ibm.pross.common.config;
 
+import com.ibm.pross.common.util.crypto.ecc.EcCurve;
+import com.ibm.pross.common.util.crypto.ecc.EcCurveBc;
+import com.ibm.pross.common.util.crypto.ecc.EcPoint;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -12,6 +16,7 @@ public class ServerConfigurationLoader {
 
 	public static final String NUM_SERVERS_KEY = "num_servers";
 	public static final String REFRESH_FREQUENCY_KEY = "refresh_frequency";
+	public static final String SECURITY_LEVEL = "security_level";
 	public static final String MAX_BFT_FAULTS_KEY = "max_bft_faults";
 	public static final String RECONSTRUCT_THRESHOLD_KEY = "reconstruction_threshold";
 	public static final String MAX_SAFETY_FAULTS_KEY = "max_safety_faults";
@@ -39,6 +44,33 @@ public class ServerConfigurationLoader {
 				.parseInt(properties.getProperty(RECONSTRUCT_THRESHOLD_KEY, defaultReconstructionThreshold));
 
 		final int refreshFrequency = Integer.parseInt(properties.getProperty(REFRESH_FREQUENCY_KEY, "60"));
+
+		final int securityLevel = Integer.parseInt(properties.getProperty(SECURITY_LEVEL, "128"));
+
+		// SETUP key sizes
+		if(securityLevel == 128) {
+			CommonConfiguration.RSA_KEY_SIZE = 3076;
+			CommonConfiguration.CURVE = EcCurveBc.createByName(EcCurve.secp256r1.getName());
+			CommonConfiguration.KYBER_K = 2;
+		}
+		else if(securityLevel == 156) {
+			CommonConfiguration.RSA_KEY_SIZE = 4096;
+			CommonConfiguration.CURVE = EcCurveBc.createByName(EcCurve.secp384r1.getName());
+			CommonConfiguration.KYBER_K = 3;
+		}
+		else if (securityLevel == 192) {
+			CommonConfiguration.RSA_KEY_SIZE = 4096;
+			CommonConfiguration.CURVE = EcCurveBc.createByName(EcCurve.secp384r1.getName());
+			CommonConfiguration.KYBER_K = 3;
+		}
+		else if (securityLevel == 256) {
+			CommonConfiguration.RSA_KEY_SIZE = 4096;
+			CommonConfiguration.CURVE = EcCurveBc.createByName(EcCurve.secp521r1.getName());
+			CommonConfiguration.KYBER_K = 4;
+		}
+
+		CommonConfiguration.g = CommonConfiguration.CURVE.getPointHasher().hashToCurve(new byte[] { 0x01 });
+		CommonConfiguration.h = CommonConfiguration.CURVE.getPointHasher().hashToCurve(new byte[] { 0x02 });
 
 		// Compute default properties from reconstructionThreshold
 		final String defaultMaxSafetyFaults = Integer.toString(reconstructionThreshold - 1);

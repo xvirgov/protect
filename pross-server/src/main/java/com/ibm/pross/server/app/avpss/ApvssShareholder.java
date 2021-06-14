@@ -945,7 +945,7 @@ public class ApvssShareholder {
         // Send message out
         final ZkpPayload payload = new ZkpPayload(proof);
         final String channelName = this.secretName;
-        
+
         logger.info("BBBBBB SENDING SECOND MESSAGE");
         this.channel.send(new Message(channelName, this.index, payload));
     }

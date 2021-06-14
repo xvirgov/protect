@@ -34,11 +34,13 @@ public class CommonConfiguration {
 	 */
 
 	// This implementation is significantly faster
-	public static final EcCurve CURVE = EcCurveBc.createByName(EcCurve.secp521r1.getName());
+	public static EcCurve CURVE = EcCurveBc.createByName(EcCurve.secp256r1.getName());
+	public static int RSA_KEY_SIZE = 3076;
+	public static int KYBER_K = 2;
 
 	// Generators (from hashing)
-	public static final EcPoint g = CURVE.getPointHasher().hashToCurve(new byte[] { 0x01 });
-	public static final EcPoint h = CURVE.getPointHasher().hashToCurve(new byte[] { 0x02 });
+	public static EcPoint g = CURVE.getPointHasher().hashToCurve(new byte[] { 0x01 });
+	public static EcPoint h = CURVE.getPointHasher().hashToCurve(new byte[] { 0x02 });
 
 	// Default hash algorithm
 	public static final String HASH_ALGORITHM = "SHA-512";

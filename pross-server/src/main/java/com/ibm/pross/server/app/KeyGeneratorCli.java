@@ -48,12 +48,13 @@ public class KeyGeneratorCli {
 		Security.addProvider(new EdDSASecurityProvider());
 
 		// Check usage
-		if (args.length < 2) {
-			logger.error("USAGE: key-path key-name");
+		if (args.length < 3) {
+			logger.error("USAGE: key-path key-name security-level");
 			System.exit(1);
 		}
 		final File keyPath = new File(args[0]);
 		final String keyName = args[1];
+		int securityLevel = Integer.parseInt(args[2]);
 
 		// Generate EC Key Pair
 		final KeyPair tlsKeyPair = EcKeyGeneration.generateKeyPair();
@@ -64,6 +65,10 @@ public class KeyGeneratorCli {
 
 		// Generate Paillier Key Pair
 		int paillierKeyLength = 4096;
+		if (securityLevel == 156)
+			paillierKeyLength = 5120;
+		else if (securityLevel > 156)
+			paillierKeyLength = 8704;
 		final PaillierKeyGenerator encryptionKeyGenerator = new PaillierKeyGenerator(paillierKeyLength);
 		if(paillierKeyLength < ProactiveRsaGenerator.DEFAULT_RSA_KEY_SIZE) {
 			throw new IllegalArgumentException("Paillier key be at least as big as RSA key!!");

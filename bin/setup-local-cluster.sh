@@ -33,14 +33,15 @@ usage () {
 	echo "Usage:"
   echo "    -h                display help message"
   echo "    -n [number]       number of nodes"
-  echo "    -t [name]         docker image name"
   echo "    -k [number]       threshold value"
-  echo "    -f [number]       refresh frequency in seconds"
-  echo "Mandatory input parameters: -n, -t"
+  echo "    -t [name]         docker image name"
+  echo "    -s [number]       security level in bits (default = 128) [128, 156, 192, 256]"
+  echo "    -f [number]       refresh frequency in seconds (default = 60)"
+  echo "Mandatory input parameters: -n, -k, -t"
 }
 
 # Parse the arguments
-while getopts ":hn:k:t:f:" opt; do
+while getopts ":hn:k:t:f:s:" opt; do
   case ${opt} in
    h )
       usage
@@ -55,8 +56,11 @@ while getopts ":hn:k:t:f:" opt; do
     t ) # Specify name of image
 	IMAGE_NAME=$OPTARG
       ;;
-    f ) # Specify name of image
+    f )
 	REFRESH_FREQUENCY=$OPTARG
+      ;;
+    s )
+	SECURITY_LEVEL=$OPTARG
       ;;
     \? )
     	error
@@ -65,10 +69,11 @@ while getopts ":hn:k:t:f:" opt; do
 done
 
 eval_input "$NODES_NR"
+eval_input "$THRESHOLD"
 eval_input "$IMAGE_NAME"
 
 # Get IP address of docker network
-DOCKER_NET_IP=$(ip addr show docker0  | grep inet | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}' | head -1)
+DOCKER_NET_IP=$(ip addr show dockeser0  | grep inet | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}' | head -1)
 
 # Print info message
 echo "System parameters:"
@@ -76,9 +81,11 @@ echo "[number of nodes     : \"$NODES_NR\"],"
 [ $THRESHOLD -gt 0 ] && \
 echo "[threshold           : \"$THRESHOLD\"],"
 echo "[docker image name   : \"$IMAGE_NAME\"],"
-echo "[docker inet address : \"$DOCKER_NET_IP\"]"
 [ $REFRESH_FREQUENCY -gt 0 ] && \
 echo "[refresh frequency   : \"$REFRESH_FREQUENCY\"],"
+[ $SECURITY_LEVEL -gt 0 ] && \
+echo "[security level   : \"$SECURITY_LEVEL\"],"
+echo "[docker inet address : \"$DOCKER_NET_IP\"]"
 
 # Build docker image for client and server apps
 docker build -t "$IMAGE_NAME" .
@@ -87,6 +94,9 @@ docker build -t "$IMAGE_NAME" .
 echo "num_servers = $NODES_NR" > common.config
 [ $REFRESH_FREQUENCY -gt 0 ] && \
 echo "refresh_frequency=$REFRESH_FREQUENCY" >> common.config
+[ $SECURITY_LEVEL -gt 0 ] && \
+echo "security_level=$SECURITY_LEVEL" >> common.config
+
 
 # Create ssl-extensions file
 printf "[v3_ca]\nbasicConstraints = CA:FALSE\nkeyUsage = digitalSignature, keyEncipherment\nsubjectAltName = " > ssl-extensions-x509.cnf-tmp
@@ -117,7 +127,7 @@ mkdir -p $CONFIG_DIR/ca $CONFIG_DIR/server/bft-config $CONFIG_DIR/client && \
 cp common.config $CONFIG_DIR/server && \
 cp -R ../pross-server/config/server/bft-config $CONFIG_DIR/server && \
 mv ssl-extensions-x509.cnf $CONFIG_DIR && \
-./setup-config.sh "$NODES_NR" $CONFIG_DIR #&& \
+./setup-config.sh "$NODES_NR" $CONFIG_DIR $SECURITY_LEVEL #&& \
 #rm setup-config.sh ssl-extensions-x509.cnf && \
 #cd ..
 

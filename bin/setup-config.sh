@@ -2,6 +2,7 @@
 
 NODES_NR=$1
 CONFIG_DIR=$2
+SECURITY_LEVEL=$3
 CA_KEY=ca-key-server
 CA_CERT=ca-cert-server
 CLIENT_CERT=cert
@@ -16,7 +17,7 @@ mkdir -p ca server/certs server/keys client/keys client/certs
 i=1
 while [ $i -le "$NODES_NR" ]
 do
-	java -classpath ../../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli server/keys $i
+	java -classpath ../../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli server/keys $i $SECURITY_LEVEL
 	openssl req -new -sha256 -key server/keys/$CLIENT_SK-$i -out my-$i.csr -subj '/CN=Server client '$i'/ST=TEST/O=TEST'
 	openssl ecparam -name secp521r1 -genkey -noout -out ca/$CA_KEY-$i
 	openssl req -x509 -new -nodes -key ca/$CA_KEY-$i -sha256 -days 1024 -out ca/$CA_CERT-$i.pem -subj '/CN=CA Server '$i'/ST=TEST/O=TEST'
@@ -27,7 +28,7 @@ do
 done
 
 # Client server key
-java -classpath ../../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli server/keys 0
+java -classpath ../../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli server/keys 0 $SECURITY_LEVEL
 
 # User config
 echo "[prf-secret]
@@ -40,7 +41,7 @@ administrator       = generate,delete,disable,enable,info,exponentiate,read,stor
 
 # Client keys
 cd ..
-java -classpath ../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli $CONFIG_DIR/client/keys administrator
+java -classpath ../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.KeyGeneratorCli $CONFIG_DIR/client/keys administrator $SECURITY_LEVEL
 java -classpath ../pross-server/target/pross-server-1.0-SNAPSHOT.jar com.ibm.pross.server.app.CertificateAuthorityCli $CONFIG_DIR/ca $CONFIG_DIR/client/keys $CONFIG_DIR/client/certs false
 
 #openssl req -new -sha256 -key server/keys/$CLIENT_SK-0 -out my-0.csr -subj '/CN=Server client '0'/ST=TEST/O=TEST'
