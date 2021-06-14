@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
 
 public class ProactiveRsaEncryptionClient extends BaseClient {
 
-    public static final int AES_KEY_SIZE = 128;
+    public static final int AES_KEY_SIZE = 256;
     public static final int GCM_IV_LENGTH = 96;
     public static final int GCM_TAG_LENGTH = 128;
     public static final int HASH_LENGTH = 128;
@@ -61,7 +61,10 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
     public static byte[] rsaAesEncrypt(final byte[] message, BigInteger exponent, BigInteger modulus) {
 
+        long start, end;
+
         try {
+            start = System.nanoTime();
             // Create arrays
             byte[] iv = new byte[GCM_IV_LENGTH / 8];
 
@@ -80,7 +83,13 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             SecretKey secretKey = keyGenerator.generateKey();
             logger.info("[DONE]");
 
+            end = System.nanoTime();
+            logger.info("PerfMeas:RsaEncGenSym:" + (end - start));
+
+            //
+
             // Encrypt data using AES
+            start = System.nanoTime();
             logger.info("Encrypting data using AES-GCM...");
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
@@ -94,23 +103,34 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             System.arraycopy(iv, 0, result, 0, iv.length);
             System.arraycopy(encrypted, 0, result, iv.length, encrypted.length);
             logger.info("[DONE]");
+            end = System.nanoTime();
+            logger.info("PerfMeas:RsaEncSymEnc:" + (end - start));
 
+            start = System.nanoTime();
             // Compute hash
             logger.info("Computing hash of plaintext...");
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             final byte[] hash = digest.digest(message);
             logger.info("[DONE]");
+            end = System.nanoTime();
+            logger.info("PerfMeas:RsaEncHash:" + (end - start));
 
+            start = System.nanoTime();
             byte[] paddedSecretKey = OaepUtil.pad(secretKey.getEncoded(), RsaSharing.DEFAULT_RSA_KEY_SIZE, HASH_LENGTH);
+            start = System.nanoTime();
+            logger.info("PerfMeas:RsaEncPad:" + (end - start));
 
 //            logger.debug("BEFORE ENCRYPTION: " + Arrays.toString(paddedSecretKey));
 //
 //            logger.info("Modulus: " + modulus.toString(2).length());
 
             // Encrypt symmetric key with RSA
+            start = System.nanoTime();
             logger.info("Encrypting AES key with threshold RSA...");
             final byte[] symmetricKeyCiphertext = Exponentiation.modPow(new BigInteger(1, paddedSecretKey), exponent, modulus).toByteArray();
             logger.info("[DONE]");
+            end = System.nanoTime();
+            logger.info("PerfMeas:RsaEncExp:" + (end - start));
 
             logger.info("Encryption process finished");
 
@@ -169,25 +189,30 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
     }
 
     public byte[] rsaAesDecrypt(final byte[] ciphertextData, ProactiveRsaPublicParameters rsaPublicParameters, ServerConfiguration serverConfiguration, String secretName) throws BadPaddingException, ResourceUnavailableException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadArgumentException {
-
+        long start, end;
+        long start_total, end_total;
         final byte[][] combined = Parse.splitArrays(ciphertextData);
         if (combined.length != 3) {
             throw new BadPaddingException("Invalid ciphertext");
         }
-
         BigInteger encryptedPaddedSecretKey = new BigInteger(1, combined[0]);
         final byte[] aesCiphertextData = combined[1];
         final byte[] plaintextHash = combined[2];
 
         // Get partial decryption shares
+        start = System.nanoTime();
         final List<SignatureResponse> decryptionShares = requestPartialRsaDecryptions(encryptedPaddedSecretKey, rsaPublicParameters.getEpoch(), serverConfiguration, secretName)
                 .stream().map(obj -> (SignatureResponse) obj).collect(Collectors.toList());
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaDecCombineRequest:" + (end - start));
 
 //        logger.info("Decryption shares generated");
 
+        start_total = System.nanoTime();
         // Perform validation of decryption shares
         List<SignatureResponse> validatedDecryptionShares = new ArrayList<>();
         for (SignatureResponse decryptionShare : decryptionShares) {
+            start = System.nanoTime();
             BigInteger serverIndex = decryptionShare.getServerIndex();
 
             try {
@@ -201,33 +226,45 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             } catch (Exception exception) {
                 logger.error("Decryption share from server " + serverIndex + " failed validation, excluding from operation, error = " + exception);
             }
+            end = System.nanoTime();
+            logger.info("PerfMeas:RsaDecCombineVerify:" + (end - start));
         }
         logger.info("Number of validated shares: " + validatedDecryptionShares.size());
         logger.info("[DONE]");
 
         // Decrypt symmetric key with threshold RSA
+        start = System.nanoTime();
         logger.info("Interpolating decryption shares...");
         final byte[] recoveredPaddedSymmetricKey = recoverPlaintext(encryptedPaddedSecretKey, validatedDecryptionShares, rsaPublicParameters, serverConfiguration.getReconstructionThreshold()).toByteArray();
         logger.info("[DONE]");
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaDecCombineInterpolate:" + (end - start));
 
         logger.debug("RECOVERED SECRET: " + Arrays.toString(recoveredPaddedSymmetricKey));
         logger.debug("Encrypted data: " + aesCiphertextData.length);
 
         // Get decrypted parameters of AES
+        start = System.nanoTime();
         final byte[] ivDec = Arrays.copyOfRange(aesCiphertextData, 0, GCM_IV_LENGTH / 8);
         final byte[] encryptedDataDec = Arrays.copyOfRange(aesCiphertextData, GCM_IV_LENGTH / 8, aesCiphertextData.length);
 
         // Reverse OAEP padding on decrypted AES key
         final byte[] recoveredSymmetricKey = OaepUtil.unpad(recoveredPaddedSymmetricKey, RsaSharing.DEFAULT_RSA_KEY_SIZE, HASH_LENGTH);
         SecretKey secretKeySpecDec = new SecretKeySpec(recoveredSymmetricKey, 0, recoveredSymmetricKey.length, "AES");
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaDecCombineUnpad:" + (end - start));
 
+        start = System.nanoTime();
         logger.info("Decrypting data using retrieved values...");
         Cipher cipherDec = Cipher.getInstance("AES/GCM/NoPadding");
         GCMParameterSpec gcmParameterSpecDec = new GCMParameterSpec(GCM_TAG_LENGTH, ivDec);
         cipherDec.init(Cipher.DECRYPT_MODE, secretKeySpecDec, gcmParameterSpecDec);
         byte[] resultPlaintext = cipherDec.doFinal(encryptedDataDec);
         logger.info("[DONE]");
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaDecCombineDecrypt:" + (end - start));
 
+        start = System.nanoTime();
         logger.info("Checking hash of recovered plaintext...");
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         final byte[] hash = digest.digest(resultPlaintext);
@@ -235,6 +272,10 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             throw new RuntimeException("Hashes of plaintexts don't match!");
         }
         logger.info("[DONE]");
+        end = System.nanoTime();
+        logger.info("PerfMeas:RsaDecCombineHash:" + (end - start));
+        end_total = System.nanoTime();
+        logger.info("PerfMeas:RsaDecCombineTotal:" + (end - start));
 
         return resultPlaintext;
     }

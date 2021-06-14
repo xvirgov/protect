@@ -241,6 +241,7 @@ public class EciesEncryptionClient extends BaseClient {
 	public byte[] decryptStream() throws BadPaddingException, IllegalBlockSizeException, ClassNotFoundException,
 			IOException, ResourceUnavailableException, BelowThresholdException {
 		long start, end;
+		long start_total, end_total;
 
 		logger.info("Beginning ECIES decryption...");
 		// Print status
@@ -287,9 +288,12 @@ public class EciesEncryptionClient extends BaseClient {
 
 		// Perform ECIES decryption
 //		logger.info("Performing ECIES decryption of file content... ");
+		start_total = System.nanoTime();
 		final byte[] plaintext = EciesEncryption.decrypt(ciphertextData, exponentiationResult);
+		end_total = System.nanoTime();
 		end = System.nanoTime();
 
+		logger.info("PerfMeas:EciesDecCombineTotal:" + (end - start));
 		logger.info("PerfMeas:EciesDecEnd:" + (end - start));
 //		logger.info(" (done)");
 //		logger.info("Plaintext length " + plaintext.length + " bytes.");
@@ -455,6 +459,7 @@ public class EciesEncryptionClient extends BaseClient {
 					maximumFailures) {
 				@Override
 				protected void parseJsonResult(final String json) throws Exception {
+					long start, end;
 
 					// Parse JSON
 					final JSONParser parser = new JSONParser();
@@ -471,6 +476,8 @@ public class EciesEncryptionClient extends BaseClient {
 //					logger.info("Received proof::: " + signatureShareProof.getJson().toString());
 
 					// Check received proof: c' = H(G, R, si.G, si.R, z.G - c.si.G, z.R - c.si.R)
+
+					start = System.nanoTime();
 
 					logger.info("Received a decryption share from agent " + responder);
 					BigInteger z = signatureShareProof.getZ();
@@ -493,6 +500,8 @@ public class EciesEncryptionClient extends BaseClient {
 					byte[] cBytes = Parse.concatenate(G, R, siG, siR, zG_mcsiG, zR_mcsiR);
 					BigInteger cPrime = ThresholdSignatures.hashToInteger(cBytes, ThresholdSignatures.HASH_MOD);
 
+					end = System.nanoTime();
+					logger.info("PerfMeas:EciesDecCombineVerify:" + (end - start));
 //					logger.info("===========================================================================");
 //					logger.info("Recieved: " + c);
 //					logger.info("computed: " + cPrime);
@@ -532,10 +541,12 @@ public class EciesEncryptionClient extends BaseClient {
 
 				List<DerivationResult> results = verifiedResults.stream().map(obj -> createDerivationResult(obj))
 						.collect(Collectors.toList());
-
+				long start = System.nanoTime();
 				// When complete, interpolate the result at zero (where the secret lies)
 				final EcPoint interpolatedResult = Polynomials.interpolateExponents(results, reconstructionThreshold,
 						0);
+				long end = System.nanoTime();
+				logger.info("PerfMeas:EciesDecCombineInterpolate:" + (end - start));
 				executor.shutdown();
 
 				return interpolatedResult;

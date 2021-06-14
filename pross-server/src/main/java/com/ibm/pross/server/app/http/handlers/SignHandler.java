@@ -290,6 +290,7 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		final long endTime = System.nanoTime();
 
 		// Compute processing time
+		logger.info("PerfMeas:RsaDecShareTotal:" + (endTime - startTime));
 		final long processingTimeUs = (endTime - startTime) / 1_000;
 
 		// Create response
@@ -318,6 +319,7 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		Kyber.Polynomial decryptionShare = Kyber.gen_dec_share(ciphertext, kyberShareholder.getSecretShare(), coins1);
 //		final SignatureResponse signatureResponse = ThresholdSignatures.produceProactiveSignatureResponse(m, proactiveRsaShareholder, BigInteger.valueOf(shareholder.getIndex()));
 		final long endTime = System.nanoTime();
+		logger.info("PerfMeas:KyberDecShareTotal:" + (endTime - startTime));
 
 		// Compute processing time
 		final long processingTimeUs = (endTime - startTime) / 1_000;

@@ -14,8 +14,26 @@ ECIES_MEASUREMENTS=(
   # Enc
   EciesEncEnd
 
+  EciesEncGenRand
+  EciesEncPubCompute
+  EciesEncSharedSecretCompute
+  EciesEncKdf
+  EciesEncSymmCompute
+  EciesEncMacCompute
+
   # Dec
   EciesDecEnd
+
+  EciesDecShareDec
+  EciesDecShareProof
+  EciesDecShareTotal
+
+  EciesDecCombineKdf
+  EciesDecCombineMac
+  EciesDecCombineDecrypt
+  EciesDecCombineVerify
+  EciesDecCombineInterpolate
+  EciesDecCombineTotal
 
   # Refresh/DKG
   EciesBroadcastSharingEnd
@@ -36,8 +54,26 @@ RSA_MEASUREMENTS=(
   # Enc
   RsaEncEnd
 
+  RsaEncGenSym
+  RsaEncSymEnc
+  RsaEncHash
+  RsaEncPad
+  RsaEncExp
+
   # Dec
   RsaDecEnd
+
+  RsaDecShareDec
+  RsaDecShareProof
+  RsaDecShareTotal
+
+  # RsaDecCombineRequest
+  RsaDecCombineVerify
+  RsaDecCombineInterpolate
+  RsaDecCombineUnpad
+  RsaDecCombineDecrypt
+  RsaDecCombineHash
+  RsaDecCombineTotal
 
   # Refresh
   RsaRefreshAdditiveEnd
@@ -58,8 +94,20 @@ KYBER_MEASUREMENTS=(
   # Enc
   KyberEncEnd
 
+  KyberEncRand
+  KyberEncGHash
+  KyberEncCpa
+  KyberEncKdf
+  KyberEncSym
+
   # Dec
-  KyberDecEnd)
+  KyberDecEnd
+
+  KyberDecCombineAdd
+  KyberDecCombineHashG
+  KyberDecCombineEnc
+  KyberDecCombineKdf
+  KyberDecCombineSym)
 
 for (( i=0; i<${#ECIES_MEASUREMENTS[@]}; i++ ));
 do

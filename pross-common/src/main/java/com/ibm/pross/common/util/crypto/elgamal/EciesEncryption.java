@@ -32,6 +32,8 @@ import com.ibm.pross.common.util.crypto.ecc.EcPoint;
 import com.ibm.pross.common.util.crypto.kdf.EntropyExtractor;
 import com.ibm.pross.common.util.crypto.kdf.HmacKeyDerivationFunction;
 import com.ibm.pross.common.util.serialization.Parse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Implements public key cryptography based on elliptic curves
@@ -55,10 +57,16 @@ public class EciesEncryption {
 	final public static byte[] HMAC = HMAC_ALG.getBytes(StandardCharsets.UTF_8);
 	final public static int HMAC_KEY_LEN = 32;
 
+	private static final Logger logger = LogManager.getLogger(EciesEncryption.class);
+
 	public static byte[] encrypt(final byte[] plaintext, final EcPoint recipientPublicKey) {
+		long start, end;
 
 		// Generate r (we save this as it is needed for rebuttals
+		start = System.nanoTime();
 		final BigInteger r = generateR();
+		end = System.nanoTime();
+		logger.info("PerfMeas:EciesEncGenRand:" + (end - start));
 
 		// Encrypt the content
 		byte[] encryptedBytes = encrypt(plaintext, r, recipientPublicKey);
@@ -128,15 +136,23 @@ public class EciesEncryption {
 
 	protected static byte[] encrypt(final byte[] message, final BigInteger r, final EcPoint publicKey) {
 
+		long start, end;
 		try {
 
+			start = System.nanoTime();
 			// Calculate R (our DH public value)
 			final EcPoint R = curve.multiply(G, r);
+			end = System.nanoTime();
+			logger.info("PerfMeas:EciesEncPubCompute:" + (end - start));
 
+			start = System.nanoTime();
 			// Calculate shared secret
 			final EcPoint sharedSecret = curve.multiply(publicKey, r);
+			end = System.nanoTime();
+			logger.info("PerfMeas:EciesEncSharedSecretCompute:" + (end - start));
 			
 			// Setup key generator
+			start = System.nanoTime();
 			final HmacKeyDerivationFunction kdf = EntropyExtractor.getKeyGenerator(ECIES, sharedSecret);
 
 			// Get cipher
@@ -146,10 +162,19 @@ public class EciesEncryption {
 			final byte[] hmacKey = kdf.createKey(HMAC, HMAC_KEY_LEN);
 			final Mac hmac = Mac.getInstance(HMAC_ALG);
 			hmac.init(new SecretKeySpec(hmacKey, HMAC_ALG));
+			end = System.nanoTime();
+			logger.info("PerfMeas:EciesEncKdf:" + (end - start));
 
 			// We have all the keys, perform encryption and mac the cipher text
+			start = System.nanoTime();
 			final byte[] messageCiphertext = aesGcmCipher.doFinal(message);
+			end = System.nanoTime();
+			logger.info("PerfMeas:EciesEncSymmCompute:" + (end - start));
+
+			start = System.nanoTime();
 			final byte[] mac = hmac.doFinal(messageCiphertext);
+			end = System.nanoTime();
+			logger.info("PerfMeas:EciesEncMacCompute:" + (end - start));
 
 			// Serialize the public value
 			byte[] publicValue = Parse.concatenate(R.getX(), R.getY());
@@ -218,6 +243,7 @@ public class EciesEncryption {
 
 	public static byte[] decrypt(final byte[] ciphertext, final EcPoint sharedSecret)
 			throws BadPaddingException, IllegalBlockSizeException {
+		long start, end;
 
 		// Deserialize components of the ciphertext
 		final byte[][] combined = Parse.splitArrays(ciphertext);
@@ -228,6 +254,7 @@ public class EciesEncryption {
 		final byte[] macValue = combined[2];
 
 		// Setup key generator
+		start = System.nanoTime();
 		final HmacKeyDerivationFunction kdf = EntropyExtractor.getKeyGenerator(ECIES, sharedSecret);
 
 		// Get cipher
@@ -235,6 +262,11 @@ public class EciesEncryption {
 
 		// Get hmac
 		final byte[] hmacKey = kdf.createKey(HMAC, HMAC_KEY_LEN);
+		end = System.nanoTime();
+
+		logger.info("PerfMeas:EciesDecCombineKdf:" + (end - start));
+
+		start = System.nanoTime();
 		try {
 			final Mac hmac = Mac.getInstance(HMAC_ALG);
 			hmac.init(new SecretKeySpec(hmacKey, HMAC_ALG));
@@ -247,9 +279,15 @@ public class EciesEncryption {
 		} catch (NoSuchAlgorithmException | InvalidKeyException e) {
 			throw new RuntimeException(e);
 		}
+		end = System.nanoTime();
+		logger.info("PerfMeas:EciesDecCombineMac:" + (end - start));
 
 		// Pperform decryption
-		return aesGcmCipher.doFinal(messageCiphertext);
+		start = System.nanoTime();
+		byte[] plain = aesGcmCipher.doFinal(messageCiphertext);
+		end = System.nanoTime();
+		logger.info("PerfMeas:EciesDecCombineDecrypt:" + (end - start));
+		return plain;
 	}
 
 	protected static byte[] decrypt(final byte[] ciphertext, final BigInteger r, final EcPoint publicKey)

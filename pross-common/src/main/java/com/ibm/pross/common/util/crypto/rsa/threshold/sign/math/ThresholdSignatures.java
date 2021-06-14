@@ -104,17 +104,24 @@ public class ThresholdSignatures {
 	public static SignatureResponse produceProactiveSignatureResponse(final BigInteger inputMessage,
 																	  final ProactiveRsaShareholder proactiveRsaShareholder,
 																	  BigInteger index) {
+		long start, end;
 
+		start = System.nanoTime();
 		final BigInteger privateKeyShare = proactiveRsaShareholder.getS_i();
 		final BigInteger L = proactiveRsaShareholder.getProactiveRsaPublicParameters().getL();
 		final BigInteger modulus = proactiveRsaShareholder.getProactiveRsaPublicParameters().getPublicKey().getModulus();
+		final BigInteger signatureShare = inputMessage.modPow(L.multiply(privateKeyShare), modulus);
+		end = System.nanoTime();
+		logger.info("PerfMeas:RsaDecShareDec:" + (end - start));
+
+		start = System.nanoTime();
 		final BigInteger r = RandomNumberGenerator.generateRandomInteger(modulus.bitLength() + 2 * ThresholdSignatures.HASH_LEN);
 		final BigInteger g = proactiveRsaShareholder.getProactiveRsaPublicParameters().getG();
 
-		final BigInteger signatureShare = inputMessage.modPow(L.multiply(privateKeyShare), modulus);
-
 		BigInteger c = computeC(inputMessage, signatureShare, L, modulus, g, r);
 		BigInteger z = privateKeyShare.multiply(c).add(r);
+		end = System.nanoTime();
+		logger.info("PerfMeas:RsaDecShareProof:" + (end - start));
 
 		return new SignatureResponse(index, signatureShare, new SignatureShareProof(c, z));
 	}

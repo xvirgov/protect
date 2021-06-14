@@ -147,12 +147,17 @@ public class ExponentiateHandler extends AuthenticatedClientRequestHandler {
 //		System.out.println("verif: " + curve.multiply(curve.getG(), sharingState.getShare1().getY()));
 
 		// Do processing
-		final long startTime = System.nanoTime();
+		long start = System.nanoTime();
+		long startTime = System.nanoTime();
 		final EcPoint result = doExponentiation(shareholder, basePoint);
-		final long endTime = System.nanoTime();
+		long endTime = System.nanoTime();
+		// Compute processing time
+		final long processingTimeUs = (endTime - startTime) / 1_000;
 
+		logger.info("PerfMeas:EciesDecShareDec:" + (endTime - startTime));
+
+		startTime = System.nanoTime();
 		// Create proof c = H(G, R, s_i.G, s_i.R, r.G, rR)
-
 		EcPoint G = CommonConfiguration.g;
 		EcPoint R = basePoint;
 		BigInteger r = RandomNumberGenerator.generateRandomInteger(CommonConfiguration.CURVE.getR());
@@ -169,10 +174,12 @@ public class ExponentiateHandler extends AuthenticatedClientRequestHandler {
 		BigInteger z = si.multiply(c).add(r);
 
 		SignatureShareProof decryptionProof = new SignatureShareProof(c, z);
+		endTime = System.nanoTime();
+		long end = System.nanoTime();
 
+		logger.info("PerfMeas:EciesDecShareProof:" + (endTime - startTime));
+		logger.info("PerfMeas:EciesDecShareTotal:" + (end - start));
 
-		// Compute processing time
-		final long processingTimeUs = (endTime - startTime) / 1_000;
 
 		// Create response
 		final int serverIndex = shareholder.getIndex();

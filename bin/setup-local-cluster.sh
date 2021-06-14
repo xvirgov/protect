@@ -72,6 +72,9 @@ eval_input "$NODES_NR"
 eval_input "$THRESHOLD"
 eval_input "$IMAGE_NAME"
 
+[ -z $SECURITY_LEVEL ] && SECURITY_LEVEL=128
+[ -z $REFRESH_FREQUENCY ] && REFRESH_FREQUENCY=60
+
 # Get IP address of docker network
 DOCKER_NET_IP=$(ip addr show dockeser0  | grep inet | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}' | head -1)
 
@@ -84,7 +87,7 @@ echo "[docker image name   : \"$IMAGE_NAME\"],"
 [ $REFRESH_FREQUENCY -gt 0 ] && \
 echo "[refresh frequency   : \"$REFRESH_FREQUENCY\"],"
 [ $SECURITY_LEVEL -gt 0 ] && \
-echo "[security level   : \"$SECURITY_LEVEL\"],"
+echo "[security level      : \"$SECURITY_LEVEL\"],"
 echo "[docker inet address : \"$DOCKER_NET_IP\"]"
 
 # Build docker image for client and server apps

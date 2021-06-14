@@ -49,7 +49,7 @@ public class ServerConfigurationLoader {
 
 		// SETUP key sizes
 		if(securityLevel == 128) {
-			CommonConfiguration.RSA_KEY_SIZE = 3076;
+			CommonConfiguration.RSA_KEY_SIZE = 3072;
 			CommonConfiguration.CURVE = EcCurveBc.createByName(EcCurve.secp256r1.getName());
 			CommonConfiguration.KYBER_K = 2;
 		}

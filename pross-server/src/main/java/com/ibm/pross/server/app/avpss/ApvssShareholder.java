@@ -330,7 +330,7 @@ public class ApvssShareholder {
 
             end = System.nanoTime();
             logger.info("PerfMeas:EciesBroadcastSharingEnd:" + (end - start));
-            logger.info("BBBBBB SENDING FIRST MESSAGE");
+//            logger.info("BBBBBB SENDING FIRST MESSAGE");
 
             // Create a message
             final PublicSharingPayload payload = new PublicSharingPayload(publicSharing);
@@ -450,7 +450,7 @@ public class ApvssShareholder {
             return;
         }
 
-        logger.info("BBBBBB FIRST MESSAGE RECEIVED");
+//        logger.info("BBBBBB FIRST MESSAGE RECEIVED");
 
         // A DKG is starting, broadcast sharing if we have not already done so
         if ((senderEpoch == 0) && (this.currentEpoch.get() == 0) && (this.getSecretPublicKey() == null)) {
@@ -946,7 +946,7 @@ public class ApvssShareholder {
         final ZkpPayload payload = new ZkpPayload(proof);
         final String channelName = this.secretName;
 
-        logger.info("BBBBBB SENDING SECOND MESSAGE");
+//        logger.info("BBBBBB SENDING SECOND MESSAGE");
         this.channel.send(new Message(channelName, this.index, payload));
     }
 
@@ -969,7 +969,7 @@ public class ApvssShareholder {
         if (sharingState.getQualifiedProofs().size() > this.k) {
             return;
         }
-        logger.info("BBBBBB SECOND MESSAGE RECEIVED");
+//        logger.info("BBBBBB SECOND MESSAGE RECEIVED");
 
         // Ensure we have completed the sharing
         if (!sharingState.isQualSetDefined()) {
