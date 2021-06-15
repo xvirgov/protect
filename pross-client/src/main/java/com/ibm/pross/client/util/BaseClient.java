@@ -20,6 +20,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
@@ -196,7 +198,9 @@ public class BaseClient {
         // Each task deposits its result into this map after verifying it is correct and
         // consistent
         // TODO: Add verification via proofs
+//        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
         final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
+//        final Map<EciesPublicParams, Integer> publicParams = Collections.synchronizedMap(new HashMap<>());
         final Map<EciesPublicParams, Integer> publicParams = Collections.synchronizedMap(new HashMap<>());
 
         // Create a partial result task for everyone except ourselves
@@ -227,6 +231,8 @@ public class BaseClient {
                     final long epoch = (Long) jsonObject.get("epoch");
                     final List<EcPoint> verificationKeys = new ArrayList<>();
 
+                    logger.info("Received a pub values from " + responder);
+
                     final JSONArray publicKeyPoint = (JSONArray) jsonObject.get("public_key");
                     final BigInteger x = new BigInteger((String) publicKeyPoint.get(0));
                     final BigInteger y = new BigInteger((String) publicKeyPoint.get(1));
@@ -248,7 +254,7 @@ public class BaseClient {
                     if ((responder == thisServerId)) {
 
                         // Store result for later processing
-                        collectedResults.add(new SimpleEntry<List<EcPoint>, Long>(verificationKeys, epoch));
+//                        collectedResults.add(new SimpleEntry<List<EcPoint>, Long>(verificationKeys, epoch));
 
                         EciesPublicParams eciesPublicParams = new EciesPublicParams(verificationValues, publicKey, epoch);
 
@@ -256,9 +262,14 @@ public class BaseClient {
 
                         if (!publicParams.containsKey(eciesPublicParams)) {
                             publicParams.put(eciesPublicParams, 1);
+//                            logger.info("Share from agent " + responder + " added a new pub value: " + eciesPublicParams.toString());
                         } else {
-                            publicParams.put(eciesPublicParams, publicParams.get(eciesPublicParams) + 1);
+                            publicParams.put(eciesPublicParams, publicParams.get(eciesPublicParams));
+//                            logger.info("Equal share from agent " + responder);
+//                            logger.info("Equal share from agent " + publicParams.values());
                         }
+
+                        collectedResults.add(eciesPublicParams);
 
 
                         // Everything checked out, increment successes
@@ -278,30 +289,55 @@ public class BaseClient {
             // counter to reach majority (or fail)
             // if not enough remaining responses permit getting a majority
             latch.await();
+            executor.shutdown();
+//            logger.info("GOT HERE");
 
             // Check that we have enough results to interpolate the share
             if (failureCounter.get() <= maximumFailures) {
 
-                executor.shutdown();
-
                 int maxWait = 10;
-                while (publicParams.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
-                    for (Map.Entry<EciesPublicParams, Integer> params : publicParams.entrySet()) {
+
+//                if(collectedResults.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+//                        .entrySet()
+//                        .stream()
+//                        .max(Map.Entry.comparingByValue()).get().getValue() >= reconstructionThreshold)
+
+                while (collectedResults.size() <= this.serverConfiguration.getNumServers() && maxWait-- > 0)  {
+                    Map<EciesPublicParams, Integer> countMap = new HashMap<>();
+                    for (Object result : collectedResults) {
+                        Integer count = countMap.get(result);
+                        countMap.put((EciesPublicParams) result, count != null ? count+1 : 1);
+                    }
+
+                    for (Map.Entry<EciesPublicParams, Integer> params : countMap.entrySet()) {
                         if (params.getValue() >= reconstructionThreshold) {
                             logger.debug("Consistency level reached.");
                             return params.getKey();
                         }
                     }
-                    logger.debug("Waiting for more servers to send config...");
-                    Thread.sleep(2000);
-                }
 
-                for (Map.Entry<EciesPublicParams, Integer> params : publicParams.entrySet()) {
-                    if (params.getValue() >= reconstructionThreshold) {
-                        logger.debug("Consistency level reached.");
-                        return params.getKey();
-                    }
+                    if (collectedResults.size() == this.serverConfiguration.getNumServers())
+                        throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
                 }
+//                while (publicParams.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
+//                    for (Map.Entry<EciesPublicParams, Integer> params : publicParams.entrySet()) {
+//                        if (params.getValue() >= reconstructionThreshold) {
+//                            logger.debug("Consistency level reached.");
+//                            return params.getKey();
+//                        }
+//                    }
+//                    logger.debug("Waiting for more servers to send config...");
+//                    Thread.sleep(2000);
+//                }
+//
+//
+//                for (Map.Entry<EciesPublicParams, Integer> params : publicParams.entrySet()) {
+//                    logger.info("TOTAL::: " + params.getValue());
+//                    if (params.getValue() >= reconstructionThreshold) {
+//                        logger.debug("Consistency level reached.");
+//                        return params.getKey();
+//                    }
+//                }
 
                 throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
 //                return (SimpleEntry<List<EcPoint>, Long>) getConsistentConfiguration(collectedResults,
@@ -478,7 +514,8 @@ public class BaseClient {
         // Each task deposits its result into this map after verifying it is correct and
         // consistent
 
-        final Map<ProactiveRsaPublicParameters, Integer> rsaPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
+//        final Map<ProactiveRsaPublicParameters, Integer> rsaPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
+        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -493,8 +530,8 @@ public class BaseClient {
             final int thisServerId = serverId;
 
             // Create new task to get the secret info from the server
-            executor.submit(new PartialResultTask(this, serverId, linkUrl, rsaPublicParametersCount, latch, failureCounter,
-                    maximumFailures, 1) {
+            executor.submit(new PartialResultTask(this, serverId, linkUrl, collectedResults, latch, failureCounter,
+                    maximumFailures)  {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
                     logger.debug("Parsing response...");
@@ -509,11 +546,12 @@ public class BaseClient {
                     if ((responder == thisServerId)) {
                         ProactiveRsaPublicParameters proactiveRsaPublicParameters = ProactiveRsaPublicParameters.getParams(proactiveRsaPublicParametersJson);
                         // Add parameters to the hashmap
-                        if (!rsaPublicParametersCount.containsKey(proactiveRsaPublicParameters)) {
-                            rsaPublicParametersCount.put(proactiveRsaPublicParameters, 1);
-                        } else {
-                            rsaPublicParametersCount.put(proactiveRsaPublicParameters, rsaPublicParametersCount.get(proactiveRsaPublicParameters) + 1);
-                        }
+//                        if (!rsaPublicParametersCount.containsKey(proactiveRsaPublicParameters)) {
+//                            rsaPublicParametersCount.put(proactiveRsaPublicParameters, 1);
+//                        } else {
+//                            rsaPublicParametersCount.put(proactiveRsaPublicParameters, rsaPublicParametersCount.get(proactiveRsaPublicParameters) + 1);
+//                        }
+                        collectedResults.add(proactiveRsaPublicParameters);
 
                         // Everything checked out, increment successes
                         latch.countDown();
@@ -535,23 +573,42 @@ public class BaseClient {
                 // Use the config which was returned by more than threshold number of servers
 
                 int maxWait = 10;
-                while (rsaPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
-                    for (Map.Entry<ProactiveRsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
+                while (collectedResults.size() <= this.serverConfiguration.getNumServers() && maxWait-- > 0)  {
+                    Map<ProactiveRsaPublicParameters, Integer> countMap = new HashMap<>();
+                    for (Object result : collectedResults) {
+                        Integer count = countMap.get(result);
+                        countMap.put((ProactiveRsaPublicParameters) result, count != null ? count+1 : 1);
+                    }
+
+                    for (Map.Entry<ProactiveRsaPublicParameters, Integer> params : countMap.entrySet()) {
                         if (params.getValue() >= reconstructionThreshold) {
                             logger.debug("Consistency level reached.");
                             return params.getKey();
                         }
                     }
-                    logger.debug("Waiting for more servers to send config...");
-                    Thread.sleep(2000);
+
+                    if (collectedResults.size() == this.serverConfiguration.getNumServers())
+                        throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
                 }
 
-                for (Map.Entry<ProactiveRsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
-                    if (params.getValue() >= reconstructionThreshold) {
-                        logger.debug("Consistency level reached.");
-                        return params.getKey();
-                    }
-                }
+//                int maxWait = 10;
+//                while (rsaPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
+//                    for (Map.Entry<ProactiveRsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
+//                        if (params.getValue() >= reconstructionThreshold) {
+//                            logger.debug("Consistency level reached.");
+//                            return params.getKey();
+//                        }
+//                    }
+//                    logger.debug("Waiting for more servers to send config...");
+//                    Thread.sleep(2000);
+//                }
+//
+//                for (Map.Entry<ProactiveRsaPublicParameters, Integer> params : rsaPublicParametersCount.entrySet()) {
+//                    if (params.getValue() >= reconstructionThreshold) {
+//                        logger.debug("Consistency level reached.");
+//                        return params.getKey();
+//                    }
+//                }
 
                 throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
             } else {
@@ -597,7 +654,8 @@ public class BaseClient {
         // Each task deposits its result into this map after verifying it is correct and
         // consistent
 
-        final Map<KyberPublicParameters, Integer> kyberPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
+//        final Map<KyberPublicParameters, Integer> kyberPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
+        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -612,8 +670,8 @@ public class BaseClient {
             final int thisServerId = serverId;
 
             // Create new task to get the secret info from the server
-            executor.submit(new PartialResultTask(this, serverId, linkUrl, kyberPublicParametersCount, latch, failureCounter,
-                    maximumFailures, 1, false) {
+            executor.submit(new PartialResultTask(this, serverId, linkUrl, collectedResults, latch, failureCounter,
+                    maximumFailures) {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
                     logger.debug("Parsing response...");
@@ -628,11 +686,12 @@ public class BaseClient {
                     if ((responder == thisServerId)) {
                         KyberPublicParameters kyberPublicParameters = KyberPublicParameters.getParams(kyberPublicParametersJson);
                         // Add parameters to the hashmap
-                        if (!kyberPublicParametersCount.containsKey(kyberPublicParameters)) {
-                            kyberPublicParametersCount.put(kyberPublicParameters, 1);
-                        } else {
-                            kyberPublicParametersCount.put(kyberPublicParameters, kyberPublicParametersCount.get(kyberPublicParameters) + 1);
-                        }
+//                        if (!kyberPublicParametersCount.containsKey(kyberPublicParameters)) {
+//                            kyberPublicParametersCount.put(kyberPublicParameters, 1);
+//                        } else {
+//                            kyberPublicParametersCount.put(kyberPublicParameters, kyberPublicParametersCount.get(kyberPublicParameters) + 1);
+//                        }
+                        collectedResults.add(kyberPublicParameters);
 
                         // Everything checked out, increment successes
                         latch.countDown();
@@ -654,24 +713,40 @@ public class BaseClient {
                 // Use the config which was returned by more than threshold number of servers
 
                 int maxWait = 10;
-                while (kyberPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
-                    for (Map.Entry<KyberPublicParameters, Integer> params : kyberPublicParametersCount.entrySet()) {
+                while (collectedResults.size() <= this.serverConfiguration.getNumServers() && maxWait-- > 0)  {
+                    Map<KyberPublicParameters, Integer> countMap = new HashMap<>();
+                    for (Object result : collectedResults) {
+                        Integer count = countMap.get(result);
+                        countMap.put((KyberPublicParameters) result, count != null ? count+1 : 1);
+                    }
+
+                    for (Map.Entry<KyberPublicParameters, Integer> params : countMap.entrySet()) {
                         if (params.getValue() >= reconstructionThreshold) {
                             logger.debug("Consistency level reached.");
                             return params.getKey();
                         }
                     }
-                    logger.debug("Waiting for more servers to send config...");
-                    Thread.sleep(2000);
-                }
 
-                for (Map.Entry<KyberPublicParameters, Integer> params : kyberPublicParametersCount.entrySet()) {
-                    logger.info("CONSISTENCY LEVEL::: " + params.getValue());
-                    logger.info("RECONSTRUCTION THRESHOLD::: " + reconstructionThreshold);
-                    if (params.getValue() >= reconstructionThreshold) {
-                        logger.debug("Consistency level reached.");
-                        return params.getKey();
-                    }
+
+//                int maxWait = 10;
+//                while (kyberPublicParametersCount.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
+//                    for (Map.Entry<KyberPublicParameters, Integer> params : kyberPublicParametersCount.entrySet()) {
+//                        if (params.getValue() >= reconstructionThreshold) {
+//                            logger.debug("Consistency level reached.");
+//                            return params.getKey();
+//                        }
+//                    }
+//                    logger.debug("Waiting for more servers to send config...");
+//                    Thread.sleep(2000);
+//                }
+//
+//                for (Map.Entry<KyberPublicParameters, Integer> params : kyberPublicParametersCount.entrySet()) {
+//                    logger.info("CONSISTENCY LEVEL::: " + params.getValue());
+//                    logger.info("RECONSTRUCTION THRESHOLD::: " + reconstructionThreshold);
+//                    if (params.getValue() >= reconstructionThreshold) {
+//                        logger.debug("Consistency level reached.");
+//                        return params.getKey();
+//                    }
                 }
 
                 throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");

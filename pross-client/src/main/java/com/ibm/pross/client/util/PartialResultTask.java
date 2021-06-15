@@ -63,6 +63,7 @@ public abstract class PartialResultTask implements Runnable {
         this.maximumFailures = maximumFailures;
     }
 
+
     /**
      * For retrieving rsa public parameters
      *
