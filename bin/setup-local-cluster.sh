@@ -76,7 +76,7 @@ eval_input "$IMAGE_NAME"
 [ -z $REFRESH_FREQUENCY ] && REFRESH_FREQUENCY=60
 
 # Get IP address of docker network
-DOCKER_NET_IP=$(ip addr show dockeser0  | grep inet | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}' | head -1)
+DOCKER_NET_IP=$(ip addr show docker0  | grep inet | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}' | head -1)
 
 # Print info message
 echo "System parameters:"
