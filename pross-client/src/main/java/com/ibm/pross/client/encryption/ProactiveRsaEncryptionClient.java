@@ -331,7 +331,9 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
                     // epoch
                     if ((signatureResponse.getServerIndex().equals(BigInteger.valueOf(thisServerId))) && (epoch == expectedEpoch)) {
 
-                        verifiedResults.add(signatureResponse);
+                        synchronized (verifiedResults) {
+                            verifiedResults.add(signatureResponse);
+                        }
 
                         // Everything checked out, increment successes
                         latch.countDown();

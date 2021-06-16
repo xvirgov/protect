@@ -137,7 +137,9 @@ public class KyberKeyGenerationClient extends BaseClient {
                 protected void parseJsonResult(final String json) throws Exception {
 
                     // Store result for later processing
-                    successfulResults.add(Boolean.TRUE);
+                    synchronized (successfulResults) {
+                        successfulResults.add(Boolean.TRUE);
+                    }
 
                     // Everything checked out, increment successes
                     latch.countDown();

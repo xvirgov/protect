@@ -339,7 +339,11 @@ public class EciesEncryptionClient {
 								final EcPoint partialResult = new EcPoint(x, y);
 
 								// Store result for later processing
-								verifiedResults.add(new DerivationResult(BigInteger.valueOf(responder), partialResult));
+
+								synchronized (verifiedResults) {
+									verifiedResults.add(new DerivationResult(BigInteger.valueOf(responder), partialResult));
+
+								}
 
 								// Everything checked out, increment successes
 								latch.countDown();
@@ -440,7 +444,9 @@ public class EciesEncryptionClient {
 								final EcPoint publicKey = new EcPoint(x, y);
 
 								// Store result for later processing
-								collectedResults.add(new SimpleEntry<EcPoint, Long>(publicKey, epoch));
+								synchronized (collectedResults) {
+									collectedResults.add(new SimpleEntry<EcPoint, Long>(publicKey, epoch));
+								}
 
 								// Everything checked out, increment successes
 								latch.countDown();

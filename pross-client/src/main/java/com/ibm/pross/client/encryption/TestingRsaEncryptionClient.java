@@ -288,6 +288,7 @@ public class TestingRsaEncryptionClient extends BaseClient {
 //                        verifiedResults.add(new DerivationResult(BigInteger.valueOf(responder), partialResult));
                         verifiedResults.add(new SignatureResponse(new BigInteger(responder.toString()), decryptionShare, decryptionShareProof));
 
+
                         // Everything checked out, increment successes
                         latch.countDown();
                     } else {

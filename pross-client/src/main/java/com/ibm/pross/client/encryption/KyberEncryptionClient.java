@@ -424,7 +424,9 @@ public class KyberEncryptionClient extends BaseClient {
                     // epoch
 //                    if ((signatureResponse.getServerIndex().equals(BigInteger.valueOf(thisServerId)))) {
 
-                    verifiedResults.add(decryptionShare);
+                    synchronized (verifiedResults) {
+                        verifiedResults.add(decryptionShare);
+                    }
 
                     // Everything checked out, increment successes
                     latch.countDown();

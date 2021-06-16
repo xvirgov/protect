@@ -260,8 +260,9 @@ public class RsaEncryptionClient extends BaseClient {
                     // TODO: Separate results by their epoch, wait for enough results of the same
                     // epoch
                     if ((responder == thisServerId) && (epoch == expectedEpoch)) {
-
-                        verifiedResults.add(new SignatureResponse(new BigInteger(responder.toString()), decryptionShare, decryptionShareProof));
+                        synchronized (verifiedResults) {
+                            verifiedResults.add(new SignatureResponse(new BigInteger(responder.toString()), decryptionShare, decryptionShareProof));
+                        }
 
                         // Everything checked out, increment successes
                         latch.countDown();

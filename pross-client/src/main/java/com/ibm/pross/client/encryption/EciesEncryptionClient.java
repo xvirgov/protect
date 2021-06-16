@@ -517,7 +517,9 @@ public class EciesEncryptionClient extends BaseClient {
 						final EcPoint partialResult = siR;
 
 						// Store result for later processing
-						verifiedResults.add(new DerivationResult(BigInteger.valueOf(responder), partialResult));
+						synchronized (verifiedResults) {
+							verifiedResults.add(new DerivationResult(BigInteger.valueOf(responder), partialResult));
+						}
 
 						// Everything checked out, increment successes
 						latch.countDown();
