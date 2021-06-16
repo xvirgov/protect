@@ -269,15 +269,21 @@ public class BaseClient {
 ////                            logger.info("Equal share from agent " + publicParams.values());
 //                        }
 
-                        int maxtries = 100;
-                        while (maxtries-- > 0) {
-                            try {
-                                collectedResults.add(eciesPublicParams);
-                                break;
-                            }
-                            catch (ConcurrentModificationException ignored) {
-                            }
+                        synchronized (collectedResults) {
+                            collectedResults.add(eciesPublicParams);
                         }
+
+//                        int maxtries = 100;
+//                        while (maxtries-- > 0) {
+//                            try {
+//                                collectedResults.add(eciesPublicParams);
+//                                collectedResults.add();
+//                                break;
+//                            }
+//                            catch (ConcurrentModificationException ignored) {
+//                                logger.info("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT");
+//                            }
+//                        }
 
 
                         // Everything checked out, increment successes
@@ -559,15 +565,20 @@ public class BaseClient {
 //                        } else {
 //                            rsaPublicParametersCount.put(proactiveRsaPublicParameters, rsaPublicParametersCount.get(proactiveRsaPublicParameters) + 1);
 //                        }
-                        int maxtries = 100;
-                        while (maxtries-- > 0) {
-                            try {
-                                collectedResults.add(proactiveRsaPublicParameters);
-                                break;
-                            }
-                            catch (ConcurrentModificationException ignored) {
-                            }
+
+                        synchronized (collectedResults) {
+                            collectedResults.add(proactiveRsaPublicParameters);
                         }
+
+//                        int maxtries = 100;
+//                        while (maxtries-- > 0) {
+//                            try {
+//                                collectedResults.add(proactiveRsaPublicParameters);
+//                                break;
+//                            }
+//                            catch (ConcurrentModificationException ignored) {
+//                            }
+//                        }
 
                         // Everything checked out, increment successes
                         latch.countDown();
@@ -707,15 +718,20 @@ public class BaseClient {
 //                        } else {
 //                            kyberPublicParametersCount.put(kyberPublicParameters, kyberPublicParametersCount.get(kyberPublicParameters) + 1);
 //                        }
-                        int maxtries = 100;
-                        while (maxtries-- > 0) {
-                            try {
-                                collectedResults.add(kyberPublicParameters);
-                                break;
-                            }
-                            catch (ConcurrentModificationException ignored) {
-                            }
+
+                        synchronized (collectedResults) {
+                            collectedResults.add(kyberPublicParameters);
                         }
+
+//                        int maxtries = 100;
+//                        while (maxtries-- > 0) {
+//                            try {
+//                                collectedResults.add(kyberPublicParameters);
+//                                break;
+//                            }
+//                            catch (ConcurrentModificationException ignored) {
+//                            }
+//                        }
 
                         // Everything checked out, increment successes
                         latch.countDown();
