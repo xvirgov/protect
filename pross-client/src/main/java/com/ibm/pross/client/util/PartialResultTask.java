@@ -63,6 +63,21 @@ public abstract class PartialResultTask implements Runnable {
         this.maximumFailures = maximumFailures;
     }
 
+    public PartialResultTask(final BaseClient baseClient, final int remoteServerId, final String requestUrl,
+                             final CountDownLatch latch, final AtomicInteger failureCounter, final int maximumFailures) {
+
+        this.baseClient = baseClient;
+        // Remote server info
+        this.remoteServerId = remoteServerId;
+        this.requestUrl = requestUrl;
+
+        // State management
+        this.latch = latch;
+        this.failureCounter = failureCounter;
+        this.maximumFailures = maximumFailures;
+    }
+
+
 
     /**
      * For retrieving rsa public parameters

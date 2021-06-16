@@ -215,7 +215,7 @@ public class BaseClient {
             final int thisServerId = serverId;
 
             // Create new task to get the secret info from the server
-            executor.submit(new PartialResultTask(this, serverId, linkUrl, collectedResults, latch, failureCounter,
+            executor.submit(new PartialResultTask(this, serverId, linkUrl, latch, failureCounter,
                     maximumFailures) {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
@@ -530,6 +530,7 @@ public class BaseClient {
 
 //        final Map<ProactiveRsaPublicParameters, Integer> rsaPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
         final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
+        final List<Object> collectedResults1 = Collections.synchronizedList(new ArrayList<>());
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -697,7 +698,7 @@ public class BaseClient {
             final int thisServerId = serverId;
 
             // Create new task to get the secret info from the server
-            executor.submit(new PartialResultTask(this, serverId, linkUrl, collectedResults, latch, failureCounter,
+            executor.submit(new PartialResultTask(this, serverId, linkUrl, latch, failureCounter,
                     maximumFailures) {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
