@@ -260,16 +260,24 @@ public class BaseClient {
 
 //                        logger.info("Public params for ECIES " + eciesPublicParams);
 
-                        if (!publicParams.containsKey(eciesPublicParams)) {
-                            publicParams.put(eciesPublicParams, 1);
-//                            logger.info("Share from agent " + responder + " added a new pub value: " + eciesPublicParams.toString());
-                        } else {
-                            publicParams.put(eciesPublicParams, publicParams.get(eciesPublicParams));
-//                            logger.info("Equal share from agent " + responder);
-//                            logger.info("Equal share from agent " + publicParams.values());
-                        }
+//                        if (!publicParams.containsKey(eciesPublicParams)) {
+//                            publicParams.put(eciesPublicParams, 1);
+////                            logger.info("Share from agent " + responder + " added a new pub value: " + eciesPublicParams.toString());
+//                        } else {
+//                            publicParams.put(eciesPublicParams, publicParams.get(eciesPublicParams));
+////                            logger.info("Equal share from agent " + responder);
+////                            logger.info("Equal share from agent " + publicParams.values());
+//                        }
 
-                        collectedResults.add(eciesPublicParams);
+                        int maxtries = 100;
+                        while (maxtries-- > 0) {
+                            try {
+                                collectedResults.add(eciesPublicParams);
+                                break;
+                            }
+                            catch (ConcurrentModificationException ignored) {
+                            }
+                        }
 
 
                         // Everything checked out, increment successes
@@ -551,7 +559,15 @@ public class BaseClient {
 //                        } else {
 //                            rsaPublicParametersCount.put(proactiveRsaPublicParameters, rsaPublicParametersCount.get(proactiveRsaPublicParameters) + 1);
 //                        }
-                        collectedResults.add(proactiveRsaPublicParameters);
+                        int maxtries = 100;
+                        while (maxtries-- > 0) {
+                            try {
+                                collectedResults.add(proactiveRsaPublicParameters);
+                                break;
+                            }
+                            catch (ConcurrentModificationException ignored) {
+                            }
+                        }
 
                         // Everything checked out, increment successes
                         latch.countDown();
@@ -691,7 +707,15 @@ public class BaseClient {
 //                        } else {
 //                            kyberPublicParametersCount.put(kyberPublicParameters, kyberPublicParametersCount.get(kyberPublicParameters) + 1);
 //                        }
-                        collectedResults.add(kyberPublicParameters);
+                        int maxtries = 100;
+                        while (maxtries-- > 0) {
+                            try {
+                                collectedResults.add(kyberPublicParameters);
+                                break;
+                            }
+                            catch (ConcurrentModificationException ignored) {
+                            }
+                        }
 
                         // Everything checked out, increment successes
                         latch.countDown();
