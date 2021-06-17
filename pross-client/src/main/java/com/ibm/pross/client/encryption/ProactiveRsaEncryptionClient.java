@@ -336,7 +336,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 //                        synchronized (verifiedResults) {
 //                            verifiedResults.add(signatureResponse);
 //                        }
-                        verifiedResults.put(thisServerId, signatureResponse);
+                        verifiedResults.put(thisServerId-1, signatureResponse);
 
                         // Everything checked out, increment successes
                         latch.countDown();
@@ -357,7 +357,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             if (failureCounter.get() <= maximumFailures) {
                 executor.shutdown();
                 logger.info("Enough of shares was received, number of indices: " + verifiedResults.size());
-                return (List<Object>) verifiedResults.values();
+                return new ArrayList<>(verifiedResults.values());
             } else {
                 executor.shutdown();
                 throw new ResourceUnavailableException();

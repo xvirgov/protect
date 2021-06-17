@@ -451,7 +451,7 @@ public class KyberEncryptionClient extends BaseClient {
             if (failureCounter.get() <= maximumFailures) {
                 executor.shutdown();
                 logger.info("Enough of shares was received, number of indices: " + verifiedResults.values().size());
-                return (List<Object>) verifiedResults.values();
+                return new ArrayList<>(verifiedResults.values());
             } else {
                 executor.shutdown();
                 throw new ResourceUnavailableException();
