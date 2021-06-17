@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -383,7 +384,8 @@ public class KyberEncryptionClient extends BaseClient {
         final AtomicInteger failureCounter = new AtomicInteger(0);
         final int maximumFailures = (numShareholders - numShareholders);
 
-        final List<Object> verifiedResults = Collections.synchronizedList(new ArrayList<>());
+//        final List<Object> verifiedResults = Collections.synchronizedList(new ArrayList<>());
+        ConcurrentHashMap<Integer, Object> verifiedResults = new ConcurrentHashMap<>(numShareholders);
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -402,7 +404,8 @@ public class KyberEncryptionClient extends BaseClient {
             jMessage.put("message", KyberUtils.bytesToBase64(message));
 
             // Create new task to get the partial exponentiation result from the server
-            executor.submit(new PartialResultTask(this, serverId, linkUrl, jMessage.toJSONString() + "\n", "POST", verifiedResults, latch, failureCounter,
+            int finalServerId = serverId;
+            executor.submit(new PartialResultTask(this, finalServerId, linkUrl, jMessage.toJSONString() + "\n", "POST", latch, failureCounter,
                     maximumFailures) {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
@@ -424,9 +427,10 @@ public class KyberEncryptionClient extends BaseClient {
                     // epoch
 //                    if ((signatureResponse.getServerIndex().equals(BigInteger.valueOf(thisServerId)))) {
 
-                    synchronized (verifiedResults) {
-                        verifiedResults.add(decryptionShare);
-                    }
+                    verifiedResults.put(finalServerId -1, decryptionShare);
+//                    synchronized (verifiedResults) {
+//                        verifiedResults.add(decryptionShare);
+//                    }
 
                     // Everything checked out, increment successes
                     latch.countDown();
@@ -446,8 +450,8 @@ public class KyberEncryptionClient extends BaseClient {
             // Check that we have enough results to interpolate the share
             if (failureCounter.get() <= maximumFailures) {
                 executor.shutdown();
-                logger.info("Enough of shares was received, number of indices: " + verifiedResults.size());
-                return verifiedResults;
+                logger.info("Enough of shares was received, number of indices: " + verifiedResults.values().size());
+                return (List<Object>) verifiedResults.values();
             } else {
                 executor.shutdown();
                 throw new ResourceUnavailableException();

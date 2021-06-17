@@ -16,6 +16,7 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -199,9 +200,11 @@ public class BaseClient {
         // consistent
         // TODO: Add verification via proofs
 //        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
-        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
+//        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
 //        final Map<EciesPublicParams, Integer> publicParams = Collections.synchronizedMap(new HashMap<>());
-        final Map<EciesPublicParams, Integer> publicParams = Collections.synchronizedMap(new HashMap<>());
+//        final Map<EciesPublicParams, Integer> publicParams = Collections.synchronizedMap(new HashMap<>());
+
+        ConcurrentHashMap<Integer, Object> collectedResultsMap = new ConcurrentHashMap<>(numShareholders);
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -269,9 +272,15 @@ public class BaseClient {
 ////                            logger.info("Equal share from agent " + publicParams.values());
 //                        }
 
-                        synchronized (collectedResults) {
-                            collectedResults.add(eciesPublicParams);
-                        }
+                        collectedResultsMap.put((int) (responder-1), eciesPublicParams);
+
+//                        try {
+//                            synchronized (collectedResults) {
+//                                collectedResults.add(eciesPublicParams);
+//                            }
+//                        } catch (ConcurrentModificationException ex) {
+//                            logger.info("CALLED WHEN GETTING pub vals " + ex);
+//                        }
 
 //                        int maxtries = 100;
 //                        while (maxtries-- > 0) {
@@ -316,9 +325,9 @@ public class BaseClient {
 //                        .stream()
 //                        .max(Map.Entry.comparingByValue()).get().getValue() >= reconstructionThreshold)
 
-                while (collectedResults.size() <= this.serverConfiguration.getNumServers() && maxWait-- > 0)  {
+                while (collectedResultsMap.size() <= this.serverConfiguration.getNumServers() && maxWait-- > 0)  {
                     Map<EciesPublicParams, Integer> countMap = new HashMap<>();
-                    for (Object result : collectedResults) {
+                    for (Object result : collectedResultsMap.values()) {
                         Integer count = countMap.get(result);
                         countMap.put((EciesPublicParams) result, count != null ? count+1 : 1);
                     }
@@ -330,7 +339,7 @@ public class BaseClient {
                         }
                     }
 
-                    if (collectedResults.size() == this.serverConfiguration.getNumServers())
+                    if (collectedResultsMap.values().size() == this.serverConfiguration.getNumServers())
                         throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
                 }
 //                while (publicParams.values().stream().reduce(0, Integer::sum) < this.serverConfiguration.getNumServers() && maxWait-- > 0) {
@@ -529,8 +538,9 @@ public class BaseClient {
         // consistent
 
 //        final Map<ProactiveRsaPublicParameters, Integer> rsaPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
-        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
-        final List<Object> collectedResults1 = Collections.synchronizedList(new ArrayList<>());
+//        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
+//        final List<Object> collectedResults1 = Collections.synchronizedList(new ArrayList<>());
+        ConcurrentHashMap<Integer, Object> collectedResultsMap = new ConcurrentHashMap<>(numShareholders);
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -545,7 +555,7 @@ public class BaseClient {
             final int thisServerId = serverId;
 
             // Create new task to get the secret info from the server
-            executor.submit(new PartialResultTask(this, serverId, linkUrl, collectedResults, latch, failureCounter,
+            executor.submit(new PartialResultTask(this, serverId, linkUrl, latch, failureCounter,
                     maximumFailures)  {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
@@ -567,9 +577,11 @@ public class BaseClient {
 //                            rsaPublicParametersCount.put(proactiveRsaPublicParameters, rsaPublicParametersCount.get(proactiveRsaPublicParameters) + 1);
 //                        }
 
-                        synchronized (collectedResults) {
-                            collectedResults.add(proactiveRsaPublicParameters);
-                        }
+                        collectedResultsMap.put((int) (responder-1), proactiveRsaPublicParameters);
+
+//                        synchronized (collectedResults) {
+//                            collectedResults.add(proactiveRsaPublicParameters);
+//                        }
 
 //                        int maxtries = 100;
 //                        while (maxtries-- > 0) {
@@ -601,9 +613,9 @@ public class BaseClient {
                 // Use the config which was returned by more than threshold number of servers
 
                 int maxWait = 10;
-                while (collectedResults.size() <= this.serverConfiguration.getNumServers() && maxWait-- > 0)  {
+                while (collectedResultsMap.values().size() <= this.serverConfiguration.getNumServers() && maxWait-- > 0)  {
                     Map<ProactiveRsaPublicParameters, Integer> countMap = new HashMap<>();
-                    for (Object result : collectedResults) {
+                    for (Object result : collectedResultsMap.values()) {
                         Integer count = countMap.get(result);
                         countMap.put((ProactiveRsaPublicParameters) result, count != null ? count+1 : 1);
                     }
@@ -615,7 +627,7 @@ public class BaseClient {
                         }
                     }
 
-                    if (collectedResults.size() == this.serverConfiguration.getNumServers())
+                    if (collectedResultsMap.values().size() == this.serverConfiguration.getNumServers())
                         throw new BelowThresholdException("Timeout: insufficient consistency to permit recovery (below threshold)");
                 }
 
@@ -683,7 +695,9 @@ public class BaseClient {
         // consistent
 
 //        final Map<KyberPublicParameters, Integer> kyberPublicParametersCount = Collections.synchronizedMap(new HashMap<>());
-        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
+//        final List<Object> collectedResults = Collections.synchronizedList(new ArrayList<>());
+
+        ConcurrentHashMap<Integer, Object> collectedResultsMap = new ConcurrentHashMap<>(numShareholders);
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -720,9 +734,11 @@ public class BaseClient {
 //                            kyberPublicParametersCount.put(kyberPublicParameters, kyberPublicParametersCount.get(kyberPublicParameters) + 1);
 //                        }
 
-                        synchronized (collectedResults) {
-                            collectedResults.add(kyberPublicParameters);
-                        }
+                        collectedResultsMap.put((int) (responder-1), kyberPublicParameters);
+
+//                        synchronized (collectedResults) {
+//                            collectedResults.add(kyberPublicParameters);
+//                        }
 
 //                        int maxtries = 100;
 //                        while (maxtries-- > 0) {
@@ -754,9 +770,9 @@ public class BaseClient {
                 // Use the config which was returned by more than threshold number of servers
 
                 int maxWait = 10;
-                while (collectedResults.size() <= this.serverConfiguration.getNumServers() && maxWait-- > 0)  {
+                while (collectedResultsMap.values().size() <= this.serverConfiguration.getNumServers() && maxWait-- > 0)  {
                     Map<KyberPublicParameters, Integer> countMap = new HashMap<>();
-                    for (Object result : collectedResults) {
+                    for (Object result : collectedResultsMap.values()) {
                         Integer count = countMap.get(result);
                         countMap.put((KyberPublicParameters) result, count != null ? count+1 : 1);
                     }

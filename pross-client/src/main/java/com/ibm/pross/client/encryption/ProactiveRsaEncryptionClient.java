@@ -36,6 +36,7 @@ import java.security.*;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -295,7 +296,8 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
         final AtomicInteger failureCounter = new AtomicInteger(0);
         final int maximumFailures = (numShareholders - reconstructionThreshold);
 
-        final List<Object> verifiedResults = Collections.synchronizedList(new ArrayList<>());
+//        final List<Object> verifiedResults = Collections.synchronizedList(new ArrayList<>());
+        ConcurrentHashMap<Integer, Object> verifiedResults = new ConcurrentHashMap<>(numShareholders);
 
         // Create a partial result task for everyone except ourselves
         int serverId = 0;
@@ -311,7 +313,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             final int thisServerId = serverId;
 
             // Create new task to get the partial exponentiation result from the server
-            executor.submit(new PartialResultTask(this, serverId, linkUrl, verifiedResults, latch, failureCounter,
+            executor.submit(new PartialResultTask(this, serverId, linkUrl, latch, failureCounter,
                     maximumFailures) {
                 @Override
                 protected void parseJsonResult(final String json) throws Exception {
@@ -331,9 +333,10 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
                     // epoch
                     if ((signatureResponse.getServerIndex().equals(BigInteger.valueOf(thisServerId))) && (epoch == expectedEpoch)) {
 
-                        synchronized (verifiedResults) {
-                            verifiedResults.add(signatureResponse);
-                        }
+//                        synchronized (verifiedResults) {
+//                            verifiedResults.add(signatureResponse);
+//                        }
+                        verifiedResults.put(thisServerId, signatureResponse);
 
                         // Everything checked out, increment successes
                         latch.countDown();
@@ -354,7 +357,7 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
             if (failureCounter.get() <= maximumFailures) {
                 executor.shutdown();
                 logger.info("Enough of shares was received, number of indices: " + verifiedResults.size());
-                return verifiedResults;
+                return (List<Object>) verifiedResults.values();
             } else {
                 executor.shutdown();
                 throw new ResourceUnavailableException();

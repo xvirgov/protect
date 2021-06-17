@@ -49,6 +49,22 @@ public abstract class PartialResultTask implements Runnable {
         this.maximumFailures = maximumFailures;
     }
 
+    public PartialResultTask(final BaseClient baseClient, final int remoteServerId, final String requestUrl, final String requestBody, final String requestType,
+                             final CountDownLatch latch, final AtomicInteger failureCounter, final int maximumFailures) {
+
+        this.requestBody = requestBody;
+        this.baseClient = baseClient;
+        // Remote server info
+        this.remoteServerId = remoteServerId;
+        this.requestUrl = requestUrl;
+        this.requestType = requestType;
+
+        // State management
+        this.latch = latch;
+        this.failureCounter = failureCounter;
+        this.maximumFailures = maximumFailures;
+    }
+
     public PartialResultTask(final BaseClient baseClient, final int remoteServerId, final String requestUrl, final List<Object> verifiedResults,
                              final CountDownLatch latch, final AtomicInteger failureCounter, final int maximumFailures) {
 
@@ -117,6 +133,7 @@ public abstract class PartialResultTask implements Runnable {
         this.failureCounter = failureCounter;
         this.maximumFailures = maximumFailures;
     }
+
 
     public PartialResultTask(final BaseClient baseClient, final int remoteServerId, final String requestUrl, final Map<KyberPublicParameters, Integer> verifiedResultsCounter,
                              final CountDownLatch latch, final AtomicInteger failureCounter, final int maximumFailures, long epoch, boolean tmp) {

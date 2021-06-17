@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.SortedMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -411,7 +412,8 @@ public class EciesEncryptionClient extends BaseClient {
 		// Each task deposits its result into this map after verifying it is correct and
 		// consistent
 		// TODO: Add verification via proofs
-		final List<Object> verifiedResults = Collections.synchronizedList(new ArrayList<>());
+//		final List<Object> verifiedResults = Collections.synchronizedList(new ArrayList<>());
+		ConcurrentHashMap<Integer, Object> verifiedResults = new ConcurrentHashMap<>(numShareholders);
 
 		// Create a partial result task for everyone except ourselves
 		int serverId = 0;
@@ -455,7 +457,7 @@ public class EciesEncryptionClient extends BaseClient {
 			final int thisServerId = serverId;
 
 			// Create new task to get the partial exponentiation result from the server
-			executor.submit(new PartialResultTask(this, serverId, linkUrl, verifiedResults, latch, failureCounter,
+			executor.submit(new PartialResultTask(this, serverId, linkUrl, latch, failureCounter,
 					maximumFailures) {
 				@Override
 				protected void parseJsonResult(final String json) throws Exception {
@@ -517,9 +519,10 @@ public class EciesEncryptionClient extends BaseClient {
 						final EcPoint partialResult = siR;
 
 						// Store result for later processing
-						synchronized (verifiedResults) {
-							verifiedResults.add(new DerivationResult(BigInteger.valueOf(responder), partialResult));
-						}
+//						synchronized (verifiedResults) {
+//							verifiedResults.add(new DerivationResult(BigInteger.valueOf(responder), partialResult));
+//						}
+						verifiedResults.put((int) (responder-1), new DerivationResult(BigInteger.valueOf(responder), partialResult));
 
 						// Everything checked out, increment successes
 						latch.countDown();
@@ -541,7 +544,7 @@ public class EciesEncryptionClient extends BaseClient {
 
 				logger.info("Collected sufficient amount of shares");
 
-				List<DerivationResult> results = verifiedResults.stream().map(obj -> createDerivationResult(obj))
+				List<DerivationResult> results = verifiedResults.values().stream().map(EciesEncryptionClient::createDerivationResult)
 						.collect(Collectors.toList());
 				long start = System.nanoTime();
 				// When complete, interpolate the result at zero (where the secret lies)
