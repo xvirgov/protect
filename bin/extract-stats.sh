@@ -103,6 +103,8 @@ KYBER_MEASUREMENTS=(
   # Dec
   KyberDecEnd
 
+  KyberDecShareTotal
+
   KyberDecCombineAdd
   KyberDecCombineHashG
   KyberDecCombineEnc
