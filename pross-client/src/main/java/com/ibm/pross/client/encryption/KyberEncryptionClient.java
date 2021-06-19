@@ -167,12 +167,8 @@ public class KyberEncryptionClient extends BaseClient {
             end = System.nanoTime();
             logger.info("PerfMeas:KyberEncSym:" + (end - start));
 
-            logger.info("Computing hash of plaintext...");
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            final byte[] hash = digest.digest(message);
-            logger.info("[DONE]");
 
-            byte[] concatenatedAesParams = Parse.concatenate(result, hash);
+            byte[] concatenatedAesParams = Parse.concatenate(result);
 
             // concat encryption of m, and AES encryption of plaintext
 
@@ -216,7 +212,7 @@ public class KyberEncryptionClient extends BaseClient {
 
         byte[][] concatenatedAesParams = Parse.splitArrays(parts[0]);
         byte[] aesCiphertextData = concatenatedAesParams[0];
-        byte[] plaintextHash = concatenatedAesParams[1];
+//        byte[] plaintextHash = concatenatedAesParams[1];
 
         KyberCiphertext kyberCiphertext = KyberCiphertext.getCiphertext(parts[1]);
 
@@ -301,13 +297,13 @@ public class KyberEncryptionClient extends BaseClient {
         end = System.nanoTime();
         logger.info("PerfMeas:KyberDecCombineSym:" + (end - start));
 
-        logger.info("Checking hash of recovered plaintext...");
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        final byte[] hash = digest.digest(resultPlaintext);
-        if (!Arrays.equals(hash, plaintextHash)) {
-            throw new RuntimeException("Hashes of plaintexts don't match!");
-        }
-        logger.info("[DONE]");
+//        logger.info("Checking hash of recovered plaintext...");
+//        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+//        final byte[] hash = digest.digest(resultPlaintext);
+//        if (!Arrays.equals(hash, plaintextHash)) {
+//            throw new RuntimeException("Hashes of plaintexts don't match!");
+//        }
+//        logger.info("[DONE]");
 
         return resultPlaintext;
 
