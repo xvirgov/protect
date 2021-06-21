@@ -480,6 +480,11 @@ public class KyberEncryptionClient extends BaseClient {
 
         logger.info("PerfMeas:KyberEncEnd:" + (end - start));
 
+        logger.info("PerfMeas:KyberEncCiphertextBytes:" + hybridCiphertext.length);
+//        logger.info("PerfMeas:KyberEncPkMatBits:" + (kyberPublicParameters.getPk().size()*kyberPublicParameters.getPk().get(0).poly.length*Short.BYTES*8 + kyberPublicParameters.getAtCombined().matrix.size()*kyberPublicParameters.getAtCombined().matrix.get(0).size()*kyberPublicParameters.getAtCombined().matrix.get(0).get(0).poly.length)*Short.BYTES*8);
+        logger.info("PerfMeas:KyberEncPkBits:" + (kyberPublicParameters.getPk().size()*kyberPublicParameters.getPk().get(0).poly.length*Short.BYTES*8));
+
+
         logger.info("[ENCRYPTION FINISHED]");
 
         return hybridCiphertext;

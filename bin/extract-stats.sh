@@ -21,6 +21,9 @@ ECIES_MEASUREMENTS=(
   EciesEncSymmCompute
   EciesEncMacCompute
 
+  EciesEncCiphertextBytes
+  EciesEncPkBits
+
   # Dec
   EciesDecEnd
 
@@ -59,6 +62,9 @@ RSA_MEASUREMENTS=(
   RsaEncHash
   RsaEncPad
   RsaEncExp
+
+  RsaEncCiphertextBytes
+  RsaEncPkBits
 
   # Dec
   RsaDecEnd
@@ -99,6 +105,9 @@ KYBER_MEASUREMENTS=(
   KyberEncCpa
   KyberEncKdf
   KyberEncSym
+
+  KyberEncCiphertextBytes
+  KyberEncPkBits
 
   # Dec
   KyberDecEnd

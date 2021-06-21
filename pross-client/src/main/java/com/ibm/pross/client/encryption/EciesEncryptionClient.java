@@ -221,6 +221,8 @@ public class EciesEncryptionClient extends BaseClient {
 		end = System.nanoTime();
 
 		logger.info("PerfMeas:EciesEncEnd:" + (end - start));
+		logger.info("PerfMeas:EciesEncCiphertextBytes:" + ciphertext.length);
+		logger.info("PerfMeas:EciesEncPkBits:" + (publicKey.getX().bitLength() + publicKey.getY().bitLength()));
 
 //		logger.info(" (done)");
 //		logger.info("Encrypted length " + ciphertext.length + " bytes.");

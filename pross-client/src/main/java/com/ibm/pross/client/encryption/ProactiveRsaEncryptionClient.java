@@ -387,6 +387,9 @@ public class ProactiveRsaEncryptionClient extends BaseClient {
 
         logger.info("[DONE]");
 
+        logger.info("PerfMeas:RsaEncCiphertextBytes:" + hybridCiphertext.length);
+        logger.info("PerfMeas:RsaEncPkBits:" + (rsaPublicParameters.getPublicKey().getModulus().bitLength() + rsaPublicParameters.getPublicKey().getPublicExponent().bitLength()));
+
         return hybridCiphertext;
     }
 
