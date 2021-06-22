@@ -59,12 +59,12 @@ public class ServerConfigurationLoader {
 			CommonConfiguration.KYBER_K = 3;
 		}
 		else if (securityLevel == 192) {
-			CommonConfiguration.RSA_KEY_SIZE = 4096;
+			CommonConfiguration.RSA_KEY_SIZE = 7680;
 			CommonConfiguration.CURVE = EcCurveBc.createByName(EcCurve.secp384r1.getName());
 			CommonConfiguration.KYBER_K = 3;
 		}
 		else if (securityLevel == 256) {
-			CommonConfiguration.RSA_KEY_SIZE = 4096;
+			CommonConfiguration.RSA_KEY_SIZE = 7680;
 			CommonConfiguration.CURVE = EcCurveBc.createByName(EcCurve.secp521r1.getName());
 			CommonConfiguration.KYBER_K = 4;
 		}
