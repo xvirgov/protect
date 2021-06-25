@@ -56,36 +56,59 @@ public class ServerApplication {
 			throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, InterruptedException,
 			CertificateException, KeyManagementException, UnrecoverableKeyException, KeyStoreException {
 
+		long overall_start, overall_end;
+		long start, end;
+
 		// Load configuration
+		overall_start = System.nanoTime();
+		start = System.nanoTime();
 		final File configFile = new File(baseDirectory, CONFIG_FILENAME);
 		final ServerConfiguration configuration = ServerConfigurationLoader.load(configFile);
 		logger.info(configuration);
+		end = System.nanoTime();
+		logger.info("PerfMeas:InitConfigLoad:"+ (end-start));
 
 		// Load server keys
+		start = System.nanoTime();
 		final File keysDirectory = new File(baseDirectory, SERVER_KEYS_DIRECTORY);
 		final KeyLoader serverKeys = new KeyLoader(keysDirectory, configuration.getNumServers(), serverIndex);
+		end = System.nanoTime();
 		logger.info("Loaded encryption and verification keys");
+		logger.info("PerfMeas:InitServerKeysLoad:"+ (end-start));
 
 		// Load Client Access Controls
+		start = System.nanoTime();
 		final AccessEnforcement accessEnforcement = ClientPermissionLoader.loadIniFile(new File(baseDirectory, AUTH_DIRECTORY));
+		end = System.nanoTime();
+		logger.info("PerfMeas:InitAccessControlLoad:"+ (end-start));
 
 		// Setup persistent state for message broadcast and processing
+		start = System.nanoTime();
 		final List<InetSocketAddress> serverAddresses = configuration.getServerAddresses();
 		final File saveDir = new File(baseDirectory, SAVE_DIRECTORY);
 		final File serverSaveDir = new File(saveDir, "server-" + serverIndex);
 		serverSaveDir.mkdirs();
+		end = System.nanoTime();
+		logger.info("PerfMeas:InitPersistState:"+ (end-start));
 
 		// Wait for messages and begin processing them as they arrive
+		start = System.nanoTime();
 		final int myPort = configuration.getServerAddresses().get(serverIndex - 1).getPort();
 		final MessageReceiver messageReceiver = new MessageReceiver(myPort);
 		messageReceiver.start();
 		logger.info("Listening on port: " + myPort);
+		end = System.nanoTime();
+		logger.info("PerfMeas:InitMessageReceiver:"+ (end-start));
 
 		// Perform basic benchmark before starting up
 		logger.info("Benchmarking Algorithms: ");
+		start = System.nanoTime();
 		BenchmarkCli.runAllBenchmarks();
+		end = System.nanoTime();
+		logger.info("PerfMeas:InitBench:"+ (end-start));
 
 		// Create message handler for the Certified Chain
+		start = System.nanoTime();
 		final int optQuorum = (configuration.getNumServers() - configuration.getMaxLivenessFaults());
 		final ChainBuildingMessageHandler chainBuilder = new ChainBuildingMessageHandler(serverIndex, optQuorum,
 				serverKeys, serverSaveDir);
@@ -94,8 +117,11 @@ public class ServerApplication {
 		final MessageDeliveryManager messageManager = new MessageDeliveryManager(serverAddresses, serverIndex,
 				serverKeys, serverSaveDir, chainBuilder, messageReceiver);
 		chainBuilder.setMessageManager(messageManager);
+		end = System.nanoTime();
+		logger.info("PerfMeas:InitBftChannel:"+ (end-start));
 
 		// Create Shareholder for each secret to be maintained
+		start = System.nanoTime();
 		final ConcurrentMap<String, ApvssShareholder> shareholders = new ConcurrentHashMap<>();
 		final int n = configuration.getNumServers();
 		final int k = configuration.getReconstructionThreshold();
@@ -107,6 +133,8 @@ public class ServerApplication {
 			shareholder.start(false); // Start the message processing thread but don't start the DKG
 			shareholders.put(secretName, shareholder);
 		}
+		end = System.nanoTime();
+		logger.info("PerfMeas:InitSecrets:"+ (end-start));
 
 		// Wait for BFT to setup
 		while (!chainBuilder.isBftReady()) {
@@ -115,6 +143,7 @@ public class ServerApplication {
 		logger.info("BFT ready.");
 
 		// Load certificates to support TLS
+		start = System.nanoTime();
 		final File caDirectory = new File(baseDirectory, CA_DIRECTORY);
 		final File certDirectory = new File(baseDirectory, CERTS_DIRECTORY);
 		final File hostCertificateFile = new File(certDirectory, "cert-" + serverIndex);
@@ -131,10 +160,18 @@ public class ServerApplication {
 		final File clientKeysDirectory = new File(baseDirectory, CLIENT_KEYS_DIRECTORY);
 		final KeyLoader clientKeys = new KeyLoader(clientKeysDirectory, accessEnforcement.getKnownUsers());
 		logger.info("Loaded client keys");
+		end = System.nanoTime();
+		logger.info("PerfMeas:InitTlsKeys:"+ (end-start));
 
+		start = System.nanoTime();
 		// Start server to process client requests
 		final HttpRequestProcessor requestProcessor = new HttpRequestProcessor(serverIndex, configuration,
 				accessEnforcement, shareholders, caCerts, hostCert, serverKeys.getTlsKey(), clientKeys, serverKeys);
+		end = System.nanoTime();
+		logger.info("PerfMeas:InitTlsSessions:"+ (end-start));
+		overall_end = System.nanoTime();
+		logger.info("PerfMeas:InitOverall:"+ (overall_end-overall_start));
+
 		requestProcessor.start();
 
 	}

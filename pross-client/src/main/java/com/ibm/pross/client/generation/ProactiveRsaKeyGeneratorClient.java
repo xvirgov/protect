@@ -97,6 +97,10 @@ public class ProactiveRsaKeyGeneratorClient extends BaseClient {
         logger.info("PerfMeas:RsaStoreEnd:" + (end - start));
         logger.info("PerfMeas:RsaGenTotal:" + (end_total - start_total));
 
+        // Calculate overall size
+
+
+
         return stored;
     }
 

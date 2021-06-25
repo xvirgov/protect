@@ -1,12 +1,13 @@
 package com.ibm.pross.client.perf;
 
-import com.ibm.pross.client.encryption.ProactiveRsaEncryptionClient;
+import com.ibm.pross.common.config.CommonConfiguration;
 import com.ibm.pross.common.util.Exponentiation;
+import com.ibm.pross.common.util.Primes;
 import com.ibm.pross.common.util.RandomNumberGenerator;
 import com.ibm.pross.common.util.SecretShare;
+import com.ibm.pross.common.util.crypto.kyber.Kyber;
+import com.ibm.pross.common.util.crypto.kyber.KyberKeyPair;
 import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaGenerator;
-import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaPublicParameters;
-import com.ibm.pross.common.util.crypto.rsa.threshold.proactive.ProactiveRsaShareholder;
 import com.ibm.pross.common.util.shamir.Polynomials;
 import com.ibm.pross.common.util.shamir.Shamir;
 import org.junit.Test;
@@ -27,7 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class RsaGenThresTest {
+public class KyberGenOperationTest {
     /*** Important stats
      * increasing number of agents increases generation time
      * the variation is not important - shown in prev graphs
@@ -54,85 +55,167 @@ public class RsaGenThresTest {
     final List<BigInteger> moduli = Arrays.asList(p_1536.multiply(q_1536), p_2048.multiply(q_2048), p_3840.multiply(q_3840));
     final List<BigInteger> totients = Arrays.asList(p_1536.subtract(BigInteger.ONE).multiply(q_1536.subtract(BigInteger.ONE)), p_2048.subtract(BigInteger.ONE).multiply(q_2048.subtract(BigInteger.ONE)), p_3840.subtract(BigInteger.ONE).multiply(q_3840.subtract(BigInteger.ONE)));
     final int iterations = Integer.parseInt(System.getProperty("iterations"));
-//    final int iterations = 3;
+//    final int iterations = 100;
     final int startIter = 0;
     final int total_iterations =  iterations + startIter;
     final BigInteger e = BigInteger.valueOf(65537);
     List<Integer> numServersChoice = Arrays.asList(10, 20, 30);
     List<Double> thresChoice = Arrays.asList(0.5, 0.75, 1.0);
     long start, end;
-    int maxAgents = 10;
+    int maxAgents = 30;
     int minAgents = 10;
     int step = 10;
-
+    int numServers = 10;
+    int threshold = 10;
     List<Integer> securityLevels = Arrays.asList(128, 192);
 
     @Test
     public void testOverallThresh() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
-
-//        // 3076 bits
-//        BigInteger p = primes.get(0);
-//        BigInteger q = primes.get(1);
-
-//        String firstLine = "";
-//        for (int thres = 10; thres <= 100; thres = thres + 10) {
-//            if (thres > 10)
-//                firstLine = firstLine.concat(",");
-//            firstLine = firstLine.concat(String.valueOf(thres));
-//        }
-//        firstLine = firstLine.concat("\n");
-//
-//        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-//            bw.write(firstLine);
-//        }
-
         for (int sl = 0; sl < securityLevels.size(); sl++) {
-            BigInteger p = primes.get(2 * sl);
-            BigInteger q = primes.get(2 * sl + 1);
-            for (int numServers = 10; numServers <= maxAgents; numServers += 10) {
-                for (int thres = 50; thres <= 100; thres = thres + 10) {
-                    int threshold = (int) ((double) numServers * ((double) thres / 100));
+            int kyber_k = 2 + sl;
+            Kyber.KYBER_K = sl + 2;
 
-                    File file1 = new File("RsaGenThresTest-" + numServers + "-" + threshold + "-" + securityLevels.get(sl) +".csv");
-                    file1.delete();
+            File file1 = new File("KyberGenOperationTest-" + securityLevels.get(sl) + ".csv");
+            file1.delete();
 
-//                BigInteger accu = BigInteger.ZERO;
-                    StringBuilder line = new StringBuilder();
-                    for (int it = 0; it <= total_iterations; it++) {
+            StringBuilder line = new StringBuilder();
 
-                        start = System.nanoTime();
-                        ProactiveRsaGenerator.generateProactiveRsa(numServers,
-                                threshold,
-                                p.bitLength()*2,
-                                ProactiveRsaGenerator.DEFAULT_PARAMETER_R,
-                                ProactiveRsaGenerator.DEFAULT_TAU,
-                                p,
-                                q);
-                        end = System.nanoTime();
+            BigInteger realD = BigInteger.ZERO;
+            BigInteger m = BigInteger.ZERO;
+            BigInteger n = BigInteger.ZERO;
+            BigInteger e = BigInteger.ZERO;
+            BigInteger g = BigInteger.ZERO;
 
-//                    if (it >= startIter) {
-//                        accu = accu.add(BigInteger.valueOf(end - start));
-//                    }
+            // 1. Kyber key
+            for (int it = 0; it < total_iterations; it++) {
+                start = System.nanoTime();
 
-                        if (it > startIter)
-                            line.append(",");
-                        if (it >= startIter)
-                            line.append(end - start);
+                List<KyberKeyPair> keyPairs = new ArrayList<>();
+                for(int i = 0; i < numServers; i++) {
+                    keyPairs.add(Kyber.indcpa_keypair());
+                }
+                // generate A, At
+                List<Kyber.Matrix> as = new ArrayList<>();
+                List<Kyber.Matrix> ats = new ArrayList<>();
+                for(int i = 0; i < numServers; i++) {
+                    as.add(Kyber.gen_matrix(keyPairs.get(i).getPublicSeed(), false));
+                    ats.add(Kyber.gen_matrix(keyPairs.get(i).getPublicSeed(), true));
+                }
+
+                List<Kyber.Polynomial> sk = new ArrayList<>();
+                for(int i = 0; i < kyber_k; i++) {
+                    sk.add(new Kyber.Polynomial(new short[Kyber.KYBER_N]));
+                }
+
+                // initialize matrices
+                List<List<Kyber.Polynomial>> aAccuList = new ArrayList<>();
+                List<List<Kyber.Polynomial>> atAccuList = new ArrayList<>();
+                for(int i = 0; i < kyber_k; i++) {
+                    List<Kyber.Polynomial> r = new ArrayList<>();
+                    List<Kyber.Polynomial> rt = new ArrayList<>();
+                    for(int j = 0; j < kyber_k; j++) {
+                        r.add(new Kyber.Polynomial(new short[Kyber.KYBER_N]));
+                        rt.add(new Kyber.Polynomial(new short[Kyber.KYBER_N]));
                     }
+                    aAccuList.add(r);
+                    atAccuList.add(rt);
+                }
 
-                    try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
-                        bw.write(line.toString());
-//                    if (thres > 10)
-//                        bw.write(",");
-//
-//                    bw.write(String.valueOf(accu.divide(BigInteger.valueOf(iterations))));
-//
-//                    if (thres == 100)
-//                        bw.write("\n");
+                Kyber.Matrix aCombined = new Kyber.Matrix(aAccuList);
+                Kyber.Matrix atCombined = new Kyber.Matrix(atAccuList);
+
+                for(int i = 0; i < numServers; i++) {
+                    for(int j = 0; j < kyber_k; j++) {
+                        aCombined.matrix.set(j, Kyber.polyvec_add(aCombined.matrix.get(j), as.get(i).matrix.get(j)));
+                        atCombined.matrix.set(j, Kyber.polyvec_add(atCombined.matrix.get(j), ats.get(i).matrix.get(j)));
                     }
+                }
 
+                for(int i = 0; i < numServers; i++) {
+                    sk = Kyber.polyvec_add(sk, keyPairs.get(i).getSk());
+                }
+
+                end = System.nanoTime();
+
+                if (it > startIter)
+                    line.append(",");
+                if (it >= startIter)
+                    line.append(end - start);
+            }
+            line.append("\n");
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+                bw.write(line.toString());
+            }
+
+            line.setLength(0);
+            List<KyberKeyPair> keyPairs = new ArrayList<>();
+            for(int i = 0; i < numServers; i++) {
+                keyPairs.add(Kyber.indcpa_keypair());
+            }
+
+            // generate A, At
+            List<Kyber.Matrix> as = new ArrayList<>();
+            List<Kyber.Matrix> ats = new ArrayList<>();
+            for(int i = 0; i < numServers; i++) {
+                as.add(Kyber.gen_matrix(keyPairs.get(i).getPublicSeed(), false));
+                ats.add(Kyber.gen_matrix(keyPairs.get(i).getPublicSeed(), true));
+            }
+
+            List<Kyber.Polynomial> sk = new ArrayList<>();
+            for(int i = 0; i < kyber_k; i++) {
+                sk.add(new Kyber.Polynomial(new short[Kyber.KYBER_N]));
+            }
+
+            // initialize matrices
+            List<List<Kyber.Polynomial>> aAccuList = new ArrayList<>();
+            List<List<Kyber.Polynomial>> atAccuList = new ArrayList<>();
+            for(int i = 0; i < kyber_k; i++) {
+                List<Kyber.Polynomial> r = new ArrayList<>();
+                List<Kyber.Polynomial> rt = new ArrayList<>();
+                for(int j = 0; j < kyber_k; j++) {
+                    r.add(new Kyber.Polynomial(new short[Kyber.KYBER_N]));
+                    rt.add(new Kyber.Polynomial(new short[Kyber.KYBER_N]));
+                }
+                aAccuList.add(r);
+                atAccuList.add(rt);
+            }
+
+            Kyber.Matrix aCombined = new Kyber.Matrix(aAccuList);
+            Kyber.Matrix atCombined = new Kyber.Matrix(atAccuList);
+
+            for(int i = 0; i < numServers; i++) {
+                for(int j = 0; j < kyber_k; j++) {
+                    aCombined.matrix.set(j, Kyber.polyvec_add(aCombined.matrix.get(j), as.get(i).matrix.get(j)));
+                    atCombined.matrix.set(j, Kyber.polyvec_add(atCombined.matrix.get(j), ats.get(i).matrix.get(j)));
                 }
             }
+
+            for(int i = 0; i < numServers; i++) {
+                sk = Kyber.polyvec_add(sk, keyPairs.get(i).getSk());
+            }
+
+
+            // 2. split key
+            for (int it = 0; it < total_iterations; it++) {
+                start = System.nanoTime();
+
+                KyberKeyPair kyberKeyPairAfter = Kyber.indcpa_keypair_from_sk(aCombined, sk);
+
+                end = System.nanoTime();
+
+                if (it > startIter)
+                    line.append(",");
+                if (it >= startIter)
+                    line.append(end - start);
+            }
+            line.append("\n");
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true))) {
+                bw.write(line.toString());
+            }
+
+            line.setLength(0);
         }
     }
 

@@ -57,7 +57,6 @@ public class SharingState {
 
 	// Used to time operation
 	private volatile long startTime;
-
 	// Proactive RSA parameters
 	private final SortedMap<Long, ProactiveRsaSharing> receivedProactiveRsaSharings;
 	private final SortedMap<Long, PolynomialSharing> receivedPolynomialSharings;

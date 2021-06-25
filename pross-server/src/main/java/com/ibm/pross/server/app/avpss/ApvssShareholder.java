@@ -46,6 +46,8 @@ import org.apache.logging.log4j.Logger;
 
 public class ApvssShareholder {
 
+    private volatile long startCommunication;
+
     // Group Constants
     public static final EcCurve curve = CommonConfiguration.CURVE;
     public static final EcPoint g = CommonConfiguration.g;
@@ -337,6 +339,8 @@ public class ApvssShareholder {
             final String channelName = this.secretName;
             final Message publicSharingMessage = new Message(channelName, this.index, payload);
 //            logger.info(publicSharingMessage);
+
+            this.setStartCommunication(System.nanoTime());
             this.channel.send(publicSharingMessage);
 
             return true;
@@ -424,6 +428,7 @@ public class ApvssShareholder {
         end = System.nanoTime();
         logger.info("PerfMeas:RsaRefreshAdditiveEnd:" + (end - start));
 
+        this.setStartCommunication(System.nanoTime());
         this.channel.send(publicSharingMessage);
 
         return true;
@@ -516,6 +521,7 @@ public class ApvssShareholder {
 
         if (successes == this.k) {
             // We have reached a threshold to proceed to next phase
+            logger.info("PerfMeas:EciesRefreshCommunicationOne:" + (System.nanoTime()-this.getStartCommunication()));
             assembleCombinedShareByInterpolation(senderEpoch);
         }
     }
@@ -664,6 +670,7 @@ public class ApvssShareholder {
         // wait for all some time if not all received, reconstruct failed nodes
         final int successes = sharingState.getSuccessCount().incrementAndGet();
         if (successes == this.n) {
+            logger.info("PerfMeas:RsaRefreshCommunicationOne:" + (System.nanoTime()-this.getStartCommunication()));
             assembleAdditiveShare(senderEpoch);
             if (!sharingState.getSuccessCount().compareAndSet(this.n, 0))
                 throw new RuntimeException("Unexpected error while refreshing atomic success counter"); // TODO-thesis fix this, we should at least use separate atomic counters for secrets
@@ -779,6 +786,7 @@ public class ApvssShareholder {
         // wait for all some time if not all received, reconstruct failed nodes
         final int successes = sharingState.getSuccessCount().incrementAndGet();
         if (successes == this.n) {
+            logger.info("PerfMeas:RsaRefreshCommunicationTwo:" + (System.nanoTime()-this.getStartCommunication()));
             assemblePolynomialShare(senderEpoch);
         }
     }
@@ -904,6 +912,8 @@ public class ApvssShareholder {
 
         // send them as a message
         final Message polynomialSharingMessage = new Message(this.secretName, this.index, polynomialSharingPayload);
+
+        this.setStartCommunication(System.nanoTime());
         this.channel.send(polynomialSharingMessage);
     }
 
@@ -947,6 +957,7 @@ public class ApvssShareholder {
         final String channelName = this.secretName;
 
 //        logger.info("BBBBBB SENDING SECOND MESSAGE");
+        this.setStartCommunication(System.nanoTime());
         this.channel.send(new Message(channelName, this.index, payload));
     }
 
@@ -1036,6 +1047,8 @@ public class ApvssShareholder {
             // If size of qualified proofs == k, then interpolate the rest, including for
             // the public key
             if (sharingState.getQualifiedProofs().size() == this.k) {
+                logger.info("PerfMeas:EciesRefreshCommunicationTwo:" + (System.nanoTime()-this.getStartCommunication()));
+
                 interpolatePublicKeys(senderEpoch);
 
                 if (senderEpoch > this.getCurrentEpoch()) {
@@ -1504,4 +1517,13 @@ public class ApvssShareholder {
     // TODO: Catch all instances of casting (check instance of) or catch
     // ClassCastException
 
+
+    public long getStartCommunication() {
+        return startCommunication;
+    }
+
+    public ApvssShareholder setStartCommunication(long startCommunication) {
+        this.startCommunication = startCommunication;
+        return this;
+    }
 }

@@ -145,7 +145,7 @@ public class ProactiveRsaGenerator {
         // For each additive share d_i...
         for (int i = 0; i < numServers; i++) {
 
-            logger.info("Generating shamir shares and verification keys for additive share d_" + (i+1) );
+//            logger.info("Generating shamir shares and verification keys for additive share d_" + (i+1) );
             List<BigInteger> coefficients = RandomNumberGenerator.generateRandomArray(BigInteger.valueOf(threshold), coeffR);
             coefficients.set(0, additiveShares.get(i).getY().multiply(L));
 
@@ -159,7 +159,7 @@ public class ProactiveRsaGenerator {
             // Generate verification values
             feldmanAdditiveVerificationValues.add(Shamir.generateFeldmanValues(coefficients, g, n));
 
-            logger.info("[DONE]");
+//            logger.info("[DONE]");
         }
 
         // Pre-computed values
