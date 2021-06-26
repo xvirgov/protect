@@ -53,6 +53,9 @@ ECIES_MEASUREMENTS=(
   EciesDecCombineTotal
 
   # Refresh/DKG
+  RsaRefreshCommunicationOne
+  RsaRefreshCommunicationTwo
+
   EciesBroadcastSharingEnd
   EciesAssembleShareEnd
   EciesGenProofEnd
@@ -104,8 +107,7 @@ RSA_MEASUREMENTS=(
   RsaRefreshCommunicationOne
   RsaRefreshCommunicationTwo
 
-  RsaRefreshTotalEnd
-  )
+  RsaRefreshTotalEnd)
 
 KYBER_MEASUREMENTS=(
   # Info
