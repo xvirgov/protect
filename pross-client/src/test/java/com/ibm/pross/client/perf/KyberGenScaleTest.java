@@ -61,7 +61,7 @@ public class KyberGenScaleTest {
 //            bw.write(firstLine);
 //        }
 
-        for (int sl = 1; sl < securityLevels.size(); sl++) {
+        for (int sl = 0; sl < securityLevels.size(); sl++) {
             for (int numServers = minAgents; numServers <= maxAgents; numServers += step) {
                 int threshold = (int) (numServers);
 
