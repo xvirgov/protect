@@ -144,7 +144,7 @@ KYBER_MEASUREMENTS=(
 for (( i=0; i<${#INIT_MEASUREMENTS[@]}; i++ ));
 do
   ARR=$(cat $LOGFILE | grep "PerfMeas:${INIT_MEASUREMENTS[$i]}" | grep -Eo '[0-9]+$')
-  [[ ! -z $ARR ]] && echo $ARR | sed 's/ /,/g' >> "extracted/${INIT_MEASUREMENTS[$i]}.csv"
+  [[ ! -z $ARR ]] && echo $ARR | sed 's/ /,/g' >> "extracted/${INIT_MEASUREMENTS[$i]}${LABEL}.csv"
 done
 
 for (( i=0; i<${#ECIES_MEASUREMENTS[@]}; i++ ));
