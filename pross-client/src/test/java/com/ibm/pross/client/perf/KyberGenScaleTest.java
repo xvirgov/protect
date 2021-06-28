@@ -35,7 +35,7 @@ import static org.junit.Assert.assertTrue;
 public class KyberGenScaleTest {
        final int iterations = Integer.parseInt(System.getProperty("iterations"));
 //    final int iterations = 100;
-    final int startIter = 0;
+    final int startIter = 1000;
     final int total_iterations =  iterations + startIter;
     final BigInteger e = BigInteger.valueOf(65537);
     List<Integer> numServersChoice = Arrays.asList(10, 20, 30);
@@ -62,6 +62,7 @@ public class KyberGenScaleTest {
 //        }
 
         for (int sl = 0; sl < securityLevels.size(); sl++) {
+            Kyber.KYBER_K = sl + 2;
             for (int numServers = minAgents; numServers <= maxAgents; numServers += step) {
                 int threshold = (int) (numServers);
 
@@ -74,7 +75,7 @@ public class KyberGenScaleTest {
                 for (int it = 0; it < total_iterations; it++) {
 
                     start = System.nanoTime();
-                    CommonConfiguration.KYBER_K = sl + 2;
+//                    CommonConfiguration.KYBER_K = sl + 2;
 
                     KyberKeyGenerator.generateKyber(numServers, Kyber.KYBER_N, sl + 2, Kyber.KYBER_Q, Kyber.KYBER_ETA1, Kyber.KYBER_ETA2);
 
