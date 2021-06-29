@@ -53,8 +53,8 @@ ECIES_MEASUREMENTS=(
   EciesDecCombineTotal
 
   # Refresh/DKG
-  RsaRefreshCommunicationOne
-  RsaRefreshCommunicationTwo
+  EciesRefreshCommunicationOne
+  EciesRefreshCommunicationTwo
 
   EciesBroadcastSharingEnd
   EciesAssembleShareEnd
