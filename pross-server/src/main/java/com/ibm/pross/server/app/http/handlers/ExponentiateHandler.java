@@ -205,6 +205,8 @@ public class ExponentiateHandler extends AuthenticatedClientRequestHandler {
 
 			obj.put("compute_time_us", new Long(processingTimeUs));
 
+			logger.info("PerfMeas:EciesDecShareSize:" + obj.toString().getBytes(StandardCharsets.UTF_8).length);
+
 			response = obj.toJSONString() + "\n";
 
 		} else {

@@ -303,6 +303,8 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		obj.put("epoch", Integer.toString(proactiveRsaShareholder.getProactiveRsaPublicParameters().getEpoch()));
 		obj.put("signatureResponse", signatureResponse.getJson());
 
+		logger.info("PerfMeas:RsaDecShareSize:" + obj.toString().getBytes(StandardCharsets.UTF_8).length);
+
 		return obj.toJSONString() + "\n";
 	}
 
@@ -335,6 +337,8 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		obj.put("signatureResponse", KyberUtils.bytesToBase64(KyberUtils.shortsToBytes(decryptionShare.poly)));
 
 		logger.debug("Partial decryption for KYBER generated!!");
+
+		logger.info("PerfMeas:KyberDecShareSize:" + obj.toString().getBytes(StandardCharsets.UTF_8).length);
 
 		return obj.toJSONString() + "\n";
 	}

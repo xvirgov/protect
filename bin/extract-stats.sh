@@ -52,6 +52,8 @@ ECIES_MEASUREMENTS=(
   EciesDecCombineInterpolate
   EciesDecCombineTotal
 
+  EciesDecShareSize
+
   # Refresh/DKG
   EciesRefreshCommunicationOne
   EciesRefreshCommunicationTwo
@@ -89,6 +91,8 @@ RSA_MEASUREMENTS=(
   RsaDecShareDec
   RsaDecShareProof
   RsaDecShareTotal
+
+  RsaDecShareSize
 
   # RsaDecCombineRequest
   RsaDecCombineVerify
@@ -134,6 +138,8 @@ KYBER_MEASUREMENTS=(
   KyberDecEnd
 
   KyberDecShareTotal
+
+  KyberDecShareSize
 
   KyberDecCombineAdd
   KyberDecCombineHashG
