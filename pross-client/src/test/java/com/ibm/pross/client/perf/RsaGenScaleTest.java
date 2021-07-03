@@ -88,6 +88,10 @@ public class RsaGenScaleTest {
             BigInteger q = primes.get(2*sl+1);
 
             for (int numServers = minAgents; numServers <= maxAgents; numServers += step) {
+
+                if(sl == 1 && numServers > 15)
+                    break;
+
                 int threshold = (int) (numServers);
 
                 File file1 = new File("RsaGenScaleTest-" + numServers + "-" + threshold + "-" + securityLevels.get(sl) +".csv");
