@@ -41,7 +41,7 @@ public class KyberGenScaleTest {
     List<Integer> numServersChoice = Arrays.asList(10, 20, 30);
     List<Double> thresChoice = Arrays.asList(0.5, 0.75, 1.0);
     long start, end;
-    int maxAgents = 15;
+    int maxAgents = 40;
     int minAgents = 5;
     int step = 5;
     List<Integer> securityLevels = Arrays.asList(128, 192);

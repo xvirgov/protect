@@ -110,6 +110,7 @@ public class ThresholdSignatures {
 		final BigInteger privateKeyShare = proactiveRsaShareholder.getS_i();
 		final BigInteger L = proactiveRsaShareholder.getProactiveRsaPublicParameters().getL();
 		final BigInteger modulus = proactiveRsaShareholder.getProactiveRsaPublicParameters().getPublicKey().getModulus();
+//		logger.info("modulus: " + modulus);
 		final BigInteger signatureShare = inputMessage.modPow(L.multiply(privateKeyShare), modulus);
 		end = System.nanoTime();
 		logger.info("PerfMeas:RsaDecShareDec:" + (end - start));

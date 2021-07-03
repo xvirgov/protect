@@ -303,6 +303,7 @@ public class SignHandler extends AuthenticatedClientRequestHandler {
 		obj.put("epoch", Integer.toString(proactiveRsaShareholder.getProactiveRsaPublicParameters().getEpoch()));
 		obj.put("signatureResponse", signatureResponse.getJson());
 
+//		logger.info("share:" + obj.toString());
 		logger.info("PerfMeas:RsaDecShareSize:" + obj.toString().getBytes(StandardCharsets.UTF_8).length);
 
 		return obj.toJSONString() + "\n";
